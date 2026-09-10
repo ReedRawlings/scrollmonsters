@@ -52,7 +52,7 @@
     { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+1 damage (${2 + rank} total)`, requires: [] },
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: abilityRankCosts(30, 2), effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
-    { id: "health", name: "Health +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
+    { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
     { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
     { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${3 + rank} total)`, requires: [], recruit: "striker" },
@@ -67,8 +67,6 @@
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 1, costs: abilityRankCosts(30, 1), currency: "mossEssence", effect: () => "Double healing below half HP", requires: [], recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
-    { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: () => "+5 shared party HP", requires: ["health"] },
-    { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(30, 3), effect: () => "+5 shared party HP", requires: ["vitality"] }
   );
 
   const balanceModel = Object.freeze({
@@ -167,7 +165,7 @@
   const treePositions = () => {
     const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "vitality", "fortitude"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
     return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / 3) * 256, y: 230 + index % 3 * 136 }));
   };
@@ -175,11 +173,20 @@
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
 
   const defaultSave = () => ({ gold: 0, mossEssence: 0, mossDryKills: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false });
+  function mergeHealthRanks(upgrades) {
+    const result = { ...upgrades };
+    if (result.vitality !== undefined || result.fortitude !== undefined) {
+      result.health = Math.min(10, (result.health || 0) + (result.vitality || 0) + (result.fortitude || 0));
+      delete result.vitality;
+      delete result.fortitude;
+    }
+    return result;
+  }
   function loadSave() {
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
       const legacyUpgrades = parsed.damageRank ? { power: parsed.damageRank } : {};
-      return { ...defaultSave(), ...parsed, upgrades: { ...legacyUpgrades, ...(parsed.upgrades || {}) } };
+      return { ...defaultSave(), ...parsed, upgrades: mergeHealthRanks({ ...legacyUpgrades, ...(parsed.upgrades || {}) }) };
     } catch {
       return defaultSave();
     }
@@ -200,7 +207,7 @@
   const playerDamage = () => 1 + rank("power");
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
   const playerProjectiles = () => 1 + rank("multishot");
-  const maxPartyHealth = () => 10 + (rank("health") + rank("vitality") + rank("fortitude")) * 5;
+  const maxPartyHealth = () => 10 + rank("health") * 5;
   const autoTargetUnlocked = () => rank("autoTarget") > 0;
 
   function setMode(mode) {
@@ -852,7 +859,7 @@
 
   window.__scollTest = {
     getSave: () => JSON.parse(JSON.stringify(state.save)),
-    setSave: save => { state.save = { ...defaultSave(), ...save, upgrades: { ...(save.upgrades || {}) } }; writeSave(); render(); },
+    setSave: save => { state.save = { ...defaultSave(), ...save, upgrades: mergeHealthRanks(save.upgrades || {}) }; writeSave(); render(); },
     startStage,
     clearCombat: () => { if (state.mode === "combat") { [...state.enemies].forEach(enemy => { if (state.mode === "combat") damageEnemy(enemy, enemy.hp); }); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
     resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); state.selectedStage = 1; setMode("title"); },
