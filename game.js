@@ -36,8 +36,8 @@
       hpMultiplier: number === 1 ? 1 : 2,
       // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
-      hpScale: 1 + (number - 1) * 0.45 + (number - 1) ** 2 * 0.045,
-      bossHpScale: 0.82 + number * 0.18,
+      hpScale: [1, 1.495, 2, 3, 3, 3, 4, 7, 7, 7][index],
+      bossHpScale: [28, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
       damageScale: 0.76 + number * 0.095,
       boss: true,
       majorBoss: number === 5 || number === 10
@@ -45,24 +45,24 @@
   });
 
   const upgradeDefs = [
-    { id: "power", name: "Damage +1", branch: "PLAYER", max: 3, costs: [5, 10, 20], effect: rank => `+1 damage → ${2 + rank} damage`, requires: [] },
-    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: [8, 12, 20], effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
-    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: [15, 25], effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
-    { id: "health", name: "Health +5", branch: "PLAYER", max: 3, costs: [5, 10, 20], effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
-    { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: [5, 10, 15], effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 5, costs: [5, 12, 24, 40, 60], effect: rank => `+1 damage → ${2 + rank} damage`, requires: [] },
+    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: [8, 14, 24], effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
+    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: [15, 30], effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
+    { id: "health", name: "Health +5", branch: "PLAYER", max: 3, costs: [5, 12, 24], effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
+    { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: [5, 12, 18], effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: [10], effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 3, costs: [8, 12, 20], effect: rank => `+1 damage → ${3 + rank} damage`, requires: [], recruit: "striker" },
-    { id: "strikerSpeed", name: "Fang Rhythm", branch: "STRIKER", max: 2, costs: [10, 18], effect: rank => `Striker cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
-    { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: [8, 12, 20], effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
-    { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: [10, 18], effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
-    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 3, costs: [10, 15, 25], effect: rank => `+1 damage → ${4 + rank} damage`, requires: [], recruit: "aoe" },
-    { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: [12, 20], effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
+    { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 5, costs: [8, 14, 24, 40, 60], effect: rank => `+1 damage → ${3 + rank} damage`, requires: [], recruit: "striker" },
+    { id: "strikerSpeed", name: "Fang Rhythm", branch: "STRIKER", max: 2, costs: [10, 22], effect: rank => `Striker cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
+    { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: [8, 14, 24], effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
+    { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: [10, 22], effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
+    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 5, costs: [10, 18, 30, 50, 75], effect: rank => `+1 damage → ${4 + rank} damage`, requires: [], recruit: "aoe" },
+    { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: [12, 24], effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
   ];
 
   upgradeDefs.push(
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: [20], currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
-    { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: [10, 15, 25], effect: () => "+5 shared party HP", requires: ["health"] },
-    { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: [15, 25, 35], effect: () => "+5 shared party HP", requires: ["vitality"] }
+    { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: [10, 18, 30], effect: () => "+5 shared party HP", requires: ["health"] },
+    { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: [15, 30, 42], effect: () => "+5 shared party HP", requires: ["vitality"] }
   );
 
   const balanceModel = Object.freeze({
@@ -72,7 +72,7 @@
     safetyFactor: 1.25,
     offensePath: [
       ["power", 1], ["speed", 1], ["power", 2], ["speed", 2],
-      ["power", 3], ["multishot", 1], ["speed", 3], ["multishot", 2]
+      ["power", 3], ["multishot", 1], ["speed", 3], ["multishot", 2], ["power", 4], ["power", 5]
     ]
   });
 
@@ -148,15 +148,9 @@
     const fangletDps = stageNumber >= 4 ? 2 / 1.05 : 0;
     const partyDps = effectivePlayerDps + fangletDps;
     return { stage: stageNumber, hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
-      basicHp: stageNumber <= 2 ? 1 : Math.max(2, Math.round(partyDps * 0.4)),
-      bossHp: stageNumber === 1 ? 28 : Math.round(partyDps * (stageNumber === 5 || stageNumber === 10 ? 15 : 12)) };
+      basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
+      bossHp: Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) };
   }
-  for (const stage of stageConfigs) {
-    const estimate = stageDpsEstimate(stage.number);
-    if (stage.number >= 3) stage.hpScale = estimate.basicHp;
-    stage.bossHpScale = estimate.bossHp / (28 * (stage.majorBoss ? 1.5 : 1));
-  }
-
   const captureDefs = [
     { id: "captureStriker", name: "Fanglet", branch: "STRIKER", capture: "striker", stage: 3, currency: "fangEssence", cost: 8, requires: [] },
     { id: "captureHealer", name: "Mossbud", branch: "HEALER", capture: "healer", stage: 5, requires: [] },
