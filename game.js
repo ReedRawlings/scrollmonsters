@@ -574,6 +574,11 @@
     drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, "#c9d5e3", "center");
     drawText("or press Space to switch aiming modes.", WIDTH / 2, 615, 17, "#c9d5e3", "center");
     drawButton(state.save.completed.length ? "CONTINUE" : "BEGIN JOURNEY", 80, 664, 380, 72, true, () => setMode("map"));
+    drawButton("RESET PROGRESS", 130, 768, 280, 52, true, () => {
+      if (!window.confirm("Reset all progress in this browser? Gold, essence, creatures, upgrades and cleared stages will be erased. This cannot be undone.")) return;
+      localStorage.removeItem(SAVE_KEY);
+      window.location.reload();
+    });
   }
 
   function mapNodePosition(stageNumber) {

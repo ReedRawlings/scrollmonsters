@@ -26,3 +26,7 @@ node scripts/check-opening-browser.cjs
 The browser check requires Playwright and Chromium installed, plus a running server on port 5173. Set `GAME_URL` to test a different server address.
 
 Design: GDD.md. Tuning: BALANCE.md. Work log: progress.md.
+
+## Reset for testing
+
+Refresh to return to the title screen, then choose **RESET PROGRESS** and confirm. This removes only this game's save in the current browser on the current site address, then reloads into a fresh game. Cancel keeps your progress. Saves on other browsers or deployment URLs are separate.
