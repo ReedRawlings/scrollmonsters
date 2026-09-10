@@ -156,3 +156,7 @@ Added RESET PROGRESS on the title screen. A confirmation explains what is erased
 ## Trail Pace: travel-driven encounters
 
 Added Trail Pace to Shared: ten ranks, each adding 5% travel speed and enemy spawn frequency, up to +50%. Costs follow round(20 × 1.35^(rank−1)): 20/27/36/49/66/90/121/163/221/298G. Base terrain speed is 24 px/s, reaching 36 px/s. Spawn intervals (including the first spawn delay) divide by 1 + rank × 0.05, so max rank yields 1.5× spawn frequency, not a 50% shorter interval. Grass retains its 45% parallax ratio and rocks follow terrain. Player remains centered; boss appears after 30 seconds and first-two-stage Fanglet gating stays at 15 seconds. Enemy movement, HP and per-kill rewards are unchanged. More encounters increase potential gold/essence and difficulty. Save defaults naturally treat absent travelSpeed as zero.
+
+## Retry wallet display
+
+Confirmed finishStage banks gold/essence before results; Retry calls startStage without modifying saved currencies, recruits or upgrades. Corrected combat HUD to show banked + current-run gold/essence instead of a run-only counter that appeared to erase rewards. A separate +N this run label preserves earnings feedback. Text state now includes totalGold/totalEssence.

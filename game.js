@@ -696,8 +696,9 @@
     drawText(`${Math.max(0, Math.ceil(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
     drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
     drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
-    drawText(`Fang essence +${state.runEssence}`, 24, 115, 16, "#a9e9eb");
-    drawSprite("gold", 330, 91, 28); drawText(String(state.runGold), 354, 91, 22, "#ffe17d");
+    drawText(`Fang essence: ${state.save.fangEssence + state.runEssence}`, 24, 115, 16, "#a9e9eb");
+    drawSprite("gold", 330, 91, 28); drawText(String(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
+    drawText(`+${state.runGold} this run`, 330, 115, 14, "#d3dbe5");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
     } else {
@@ -822,7 +823,7 @@
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
