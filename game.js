@@ -64,6 +64,7 @@
   ];
 
   upgradeDefs.push(
+    { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 1, costs: abilityRankCosts(30, 1), currency: "mossEssence", effect: () => "Double healing below half HP", requires: [], recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
@@ -165,7 +166,7 @@
   const treePositions = () => {
     const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
     return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / 3) * 256, y: 230 + index % 3 * 136 }));
   };
@@ -241,12 +242,8 @@
     state.bossSpawned = false;
     state.bossDefeated = false;
     state.enemies = [];
-    // Two staggered rocks, outside the party's travel corridor; no corridor-wide walls.
-    state.obstacles = [0, 1].map(index => ({
-      x: index === 0 ? 115 + Math.random() * 65 : 360 + Math.random() * 65,
-      y: 330 + index * 300 + Math.random() * 90,
-      r: 24 + Math.random() * 8
-    }));
+    state.obstacles = [];
+    state.rockSpawnTimer = 0;
     state.projectiles = [];
     state.drops = [];
     state.effects = [];
@@ -433,6 +430,15 @@
     state.scroll += 24 * travelMultiplier() * dt;
     const cameraStep = state.scroll - previousScroll;
     for (const rock of state.obstacles) rock.y -= cameraStep;
+    state.obstacles = state.obstacles.filter(rock => rock.y + rock.r >= 126);
+    if (state.stage.number >= 4) {
+      state.rockSpawnTimer -= dt * travelMultiplier();
+      if (state.rockSpawnTimer <= 0) {
+        const radius = 24 + Math.random() * 8;
+        state.obstacles.push({ x: Math.random() < 0.5 ? 85 + Math.random() * 125 : 330 + Math.random() * 125, y: HEIGHT + radius, r: radius, hp: 15, maxHp: 15 });
+        state.rockSpawnTimer = 3.5 + Math.random();
+      }
+    }
     state.spawnTimer -= dt;
     state.fireTimer -= dt;
     const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration;
@@ -493,6 +499,10 @@
           return Math.hypot(oldX + t * dx - obstacle.x, oldY + t * dy - obstacle.y) <= obstacle.r + projectile.r;
         });
         if (rock) {
+          if (rank("rockBreaker")) {
+            rock.hp -= projectile.damage;
+            if (rock.hp <= 0) state.obstacles.splice(state.obstacles.indexOf(rock), 1);
+          }
           state.effects.push({ type: "impact", x: projectile.x, y: projectile.y, life: 0.15, maxLife: 0.15, radius: 12 });
           state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
           continue;
@@ -692,6 +702,10 @@
       ctx.fillStyle = "#514c43"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r + 9, rock.r * 2, rock.r * 2 - 4);
       ctx.fillStyle = "#858a8b"; ctx.fillRect(rock.x - rock.r + 4, rock.y - rock.r, rock.r * 2 - 8, rock.r * 2 - 5);
       ctx.fillStyle = "#b9bdb3"; ctx.fillRect(rock.x - rock.r + 8, rock.y - rock.r + 4, rock.r, 6);
+      if (rank("rockBreaker")) {
+        ctx.fillStyle = "#371c27"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2, 5);
+        ctx.fillStyle = "#f0c65a"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2 * Math.max(0, rock.hp / rock.maxHp), 5);
+      }
     }
     drawSprite("player", state.party.x, state.party.y, 52);
     for (const companion of state.companions) drawSprite(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
@@ -844,7 +858,7 @@
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
