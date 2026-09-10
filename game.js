@@ -38,7 +38,7 @@
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
       hpScale: [1, 1.495, 2, 3, 3, 3, 4, 7, 7, 7][index],
       bossHpScale: [28, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
-      damageScale: 0.76 + number * 0.095,
+      damageScale: 0.855 + (number - 1) * 0.25 + (number - 1) ** 2 * 0.025,
       boss: true,
       majorBoss: number === 5 || number === 10
     };
@@ -64,6 +64,7 @@
   ];
 
   upgradeDefs.push(
+    { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 1, costs: abilityRankCosts(30, 1), currency: "mossEssence", effect: () => "Double healing below half HP", requires: [], recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
     { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: () => "+5 shared party HP", requires: ["health"] },
@@ -153,13 +154,13 @@
     const effectivePlayerDps = offense.damage / offense.fireInterval * (1 + (offense.projectiles - 1) * 0.65) * 0.75;
     const fangletDps = stageNumber >= 4 ? 2 / 1.05 : 0;
     const partyDps = effectivePlayerDps + fangletDps;
-    return { stage: stageNumber, hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
+    return { stage: stageNumber, basicDamage: Math.max(1, Math.round(stageConfigs[stageNumber - 1].damageScale)), armoredDamage: Math.max(1, Math.round(2 * stageConfigs[stageNumber - 1].damageScale)), bossDamage: Math.max(1, Math.round(5 * stageConfigs[stageNumber - 1].damageScale)), hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
       basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
       bossHp: Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) };
   }
   const captureDefs = [
     { id: "captureStriker", name: "Fanglet", branch: "STRIKER", capture: "striker", stage: 3, currency: "fangEssence", cost: 8, requires: [] },
-    { id: "captureHealer", name: "Mossbud", branch: "HEALER", capture: "healer", stage: 5, requires: [] },
+    { id: "captureHealer", name: "Mossbud", branch: "HEALER", capture: "healer", stage: 5, currency: "mossEssence", cost: 12, requires: [] },
     { id: "captureAoe", name: "Novawisp", branch: "AOE", capture: "aoe", stage: 10, requires: [] }
   ];
   const treeDefs = [...upgradeDefs, ...captureDefs];
@@ -173,7 +174,7 @@
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
 
-  const defaultSave = () => ({ gold: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false });
+  const defaultSave = () => ({ gold: 0, mossEssence: 0, mossDryKills: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false });
   function loadSave() {
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
@@ -228,6 +229,7 @@
     state.scroll = 0;
     state.runGold = 0;
     state.runEssence = 0;
+    state.runMossEssence = 0;
     state.goldFraction = 0;
     state.bossSpawned = false;
     state.bossDefeated = false;
@@ -272,7 +274,9 @@
     }[type];
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
-    const species = type !== "boss" && (!openingStage || state.stageTime >= 15) && Math.random() < fangDensity(state.stage.number) ? "fanglet" : null;
+    const speciesRoll = Math.random();
+    const canFang = !openingStage || state.stageTime >= 15;
+    const species = type === "boss" ? null : canFang && speciesRoll < fangDensity(state.stage.number) ? "fanglet" : speciesRoll >= fangDensity(state.stage.number) && speciesRoll < fangDensity(state.stage.number) + mossDensity(state.stage.number) ? "mossbud" : null;
     const openingFanglet = openingStage && species === "fanglet";
     const hp = (openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier;
     const spawn = spawnPoint(base.radius, forcedEdge);
@@ -285,6 +289,8 @@
   }
 
   const fangDensity = stage => [0.2, 0.3, 0.7, 0.35, 0.25, 0.65, 0.3, 0.4, 0.75, 0.35][stage - 1];
+  const mossDensity = stage => [0, 0, 0.1, 0.35, 0.6, 0.15, 0.5, 0.4, 0.15, 0.5][stage - 1];
+  const currencyName = currency => currency === "mossEssence" ? "Mossbud essence" : currency === "fangEssence" ? "Fanglet essence" : "gold";
   const fangYield = stage => 1 + Math.floor((stage - 1) / 3);
   const enemyVisible = enemy => enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
 
@@ -333,6 +339,14 @@
           state.save.fangDryKills = 0;
         }
       }
+      if (enemy.species === "mossbud") {
+        state.save.mossDryKills += 1;
+        if (Math.random() < 0.3 || state.save.mossDryKills >= 5) {
+          state.runMossEssence += fangYield(state.stage.number);
+          state.save.mossDryKills = 0;
+        }
+      }
+      if (enemy.type === "boss" && [5, 8, 10].includes(state.stage.number)) state.runMossEssence += 2 * fangYield(state.stage.number);
       if (enemy.type === "boss" && [3, 6, 9].includes(state.stage.number)) state.runEssence += 2 * fangYield(state.stage.number);
     }
     state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.3, maxLife: 0.3, radius: enemy.r + 10 });
@@ -366,7 +380,7 @@
         companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
       } else if (companion.type === "healer") {
         if (state.party.hp < state.party.maxHp) {
-          state.party.hp = Math.min(state.party.maxHp, state.party.hp + 2 + rank("healPower"));
+          state.party.hp = Math.min(state.party.maxHp, state.party.hp + (2 + rank("healPower")) * (rank("deepBloom") && state.party.hp < state.party.maxHp / 2 ? 2 : 1));
           companion.pulse = 0.7;
           state.effects.push({ type: "heal", x: state.party.x, y: state.party.y, life: 0.7, maxLife: 0.7, radius: 54 });
         }
@@ -390,17 +404,18 @@
     let newRecruit = null;
     state.save.gold += state.runGold;
     state.save.fangEssence += state.runEssence;
+    state.save.mossEssence += state.runMossEssence;
     if (won) {
       if (firstClear) state.save.completed.push(state.stage.number);
       state.save.unlockedStage = Math.max(state.save.unlockedStage, Math.min(10, state.stage.number + 1));
-      const recruitAt = { 5: "healer", 10: "aoe" }[state.stage.number];
+      const recruitAt = { 10: "aoe" }[state.stage.number];
       if (recruitAt && !hasRecruit(recruitAt)) {
         state.save.recruits.push(recruitAt);
         newRecruit = recruitAt;
       }
     }
     writeSave();
-    state.result = { won, gold: state.runGold, essence: state.runEssence, firstClear, newRecruit, stage: state.stage.number };
+    state.result = { won, gold: state.runGold, essence: state.runEssence, mossEssence: state.runMossEssence, firstClear, newRecruit, stage: state.stage.number };
     setMode("result");
   }
 
@@ -591,7 +606,7 @@
 
   function drawMap() {
     drawBackground();
-    drawHeader("OVERWORLD", `Party ${1 + state.save.recruits.length}/4 • Fanglet essence: ${state.save.fangEssence}`);
+    drawHeader("OVERWORLD", `Fanglet: ${state.save.fangEssence} • Mossbud: ${state.save.mossEssence} essence`);
     ctx.strokeStyle = "#705239"; ctx.lineWidth = 16; ctx.lineCap = "round"; ctx.beginPath();
     for (let number = 1; number <= 10; number++) {
       const point = mapNodePosition(number);
@@ -607,7 +622,7 @@
       if ([3, 5, 10].includes(number)) drawSprite(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
       if (open) uiTargets.push({ x: point.x - 44, y: point.y - 44, width: 88, height: 88, action: () => { state.selectedStage = number; } });
     }
-    drawText(`Fanglets: ${Math.round(fangDensity(state.selectedStage) * 100)}% • Drops: ${fangYield(state.selectedStage)} essence`, WIDTH / 2, 715, 18, "#a9e9eb", "center");
+    drawText(`Fang ${Math.round(fangDensity(state.selectedStage) * 100)}% • Moss ${Math.round(mossDensity(state.selectedStage) * 100)}% • ${fangYield(state.selectedStage)} essence/drop`, WIDTH / 2, 715, 18, "#a9e9eb", "center");
     drawPanel(24, 744, 492, 132);
     drawText(`Stage ${state.selectedStage} — ${stageConfigs[state.selectedStage - 1].name}`, WIDTH / 2, 770, 20, "#fff", "center");
     drawButton("PLAY", 40, 798, 220, 62, true, () => startStage(state.selectedStage));
@@ -619,7 +634,7 @@
   }
 
   function drawUpgrades() {
-    drawBackground(); drawHeader("UPGRADES", `Fanglet essence: ${state.save.fangEssence} • Tap a node to buy`);
+    drawBackground(); drawHeader("UPGRADES", `Fanglet: ${state.save.fangEssence} • Mossbud: ${state.save.mossEssence} essence`);
     const branches = ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"];
     branches.forEach((name, index) => {
       const x = 14 + index * 104;
@@ -644,11 +659,11 @@
       drawText(def.name, item.x + 10, item.y + 20, 17, available ? "#fff" : "#bac1cb");
       if (def.capture) {
         drawSprite(def.capture, item.x + 205, item.y + 47, 30, captured ? 1 : 0.5);
-        drawText(captured ? "CAPTURED" : (def.currency ? `${def.cost} Fanglet essence` : `Clear stage ${def.stage}`), item.x + 10, item.y + 45, 15, captured ? "#8ce99a" : "#ffe17d");
+        drawText(captured ? "CAPTURED" : (def.currency ? `${def.cost} ${currencyName(def.currency)}` : `Clear stage ${def.stage}`), item.x + 10, item.y + 45, 15, captured ? "#8ce99a" : "#ffe17d");
         drawText("Unlock monster talents", item.x + 10, item.y + 81, 14, "#d3dbe5");
       } else {
         drawText(`Rank ${current}/${def.max}`, item.x + 10, item.y + 44, 15, "#d3dbe5");
-        drawText(maxed ? "" : `${cost}${def.currency ? " FE" : "G"}`, item.x + 220, item.y + 44, 15, state.save[def.currency || "gold"] >= cost ? "#ffe17d" : "#ff8d8d", "right");
+        drawText(maxed ? "" : `${cost}${def.currency === "mossEssence" ? " ME" : def.currency ? " FE" : "G"}`, item.x + 220, item.y + 44, 15, state.save[def.currency || "gold"] >= cost ? "#ffe17d" : "#ff8d8d", "right");
         const effect = maxed ? "MAXED" : def.id === "autoTarget" ? "Unlock auto-target" : def.id === "health" ? "+5 shared party HP" : def.effect(current);
         const lines = [""];
         for (const word of effect.split(" ")) {
@@ -674,7 +689,7 @@
     drawSprite("player", state.party.x, state.party.y, 52);
     for (const companion of state.companions) drawSprite(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
     for (const enemy of state.enemies) {
-      drawSprite(enemy.species === "fanglet" ? "striker" : enemy.type, enemy.x, enemy.y, enemy.type === "boss" ? 92 : enemy.r * 2.5);
+      drawSprite(enemy.species === "fanglet" ? "striker" : enemy.species === "mossbud" ? "healer" : enemy.type, enemy.x, enemy.y, enemy.type === "boss" ? 92 : enemy.r * 2.5);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
     }
@@ -696,7 +711,7 @@
     drawText(`${Math.max(0, Math.ceil(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
     drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
     drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
-    drawText(`Fang essence: ${state.save.fangEssence + state.runEssence}`, 24, 115, 16, "#a9e9eb");
+    drawText(`Essence: Fang ${state.save.fangEssence + state.runEssence} • Moss ${state.save.mossEssence + state.runMossEssence}`, 24, 115, 16, "#a9e9eb");
     drawSprite("gold", 330, 91, 28); drawText(String(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
@@ -711,6 +726,7 @@
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
     drawText(`Fanglet essence: +${state.result.essence} (${state.save.fangEssence} total)`, WIDTH / 2, 330, 20, "#a9e9eb", "center");
     drawText(`Total gold: ${state.save.gold}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
+    drawText(`Mossbud essence: ${state.save.mossEssence}`, WIDTH / 2, 365, 20, "#a9e9eb", "center");
     if (state.result.newRecruit) {
       drawSprite(state.result.newRecruit, WIDTH / 2, 402, 90);
       const names = { striker: "FANGLET", healer: "MOSSBUD", aoe: "NOVAWISP" };
@@ -739,12 +755,12 @@
     if (definition.capture) {
       if (definition.currency && !hasRecruit(definition.capture)) {
         if (state.save[definition.currency] < definition.cost) {
-          state.toast = `Need ${definition.cost - state.save[definition.currency]} more Fanglet essence`;
+          state.toast = `Need ${definition.cost - state.save[definition.currency]} more ${currencyName(definition.currency)}`;
         } else {
           state.save[definition.currency] -= definition.cost;
           state.save.recruits.push(definition.capture);
           writeSave();
-          state.toast = "Fanglet captured! Talents unlocked";
+          state.toast = `${definition.name} captured! Talents unlocked`;
         }
         state.toastTimer = 1.8; return;
       }
@@ -758,7 +774,7 @@
     if (current >= definition.max) return;
     const cost = definition.costs[current];
     const currency = definition.currency || "gold";
-    if (state.save[currency] < cost) { state.toast = `Need ${cost - state.save[currency]} more ${currency === "gold" ? "gold" : "Fanglet essence"}`; state.toastTimer = 1.8; return; }
+    if (state.save[currency] < cost) { state.toast = `Need ${cost - state.save[currency]} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
     state.save[currency] -= cost;
     state.save.upgrades[definition.id] = current + 1;
     if (definition.id === "autoTarget") state.save.autoTargetEnabled = true;
@@ -821,11 +837,11 @@
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
-    fangletEssence: state.save.fangEssence, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
+    mossbudEssence: state.save.mossEssence, fangletEssence: state.save.fangEssence, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
   });
 
   window.advanceTime = ms => {
