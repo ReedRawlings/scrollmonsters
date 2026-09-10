@@ -1,0 +1,107 @@
+{
+  "player": {
+    "path": "assets/placeholder/player.svg",
+    "width": 16,
+    "height": 16
+  },
+  "creature-striker": {
+    "path": "assets/placeholder/creature-striker.svg",
+    "width": 16,
+    "height": 16
+  },
+  "creature-healer": {
+    "path": "assets/placeholder/creature-healer.svg",
+    "width": 16,
+    "height": 16
+  },
+  "creature-aoe": {
+    "path": "assets/placeholder/creature-aoe.svg",
+    "width": 16,
+    "height": 16
+  },
+  "enemy-basic": {
+    "path": "assets/placeholder/enemy-basic.svg",
+    "width": 16,
+    "height": 16
+  },
+  "enemy-armored": {
+    "path": "assets/placeholder/enemy-armored.svg",
+    "width": 16,
+    "height": 16
+  },
+  "enemy-ranged": {
+    "path": "assets/placeholder/enemy-ranged.svg",
+    "width": 16,
+    "height": 16
+  },
+  "boss": {
+    "path": "assets/placeholder/boss.svg",
+    "width": 16,
+    "height": 16
+  },
+  "gold": {
+    "path": "assets/placeholder/gold.svg",
+    "width": 16,
+    "height": 16
+  },
+  "heart": {
+    "path": "assets/placeholder/heart.svg",
+    "width": 16,
+    "height": 16
+  },
+  "heal": {
+    "path": "assets/placeholder/heal.svg",
+    "width": 16,
+    "height": 16
+  },
+  "crosshair": {
+    "path": "assets/placeholder/crosshair.svg",
+    "width": 16,
+    "height": 16
+  },
+  "auto-target": {
+    "path": "assets/placeholder/auto-target.svg",
+    "width": 16,
+    "height": 16
+  },
+  "lock": {
+    "path": "assets/placeholder/lock.svg",
+    "width": 16,
+    "height": 16
+  },
+  "node-complete": {
+    "path": "assets/placeholder/node-complete.svg",
+    "width": 16,
+    "height": 16
+  },
+  "node-open": {
+    "path": "assets/placeholder/node-open.svg",
+    "width": 16,
+    "height": 16
+  },
+  "projectile-player": {
+    "path": "assets/placeholder/projectile-player.svg",
+    "width": 16,
+    "height": 16
+  },
+  "projectile-enemy": {
+    "path": "assets/placeholder/projectile-enemy.svg",
+    "width": 16,
+    "height": 16
+  },
+  "impact": {
+    "path": "assets/placeholder/impact.svg",
+    "width": 16,
+    "height": 16
+  },
+  "grass-tile": {
+    "path": "assets/placeholder/grass-tile.svg",
+    "width": 16,
+    "height": 16
+  },
+  "path-tile": {
+    "path": "assets/placeholder/path-tile.svg",
+    "width": 16,
+    "height": 16
+  }
+}

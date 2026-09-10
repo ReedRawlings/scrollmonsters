@@ -1,0 +1,51 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const context = new Proxy({}, { get: (o, k) => o[k] ?? (() => {}), set: (o, k, v) => (o[k] = v, true) });
+const canvas = { width: 540, height: 900, getContext: () => context, addEventListener() {} };
+const sandbox = { document: { getElementById: () => canvas, addEventListener() {} }, Image: class {}, location: { search: '?test=1' }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, window: { __vt_pending: true }, console };
+const source = fs.readFileSync(require('node:path').join(__dirname, '../game.js'), 'utf8').replace('  render();\n  if (!window.__vt_pending)', '  window.review = { state, updateCombat, spawnEnemy, damageEnemy, finishStage, stageConfigs, attemptUpgrade, upgradeDefs, captureDefs };\n  render();\n  if (!window.__vt_pending)');
+vm.runInNewContext(source, sandbox);
+const { state, updateCombat, spawnEnemy, damageEnemy, finishStage, stageConfigs, attemptUpgrade, upgradeDefs, captureDefs } = sandbox.window.review;
+const api = sandbox.window.__scollTest;
+api.startStage(1);
+assert.equal(state.party.x, 270); assert.equal(state.party.y, 300);
+updateCombat(1 / 60);
+assert(state.projectiles[0].vy > 0, 'Default fire points south');
+const initialY = state.party.y;
+updateCombat(1); assert.equal(state.party.y, initialY); assert(state.scroll > 0);
+spawnEnemy('basic'); const movingEnemy = state.enemies.at(-1);
+assert(movingEnemy.y > 900); const spawnY = movingEnemy.y;
+updateCombat(1 / 60); assert(movingEnemy.y < spawnY);
+assert(stageConfigs.every(stage => stage.duration === 30 && stage.boss));
+for (let stage = 1; stage <= 10; stage++) {
+  api.setSave({ unlockedStage: 10 }); api.startStage(stage);
+  state.stageTime = 29; state.fireTimer = 999; state.spawnTimer = 999;
+  updateCombat(1 / 60);
+  assert(state.enemies.some(enemy => enemy.type === 'boss'), `Stage ${stage} has boss`);
+  const boss = state.enemies.find(enemy => enemy.type === 'boss');
+  boss.y = state.party.y + 23;
+  state.stageTime = 31;
+  updateCombat(1 / 60);
+  assert.equal(state.mode, 'combat'); assert.equal(state.bossDefeated, false);
+  assert(state.enemies.includes(boss), "A living boss cannot disappear at the party boundary");
+  finishStage(true); assert.equal(state.mode, 'combat');
+  damageEnemy(boss, boss.hp); updateCombat(1 / 60);
+  assert.equal(state.result.won, true); assert(state.save.completed.includes(stage));
+}
+api.setSave({}); api.startStage(1); state.spawnTimer = 999; state.fireTimer = 999;
+state.drops = [{ x: -100, y: 120, value: 13, age: 100 }, { x: 950, y: 120, value: 17, age: 8 }];
+updateCombat(1 / 60); assert.equal(state.drops.length, 2); assert.equal(state.runGold, 0);
+state.party.hp = 0; updateCombat(1 / 60); assert.equal(state.result.won, false); assert.equal(state.save.gold, 30);
+api.setSave({ gold: 1000, unlockedStage: 10 });
+for (const capture of captureDefs) {
+  const upgrade = upgradeDefs.find(def => def.recruit === capture.capture);
+  attemptUpgrade(upgrade); assert.equal(state.save.upgrades[upgrade.id], undefined);
+  api.startStage(capture.stage); api.clearCombat();
+  assert(state.save.recruits.includes(capture.capture));
+  attemptUpgrade(upgrade); assert.equal(state.save.upgrades[upgrade.id], 1);
+  api.startStage(capture.stage); api.clearCombat();
+  assert.equal(state.save.recruits.filter(type => type === capture.capture).length, 1);
+}
+assert.equal(state.save.recruits.length, 3);
+console.log('PASS: all ten boss gates, 30-second traversal, persistent offscreen drops, defeat banking, capture prerequisites and replay deduplication');

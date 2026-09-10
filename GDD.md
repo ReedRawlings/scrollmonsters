@@ -1,0 +1,148 @@
+# ScollMonsters — Small GDD
+
+Version 0.5 · September 9, 2026 · Working title: ScollMonsters
+
+## Concept
+
+A single-player pixel-art rail shooter with light monster-taming progression. The player starts with one character, recruits creatures through gameplay, aims attacks with the cursor while traveling forward automatically, and invests run rewards into a branching upgrade tree. Traveloot is the gameplay reference; this project uses original characters and art. The first deliverable is a small browser-playable prototype, with an eventual Steam release as a longer-term goal.
+
+## Confirmed direction
+
+- Party building and automated combat are the highest priorities.
+- Forward travel is automatic along a fixed route; exploration is not a core mechanic.
+- The player continuously auto-fires toward the cursor. After unlocking automatic targeting, Space toggles it on or off; disabling it returns to cursor aim.
+- Creature abilities choose targets according to their moves, independently of cursor aim.
+- Start with one character and recruit three creatures in sequence: a single-target attacker, a party healer, then an area-of-effect (AOE) attacker.
+- World progression follows a series of playable levels connected by an overworld map. Completing a level advances the player through the map.
+- Completing levels 3, 5, and 10 recruits the single-target attacker, healer, and AOE attacker respectively.
+- There are no character experience levels. Character strength grows through permanent upgrades purchased with gold collected from battles.
+- The party caps at four total members: the player character and three creatures.
+- The entire party shares one health bar.
+- Light monster taming is central to the game’s identity.
+- Gathering should happen through a skill or ability instead of repeated mouse collection.
+- Progression emphasizes damage, firing speed, projectile count, and companion upgrades.
+- The eventual skill tree should feel dense, with mostly improvements to established mechanics.
+- Use stand-in objects for the prototype. The user will procure new pixel art later.
+- Working title: ScollMonsters.
+- No co-op is required.
+
+The sections below combine confirmed direction with proposed prototype defaults. Stage length, map layout, upgrade costs, and upgrade counts remain provisional.
+
+## Player experience and core loop
+
+Start with one character → select an available level on the overworld map → travel forward automatically, aim attacks, and collect battle gold → complete the level or lose the party → buy permanent upgrades → advance to the next level or retry. Completing levels 3, 5, and 10 adds a creature to the party.
+
+The main decisions are which upgrades to buy, where to aim during combat, and when to use automatic targeting. Each run should make the effect of the player's last purchase easy to see.
+
+## Prototype mechanics
+
+| System | Proposed first version |
+| --- | --- |
+| Overworld | A map connects sequential playable levels. Completing a level unlocks the next; branching paths and replay rules remain undecided. |
+| Levels | Each level is an automatically scrolling combat stage. Proposed prototype: ten short stages built from one environment and a small shared enemy set, sufficient to test all three recruitment milestones. Stage length and boss placement remain tuning decisions. |
+| Movement and aiming | Forward travel is automatic. The cursor sets the attack target point; it does not steer the party. |
+| Party building | Begin with one player character. Recruit creatures through gameplay. The party caps at four total members: the player character plus three creatures. All three prototype creatures can be active together. |
+| Attacks | The player continuously auto-fires, aiming at the cursor when automatic targeting is off and at selected enemies when it is on. Creatures use abilities automatically and select targets according to the move: enemy targets for attacks, party targets for healing. |
+| Automatic targeting | Unlockable player ability that selects enemy targets automatically. After unlocking it, press Space to toggle it on/off without interrupting auto-fire. Unlock requirement and target priority remain undecided. |
+| Recruitment | Completing stage 3 recruits the single-target attacker; completing stage 5 recruits the healer; completing stage 10 recruits the AOE attacker. These are stage-completion milestones, not character levels. Proposed behavior: recruits are permanent and join an empty active slot immediately. |
+| Survival | One shared party health bar. Enemy hits reduce health; zero health ends the run. |
+| Collection | A starting party ability periodically attracts nearby drops. Upgrades improve its range and frequency. |
+| Rewards | Gold collected from battles funds permanent upgrades. Proposed default: the collection ability gathers gold drops, and collected gold is retained after defeat. |
+| Progression | No character levels or experience-level system. Purchase permanent upgrades with battle gold. Proposed flow: buy upgrades between stage attempts; starting a stage restores shared party health. |
+| Saving | Save gold, purchased upgrades, completed/unlocked stages, recruited creatures, and active party locally in the browser. |
+
+## Player character and recruitable creatures
+
+The starting player character auto-fires projectiles toward the cursor, then gains automatic targeting through an unlockable ability. Use colored geometric stand-ins and distinct attack/healing effects until new pixel art is available.
+
+| Recruitment milestone | Creature role | Confirmed ability | Details still to tune |
+| --- | --- | --- | --- |
+| Complete level 3 | Single-target attacker | Automatically attacks one enemy at a time | Target priority, damage, and attack speed |
+| Complete level 5 | Party healer | Automatically heals the party | Healing amount and cooldown; restores shared party health |
+| Complete level 10 | AOE attacker | Automatically attacks an area, damaging multiple enemies | Area size, damage, cooldown, and target-area selection |
+
+Creature targeting belongs to each move. Single-target attacks select an enemy, healing restores the shared party health pool, and AOE attacks select an area containing enemies. Attack speeds and targeting priorities remain tuning decisions; a slower AOE cadence is a possible starting point.
+
+The four-member cap accommodates the starting character and all three recruitable creatures. No bench or swapping system is required for this initial roster. Award each milestone creature once when its stage is first completed.
+
+## Upgrade tree
+
+Begin with approximately 10–12 nodes across a shared/player branch and the defined creature branches. Use several ranks on basic stat nodes to suggest the eventual dense tree without requiring a large content set.
+
+- **Shared/player:** player attack damage, firing rate, projectile count, party health, collection improvements, and the automatic targeting unlock.
+- **Single-target attacker:** damage and attack-rate improvements.
+- **Healer:** healing amount and cooldown improvements.
+- **AOE attacker:** area damage, radius, and cooldown improvements (proposed).
+
+Show prerequisites, current rank, cost, and the exact effect of the next rank. Early purchases should be affordable after the first run. Final costs and stat values are tuning decisions.
+
+## Route and enemies
+
+Use one shared environment for the prototype and authored encounters across sequential stages: weak groups first, then mixed groups and bosses. The overworld communicates completed, available, and locked stages. Exact boss placement remains open.
+
+- **Basic enemy:** low health; demonstrates targeting and damage.
+- **Durable enemy:** high health; rewards concentrated damage.
+- **Ranged enemy:** telegraphed attacks that reward aiming at the attacker before it fires; no manual movement is required to respond.
+- **Boss:** one clear attack pattern with a more intense final phase.
+
+The combat view needs readable projectiles, hit feedback, shared party health, current stage, next recruitment milestone, stage progress, gold, and player targeting mode with a Space toggle hint after unlock. Keep enemy and companion silhouettes distinct at the intended pixel scale.
+
+## Screens and scope
+
+Three screens are enough: an overworld map with party and upgrade access, a combat screen, and a results screen showing stage completion, gold, any newly recruited creature, and a return to the map.
+
+Proposed prototype scope includes a simple overworld with ten short stages reusing one environment, one starting character, three recruitable creatures (single-target attacker, healer, and AOE attacker), a basic recruitment flow, three basic enemy types, one reusable boss type, a compact upgrade tree, automated collection, and local saving. Additional environments, story systems, equipment, crafting, online features, and Steam integration are outside this first build. The ten-stage scope is a proposed way to exercise the confirmed stage 3/5/10 milestones; it does not require ten unique environments. Earlier recruitment stages should be replayable in the prototype so the stage 10 AOE recruit can be tested without adding an eleventh stage (proposed).
+
+## What the prototype must prove
+
+- A new game starts with exactly one character.
+- Completing stages advances overworld availability and persists completion.
+- First completion of stages 3, 5, and 10 recruits the correct creature once, without exceeding four total party members.
+- The three creatures respectively attack individual enemies, restore shared party health, and damage enemies within an area.
+- Battle gold purchases permanent upgrades without a character-level system.
+- Forward travel runs automatically and player attacks follow cursor aim before the automatic targeting unlock.
+- After the automatic targeting unlock, Space switches between automatic enemy targeting and cursor aim while firing continues.
+- Creature abilities choose suitable targets independently of the cursor.
+- Combat and collection work without repeated clicking.
+- Players can understand incoming threats and the effect of upgrades.
+- A complete stage → reward → upgrade → map progression loop works, including defeat and retry.
+- Reloading the browser preserves upgrades and recruited creatures.
+- The loop is enjoyable enough to justify adding companions and expanding the tree.
+
+## Open decisions
+
+1. **Overworld structure:** linear sequence for the prototype as proposed, or branching paths? Can completed levels be replayed for gold?
+2. **Automatic targeting:** which upgrade unlocks it, what does it cost, and how does it prioritize enemies?
+3. **Persistence:** recruits and unspent collected gold persist after defeat as proposed; permanent purchased upgrades are confirmed.
+4. **Setting:** what kind of world and creatures should the eventual art establish? Stand-ins allow this to remain open during prototyping.
+
+Stage length, boss placement, upgrade counts, costs, and ability values remain tuning defaults for the first prototype.
+
+## Reference and provenance
+
+Based on the user's requirements in **“Plan Traveloot game copy”**, thread `01a08766-4a62-7c02-9115-b431f9fdc629`, particularly the request for original art, browser play, party building, automated combat, ability-based collection, and a small prototype.
+
+This document uses that conversation and subsequent user decisions in the current thread as its sources. Current decisions establish the ScollMonsters title, automatic travel, cursor-directed auto-fire, an unlockable automatic targeting ability toggled with Space, temporary stand-ins followed by new art, a four-member party with shared health, three recruits (single-target attacker, healer, AOE attacker), permanent gold-funded upgrades without character experience levels, and an overworld of playable stages whose completion triggers recruitment at stages 3/5/10. Proposed mechanics and scope above extend it for discussion. The unrelated turn-based design document mentioned in the old folder is not a design source for this game. No assets have been moved or selected by creating this GDD.
+
+## September 9 prototype update
+
+- Each stage traverses its route in 30 seconds. Terrain work is deferred.
+- Uncollected drops never expire; off-screen drops remain accounted for and are banked when the attempt ends.
+- Every stage has a required miniboss, with stronger bosses at stages 5 and 10. A boss must be defeated through damage to count toward stage completion. Combat may continue after traversal.
+- Each capturable monster has a capture root node in the upgrade tree, connected to its upgrades. Current capture milestones remain stages 3, 5, and 10.
+
+These decisions supersede earlier provisional pacing, boss placement, and drop-retention defaults.
+
+## Portrait and mobile prototype update
+
+Travel is visually north to south. The camera keeps the player centered horizontally and one-third down the 540 × 900 playfield while the ground moves north. All stages retain 30-second traversal and required boss kills. Touch-and-drag aims automatic attacks on phones; an on-screen auto-target toggle supplements Space. Portrait menus, branch tabs, safe-area spacing, and aspect-ratio-preserving scaling support mobile browser testing. Terrain content remains deferred.
+
+## Opening progression update
+
+The player starts at 1 damage and 10 shared HP. Stage-1 regular monsters have 1 HP, and each defeated monster awards one gold. Enemies spawn fully off-screen, approach slowly toward the player, and deal contact damage when they reach the party. Off-screen monsters cannot be hit before they enter the visible combat area.
+
+The opening boss should defeat an unupgraded party. A failed attempt retains earned gold so the player can buy simple first upgrades: +1 damage or +5 shared health, initially 5 gold each, then retry. Boss difficulty is implemented through combat stats rather than an artificial upgrade requirement. Existing progress is retained. See BALANCE.md for the current values and checks.
+
+## Stage scaling update
+
+Later stages now increase both regular monster health and spawn density. The opening stage remains unchanged. By stage 10, the nominal spawn interval is approximately 0.5 seconds and basic monsters have 8 HP, giving offensive upgrades a role in earning more kills and surviving larger crowds. Boss health retains its separate existing curve. See BALANCE.md for values and validation limits.

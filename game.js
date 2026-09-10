@@ -1,0 +1,670 @@
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const WIDTH = canvas.width;
+  const HEIGHT = canvas.height;
+  let uiTargets = [];
+  let upgradeBranch = 0;
+  const SAVE_KEY = "scollmonsters-save-v1";
+  const FIXED_STEP = 1 / 60;
+
+  const assetPaths = {
+    player: "player.svg", striker: "creature-striker.svg", healer: "creature-healer.svg", aoe: "creature-aoe.svg",
+    basic: "enemy-basic.svg", armored: "enemy-armored.svg", ranged: "enemy-ranged.svg", boss: "boss.svg",
+    gold: "gold.svg", heart: "heart.svg", heal: "heal.svg", crosshair: "crosshair.svg", autoTarget: "auto-target.svg",
+    lock: "lock.svg", nodeComplete: "node-complete.svg", nodeOpen: "node-open.svg", playerShot: "projectile-player.svg",
+    enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg"
+  };
+  const assets = {};
+  Object.entries(assetPaths).forEach(([key, file]) => {
+    const image = new Image();
+    image.onload = () => render();
+    image.src = `assets/placeholder/${file}`;
+    assets[key] = image;
+  });
+
+  const stageNames = ["Mossy Mile", "Pebble Pass", "Bramble Bend", "Amber Road", "Old Mill", "Fern Crossing", "Dusty Rise", "Rune Trail", "Moonlit Gate", "Crownroot Keep"];
+  const stageConfigs = Array.from({ length: 10 }, (_, index) => {
+    const number = index + 1;
+    return {
+      number,
+      name: stageNames[index],
+      duration: 30,
+      // More targets and tougher regular monsters make damage useful beyond bosses.
+      spawnRate: 1.495 / (1 + (number - 1) * 0.22),
+      hpScale: 1 + (number - 1) * 0.5 + (number - 1) ** 2 * 0.025,
+      bossHpScale: 0.82 + number * 0.18,
+      damageScale: 0.76 + number * 0.095,
+      boss: true,
+      majorBoss: number === 5 || number === 10
+    };
+  });
+
+  const upgradeDefs = [
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 3, costs: [5, 10, 20], effect: rank => `+1 damage → ${2 + rank} damage`, requires: [] },
+    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: [8, 12, 20], effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
+    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: [15, 25], effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
+    { id: "health", name: "Health +5", branch: "SHARED", max: 3, costs: [5, 10, 20], effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
+    { id: "magnet", name: "Gather Song", branch: "SHARED", max: 3, costs: [5, 10, 15], effect: rank => `Collection range ${250 + rank * 70}px`, requires: [] },
+    { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: [10], effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
+    { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 3, costs: [8, 12, 20], effect: rank => `+1 damage → ${3 + rank} damage`, requires: [], recruit: "striker" },
+    { id: "strikerSpeed", name: "Fang Rhythm", branch: "STRIKER", max: 2, costs: [10, 18], effect: rank => `Striker cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
+    { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: [8, 12, 20], effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
+    { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: [10, 18], effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
+    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 3, costs: [10, 15, 25], effect: rank => `+1 damage → ${4 + rank} damage`, requires: [], recruit: "aoe" },
+    { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: [12, 20], effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
+  ];
+
+  const captureDefs = [
+    { id: "captureStriker", name: "Fanglet", branch: "STRIKER", capture: "striker", stage: 3, requires: [] },
+    { id: "captureHealer", name: "Mossbud", branch: "HEALER", capture: "healer", stage: 5, requires: [] },
+    { id: "captureAoe", name: "Novawisp", branch: "AOE", capture: "aoe", stage: 10, requires: [] }
+  ];
+  const treeDefs = [...upgradeDefs.slice(0, 6)];
+  captureDefs.forEach(capture => {
+    treeDefs.push(capture, ...upgradeDefs.filter(definition => definition.recruit === capture.capture));
+  });
+  const treePositions = () => treeDefs.slice(upgradeBranch * 3, upgradeBranch * 3 + 3).map((definition, index) => ({
+    definition, x: 40, y: 225 + index * 166
+  }));
+  const treeRequirements = definition => definition.recruit && definition.requires.length === 0
+    ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
+
+  const defaultSave = () => ({ gold: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false });
+  function loadSave() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+      const legacyUpgrades = parsed.damageRank ? { power: parsed.damageRank } : {};
+      return { ...defaultSave(), ...parsed, upgrades: { ...legacyUpgrades, ...(parsed.upgrades || {}) } };
+    } catch {
+      return defaultSave();
+    }
+  }
+
+  const state = {
+    mode: "title", save: loadSave(), mouse: { x: WIDTH / 2, y: HEIGHT * 0.8 }, selectedStage: 1, stage: null,
+    party: { x: WIDTH / 2, y: HEIGHT / 3, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
+    scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
+    companions: [], result: null, toast: "", toastTimer: 0
+  };
+
+  const rank = id => state.save.upgrades[id] || 0;
+  const hasRecruit = id => state.save.recruits.includes(id);
+  const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const playerDamage = () => 1 + rank("power");
+  const playerFireInterval = () => 0.34 * (1 - rank("speed") * 0.1);
+  const playerProjectiles = () => 1 + rank("multishot");
+  const maxPartyHealth = () => 10 + rank("health") * 5;
+  const magnetRange = () => 180 + rank("magnet") * 70;
+  const autoTargetUnlocked = () => rank("autoTarget") > 0;
+
+  function setMode(mode) {
+    state.mode = mode;
+    state.toast = "";
+    render();
+  }
+
+  function setupCompanions() {
+    const offsets = { striker: [-64, -48], healer: [64, -48], aoe: [0, -100] };
+    state.companions = state.save.recruits.map((type, index) => ({ type, x: state.party.x + offsets[type][0], y: state.party.y + offsets[type][1], timer: 0.4 + index * 0.45, pulse: 0 }));
+  }
+
+  function startStage(stageNumber) {
+    if (stageNumber > state.save.unlockedStage) return;
+    state.selectedStage = stageNumber;
+    state.stage = stageConfigs[stageNumber - 1];
+    state.party.x = WIDTH / 2;
+    state.party.y = HEIGHT / 3;
+    state.mouse = { x: WIDTH / 2, y: HEIGHT * 0.8 };
+    state.party.maxHp = maxPartyHealth();
+    state.party.hp = state.party.maxHp;
+    state.stageTime = 0;
+    state.spawnTimer = 0.35;
+    state.fireTimer = 0;
+    state.scroll = 0;
+    state.runGold = 0;
+    state.bossSpawned = false;
+    state.bossDefeated = false;
+    state.enemies = [];
+    state.projectiles = [];
+    state.drops = [];
+    state.effects = [];
+    state.result = null;
+    setupCompanions();
+    setMode("combat");
+  }
+
+  function spawnEnemy(forcedType = null) {
+    const roll = Math.random();
+    const rangedChance = state.stage.number >= 2 ? 0.23 : 0.12;
+    const armoredChance = state.stage.number >= 3 ? 0.22 : 0.09;
+    let type = forcedType;
+    if (!type && state.stage.number === 1) type = "basic";
+    if (!type && state.stage.number === 2) type = roll < 0.22 ? "armored" : "basic";
+    if (!type) type = roll < armoredChance ? "armored" : roll < armoredChance + rangedChance ? "ranged" : "basic";
+    const base = {
+      basic: { hp: 1, speed: 32, damage: 1, cooldown: 99, radius: 17 },
+      ranged: { hp: 2, speed: 28, damage: 1, cooldown: 2.7, radius: 18 },
+      armored: { hp: 3, speed: 24, damage: 2, cooldown: 99, radius: 22 },
+      boss: { hp: 28, speed: 28, damage: 5, cooldown: 2.4, radius: 42 }
+    }[type];
+    const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
+    const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
+    const hp = Math.round(base.hp * hpScale * bossFactor);
+    state.enemies.push({
+      type, x: type === "boss" ? WIDTH / 2 : 70 + Math.random() * (WIDTH - 140), y: HEIGHT + base.radius + 8, r: base.radius,
+      hp, maxHp: hp, speed: base.speed, damage: Math.max(1, Math.round(base.damage * state.stage.damageScale)),
+      gold: 1, attackTimer: base.cooldown,
+      attackCooldown: base.cooldown
+    });
+  }
+
+  const enemyVisible = enemy => enemy.y <= HEIGHT - 96 && enemy.y >= 0;
+
+  function nearestEnemy(fromX = state.party.x, fromY = state.party.y) {
+    return state.enemies.filter(enemyVisible).reduce((best, enemy) => {
+      const distance = Math.hypot(enemy.x - fromX, enemy.y - fromY);
+      return !best || distance < best.distance ? { enemy, distance } : best;
+    }, null)?.enemy || null;
+  }
+
+  function shoot(x, y, targetX, targetY, friendly, damage, speed = 560, source = "player", angleOffset = 0) {
+    const angle = Math.atan2(targetY - y, targetX - x) + angleOffset;
+    state.projectiles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source });
+  }
+
+  function firePlayerVolley() {
+    const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy() : null;
+    const targetX = target?.x ?? state.mouse.x;
+    const targetY = target?.y ?? state.mouse.y;
+    const count = playerProjectiles();
+    for (let index = 0; index < count; index += 1) {
+      const spread = count === 1 ? 0 : (index - (count - 1) / 2) * 0.105;
+      shoot(state.party.x, state.party.y + 20, targetX, targetY, true, playerDamage(), 560, "player", spread);
+    }
+  }
+
+  function removeEnemy(enemy, reward = false) {
+    const index = state.enemies.indexOf(enemy);
+    if (index < 0) return;
+    state.enemies.splice(index, 1);
+    if (reward) state.drops.push({ x: enemy.x, y: enemy.y, value: enemy.gold, age: 0 });
+    state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.3, maxLife: 0.3, radius: enemy.r + 10 });
+  }
+
+  function damageEnemy(enemy, amount) {
+    if (!state.enemies.includes(enemy)) return;
+    enemy.hp -= amount;
+    state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.12, maxLife: 0.12, radius: 22 });
+    if (enemy.hp <= 0) {
+      if (enemy.type === "boss") state.bossDefeated = true;
+      removeEnemy(enemy, true);
+    }
+  }
+
+  function updateCompanions(dt) {
+    for (const companion of state.companions) {
+      companion.timer -= dt;
+      companion.pulse = Math.max(0, companion.pulse - dt);
+      if (companion.timer > 0) continue;
+      if (companion.type === "striker") {
+        const target = nearestEnemy(companion.x, companion.y);
+        if (target) shoot(companion.x, companion.y + 15, target.x, target.y, true, 2 + rank("strikerPower"), 510, "striker");
+        companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
+      } else if (companion.type === "healer") {
+        if (state.party.hp < state.party.maxHp) {
+          state.party.hp = Math.min(state.party.maxHp, state.party.hp + 2 + rank("healPower"));
+          companion.pulse = 0.7;
+          state.effects.push({ type: "heal", x: state.party.x, y: state.party.y, life: 0.7, maxLife: 0.7, radius: 54 });
+        }
+        companion.timer = 4.6 * (1 - rank("healSpeed") * 0.15);
+      } else if (companion.type === "aoe") {
+        const target = nearestEnemy(companion.x, companion.y);
+        if (target) {
+          const radius = 70 + rank("aoeRadius") * 22;
+          state.enemies.filter(enemy => Math.hypot(enemy.x - target.x, enemy.y - target.y) <= radius).forEach(enemy => damageEnemy(enemy, 3 + rank("aoePower")));
+          state.effects.push({ type: "aoe", x: target.x, y: target.y, life: 0.55, maxLife: 0.55, radius });
+        }
+        companion.timer = 3.3;
+      }
+    }
+  }
+
+  function finishStage(won) {
+    if (state.mode !== "combat") return;
+    if (won && (!state.bossDefeated || state.stageTime < state.stage.duration)) return;
+    const firstClear = won && !state.save.completed.includes(state.stage.number);
+    let newRecruit = null;
+    state.runGold += state.drops.reduce((total, drop) => total + drop.value, 0);
+    state.drops = [];
+    state.save.gold += state.runGold;
+    if (won) {
+      if (firstClear) state.save.completed.push(state.stage.number);
+      state.save.unlockedStage = Math.max(state.save.unlockedStage, Math.min(10, state.stage.number + 1));
+      const recruitAt = { 3: "striker", 5: "healer", 10: "aoe" }[state.stage.number];
+      if (recruitAt && !hasRecruit(recruitAt)) {
+        state.save.recruits.push(recruitAt);
+        newRecruit = recruitAt;
+      }
+    }
+    writeSave();
+    state.result = { won, gold: state.runGold, firstClear, newRecruit, stage: state.stage.number };
+    setMode("result");
+  }
+
+  function updateCombat(dt) {
+    state.stageTime += dt;
+    const previousScroll = state.scroll;
+    state.scroll = (78 + state.stage.number * 2) * Math.min(state.stageTime, state.stage.duration);
+    const cameraStep = state.scroll - previousScroll;
+    state.spawnTimer -= dt;
+    state.fireTimer -= dt;
+    const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration * 0.72;
+    if (bossWindow && !state.bossSpawned) {
+      spawnEnemy("boss");
+      state.bossSpawned = true;
+    }
+    if (state.stageTime < state.stage.duration && state.spawnTimer <= 0 && !bossWindow) {
+      spawnEnemy();
+      state.spawnTimer = state.stage.spawnRate * (0.82 + Math.random() * 0.35);
+    }
+    if (state.fireTimer <= 0) {
+      firePlayerVolley();
+      state.fireTimer = playerFireInterval();
+    }
+    updateCompanions(dt);
+
+    for (const enemy of [...state.enemies]) {
+      // Add the distance covered by the party's route to the closing speed.
+      // Apply the full step toward the party, never as an independent vertical
+      // offset that could carry side-lane enemies past their target.
+      const dx = state.party.x - enemy.x, dy = state.party.y - enemy.y;
+      const distance = Math.hypot(dx, dy);
+      const stopDistance = enemy.type === "boss" ? 240 : 0;
+      const travel = Math.min(enemy.speed * dt + cameraStep, Math.max(0, distance - stopDistance));
+      enemy.x += dx / Math.max(1, distance) * travel;
+      enemy.y += dy / Math.max(1, distance) * travel;
+      if (enemyVisible(enemy)) enemy.attackTimer -= dt;
+      if ((enemy.type === "ranged" || enemy.type === "boss") && enemyVisible(enemy) && enemy.attackTimer <= 0) {
+        const shots = enemy.type === "boss" && state.stage.number > 1 && enemy.hp < enemy.maxHp * 0.45 ? 3 : 1;
+        for (let index = 0; index < shots; index += 1) {
+          shoot(enemy.x, enemy.y - enemy.r, state.party.x, state.party.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type, (index - (shots - 1) / 2) * 0.13);
+        }
+        enemy.attackTimer = enemy.attackCooldown;
+      }
+      if (enemy.type !== "boss" && Math.hypot(enemy.x - state.party.x, enemy.y - state.party.y) <= enemy.r + 20) {
+        state.party.hp -= enemy.damage;
+        state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.25, maxLife: 0.25, radius: 30 });
+        removeEnemy(enemy);
+      }
+    }
+
+    for (const projectile of [...state.projectiles]) {
+      projectile.x += projectile.vx * dt;
+      projectile.y += projectile.vy * dt;
+      let hit = false;
+      if (projectile.friendly) {
+        const enemy = state.enemies.find(candidate => enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
+        if (enemy) {
+          damageEnemy(enemy, projectile.damage);
+          hit = true;
+        }
+      } else if (Math.hypot(projectile.x - state.party.x, projectile.y - state.party.y) < 26) {
+        state.party.hp -= projectile.damage;
+        state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.2, maxLife: 0.2, radius: 30 });
+        hit = true;
+      }
+      if (hit || projectile.x < -40 || projectile.x > WIDTH + 40 || projectile.y < -40 || projectile.y > HEIGHT + 40) state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+    }
+
+    for (const drop of [...state.drops]) {
+      drop.age += dt;
+      drop.y -= 78 * dt;
+      const distance = Math.hypot(drop.x - state.party.x, drop.y - state.party.y);
+      if (distance < magnetRange()) {
+        const pull = 420 * dt;
+        drop.x += ((state.party.x - drop.x) / Math.max(1, distance)) * pull;
+        drop.y += ((state.party.y - drop.y) / Math.max(1, distance)) * pull;
+      }
+      if (distance < 27) {
+        state.runGold += drop.value;
+        state.drops.splice(state.drops.indexOf(drop), 1);
+      }
+    }
+    state.effects.forEach(effect => { effect.life -= dt; });
+    state.effects = state.effects.filter(effect => effect.life > 0);
+    if (state.party.hp <= 0) finishStage(false);
+    else if (state.stageTime >= state.stage.duration && state.bossDefeated && state.enemies.length === 0) finishStage(true);
+  }
+
+  function update(dt) {
+    if (state.toastTimer > 0) state.toastTimer -= dt;
+    if (state.mode === "combat") updateCombat(dt);
+  }
+
+  function drawSprite(name, x, y, size = 40, alpha = 1) {
+    const image = assets[name];
+    if (!image?.complete) return;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(image, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawText(value, x, y, size = 18, color = "#fff", align = "left") {
+    ctx.font = `bold ${size}px ui-monospace, monospace`;
+    ctx.textAlign = align;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#172335";
+    if (color !== "#2b2218") ctx.fillText(value, x + 2, y + 2);
+    ctx.fillStyle = color;
+    ctx.fillText(value, x, y);
+  }
+
+  function drawPanel(x, y, width, height, color = "#172335e8") {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = "#d6b36a";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, width, height);
+  }
+
+  function drawButton(label, x, y, width, height, active = true, action = null) {
+    if (active && action) uiTargets.push({ x, y, width, height, action });
+    ctx.fillStyle = active ? "#f0c65a" : "#606b79";
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = "#392e21";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, width, height);
+    drawText(label, x + width / 2, y + height / 2, 16, active ? "#2b2218" : "#c4c9d0", "center");
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = "#70b55f";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    const offset = state.mode === "combat" ? state.scroll % 32 : 0;
+    for (let x = 0; x < WIDTH; x += 32) {
+      for (let y = -32 - offset; y < HEIGHT; y += 32) drawSprite("grass", x + 16, y + 16, 32);
+    }
+  }
+
+  function drawRoad() {
+    ctx.fillStyle = "#c9a96b";
+    ctx.fillRect(48, 0, WIDTH - 96, HEIGHT);
+    const offset = state.mode === "combat" ? state.scroll % 32 : 0;
+    for (let x = 48; x < WIDTH - 48; x += 32) {
+      for (let y = -32 - offset; y < HEIGHT; y += 32) drawSprite("path", x + 16, y + 16, 32);
+    }
+  }
+
+  function drawHeader(title, subtitle = "") {
+    ctx.fillStyle = "#172335ee";
+    ctx.fillRect(0, 0, WIDTH, 104);
+    drawText(title, 24, 35, 26, "#ffe17d");
+    if (subtitle) drawText(subtitle, 24, 77, 17, "#b9cee5");
+    drawSprite("gold", 420, 35, 28);
+    drawText(String(state.save.gold), 441, 35, 20, "#ffe17d");
+  }
+
+  function drawTitle() {
+    drawBackground(); drawRoad(); drawPanel(24, 130, 492, 635);
+    drawText("SCOLLMONSTERS", WIDTH / 2, 203, 38, "#ffe17d", "center");
+    drawText("A southbound monster journey", WIDTH / 2, 248, 19, "#a8d9ff", "center");
+    drawSprite("player", 270, 347, 72);
+    drawSprite("striker", 180, 412, 52); drawSprite("healer", 270, 425, 52); drawSprite("aoe", 360, 412, 52);
+    drawText("Touch and drag, or move your mouse", WIDTH / 2, 501, 19, "#fff", "center");
+    drawText("to aim. Attacks fire automatically.", WIDTH / 2, 533, 19, "#fff", "center");
+    drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, "#c9d5e3", "center");
+    drawText("or press Space to switch aiming modes.", WIDTH / 2, 615, 17, "#c9d5e3", "center");
+    drawButton(state.save.completed.length ? "CONTINUE" : "BEGIN JOURNEY", 80, 664, 380, 72, true, () => setMode("map"));
+  }
+
+  function mapNodePosition(stageNumber) {
+    const row = Math.floor((stageNumber - 1) / 2);
+    const column = row % 2 === 0 ? (stageNumber - 1) % 2 : 1 - (stageNumber - 1) % 2;
+    return { x: 155 + column * 230, y: 185 + row * 120 };
+  }
+
+  function drawMap() {
+    drawBackground();
+    const milestone = [3, 5, 10][state.save.recruits.length];
+    drawHeader("OVERWORLD", `Party ${1 + state.save.recruits.length}/4 • ${milestone ? `Next capture: stage ${milestone}` : "Roster complete"}`);
+    ctx.strokeStyle = "#705239"; ctx.lineWidth = 16; ctx.lineCap = "round"; ctx.beginPath();
+    for (let number = 1; number <= 10; number++) {
+      const point = mapNodePosition(number);
+      if (number === 1) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
+    for (let number = 1; number <= 10; number++) {
+      const point = mapNodePosition(number);
+      const complete = state.save.completed.includes(number), open = number <= state.save.unlockedStage;
+      if (number === state.selectedStage) { ctx.strokeStyle = "#fff3b0"; ctx.lineWidth = 4; ctx.strokeRect(point.x - 42, point.y - 42, 84, 84); }
+      drawSprite(complete ? "nodeComplete" : open ? "nodeOpen" : "lock", point.x, point.y, 72);
+      drawText(String(number), point.x, point.y, 24, "#fff", "center");
+      if ([3, 5, 10].includes(number)) drawSprite(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
+      if (open) uiTargets.push({ x: point.x - 44, y: point.y - 44, width: 88, height: 88, action: () => { state.selectedStage = number; } });
+    }
+    drawPanel(24, 744, 492, 132);
+    drawText(`Stage ${state.selectedStage} — ${stageConfigs[state.selectedStage - 1].name}`, WIDTH / 2, 770, 20, "#fff", "center");
+    drawButton("PLAY", 40, 798, 220, 62, true, () => startStage(state.selectedStage));
+    drawButton("UPGRADES", 280, 798, 220, 62, true, () => setMode("upgrades"));
+  }
+
+  function upgradeUnlocked(definition) {
+    return (!definition.recruit || hasRecruit(definition.recruit)) && definition.requires.every(id => rank(id) > 0);
+  }
+
+  function drawUpgrades() {
+    drawBackground(); drawHeader("UPGRADES", "Choose a branch. Tap a node to buy.");
+    const branches = ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"];
+    branches.forEach((name, index) => {
+      const x = 14 + index * 104;
+      drawButton(name, x, 128, 96, 66, true, () => { upgradeBranch = index; });
+      if (index === upgradeBranch) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeRect(x, 128, 96, 66); }
+    });
+    const positions = treePositions();
+    for (const item of positions) {
+      for (const requirement of treeRequirements(item.definition)) {
+        const parent = positions.find(candidate => candidate.definition.id === requirement);
+        if (!parent) continue;
+        const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(requirement) > 0;
+        ctx.strokeStyle = ready ? "#ffe17d" : "#58677a"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(WIDTH / 2, parent.y + 136); ctx.lineTo(WIDTH / 2, item.y); ctx.stroke();
+      }
+      const def = item.definition, current = rank(def.id);
+      const captured = def.capture && hasRecruit(def.capture);
+      const available = def.capture ? captured : upgradeUnlocked(def);
+      const maxed = !def.capture && current >= def.max;
+      const cost = maxed || def.capture ? 0 : def.costs[current];
+      drawPanel(item.x, item.y, 460, 136, available ? "#253753f5" : "#303541f5");
+      drawText(def.name, item.x + 18, item.y + 29, 24, available ? "#fff" : "#bac1cb");
+      if (def.capture) {
+        drawSprite(def.capture, item.x + 406, item.y + 44, 52, captured ? 1 : 0.5);
+        drawText(captured ? "CAPTURED" : `Clear stage ${def.stage} to capture`, item.x + 18, item.y + 70, 20, captured ? "#8ce99a" : "#ffe17d");
+        drawText("Unlocks this monster's upgrades", item.x + 18, item.y + 108, 18, "#d3dbe5");
+      } else {
+        drawText(`Rank ${current}/${def.max}`, item.x + 18, item.y + 69, 20, "#d3dbe5");
+        const effect = def.id === "autoTarget" ? "Unlock auto-target button + Space" : def.effect(current);
+        drawText(maxed ? "MAXED" : effect, item.x + 18, item.y + 107, 18, "#ffe17d");
+        drawText(maxed ? "" : `${cost}G`, item.x + 436, item.y + 30, 21, state.save.gold >= cost ? "#ffe17d" : "#ff8d8d", "right");
+        if (!available) drawSprite("lock", item.x + 416, item.y + 73, 34);
+      }
+      uiTargets.push({ x: item.x, y: item.y, width: 460, height: 136, action: () => attemptUpgrade(def) });
+    }
+    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 742, 17, "#ffde83", "center");
+    drawButton("BACK TO MAP", 100, 804, 340, 68, true, () => setMode("map"));
+  }
+
+  function drawCombat() {
+    drawBackground(); drawRoad(); drawSprite("player", state.party.x, state.party.y, 52);
+    for (const companion of state.companions) drawSprite(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
+    for (const enemy of state.enemies) {
+      drawSprite(enemy.type, enemy.x, enemy.y, enemy.type === "boss" ? 92 : enemy.r * 2.5);
+      ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
+      ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
+    }
+    if (state.bossSpawned && !state.bossDefeated) {
+      drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
+    }
+    for (const projectile of state.projectiles) drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3);
+    for (const drop of state.drops) drawSprite("gold", drop.x, drop.y, 25);
+    for (const effect of state.effects) {
+      const alpha = clamp(effect.life / effect.maxLife, 0, 1);
+      if (effect.type === "aoe") {
+        ctx.strokeStyle = `rgba(185,124,255,${alpha})`; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * (1.1 - alpha * 0.1), 0, Math.PI * 2); ctx.stroke();
+      } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2, alpha);
+    }
+    if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
+    drawPanel(12, 12, WIDTH - 24, 114);
+    drawSprite("heart", 38, 44, 28);
+    ctx.fillStyle = "#513040"; ctx.fillRect(60, 30, 230, 29);
+    ctx.fillStyle = "#ef476f"; ctx.fillRect(60, 30, 230 * clamp(state.party.hp / state.party.maxHp, 0, 1), 29);
+    drawText(`${Math.max(0, Math.ceil(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
+    drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
+    drawText(`${Math.min(30, Math.floor(state.stageTime))}/30s SOUTH ↓`, 30, 91, 20, "#a8d9ff");
+    drawSprite("gold", 330, 91, 28); drawText(String(state.runGold), 354, 91, 22, "#ffe17d");
+    if (autoTargetUnlocked()) {
+      drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
+    } else {
+      drawPanel(60, HEIGHT - 78, WIDTH - 120, 60);
+      drawText("TOUCH + DRAG TO AIM", WIDTH / 2, HEIGHT - 48, 19, "#fff", "center");
+    }
+  }
+
+  function drawResult() {
+    drawBackground(); drawRoad(); drawPanel(24, 130, 492, 650);
+    drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
+    drawText(`Gold banked: +${state.result.gold}`, WIDTH / 2, 252, 24, "#ffe17d", "center");
+    drawText(`Total gold: ${state.save.gold}`, WIDTH / 2, 290, 21, "#fff", "center");
+    if (state.result.newRecruit) {
+      drawSprite(state.result.newRecruit, WIDTH / 2, 402, 90);
+      const names = { striker: "FANGLET", healer: "MOSSBUD", aoe: "NOVAWISP" };
+      drawText(`${names[state.result.newRecruit]} CAPTURED!`, WIDTH / 2, 482, 25, "#a8d9ff", "center");
+      drawText("A new upgrade branch is open.", WIDTH / 2, 522, 20, "#fff", "center");
+    } else {
+      drawText(state.result.won ? (state.result.stage < 10 ? `Stage ${state.result.stage + 1} is now available.` : "All ten stages cleared!") : "Buy +1 damage / +5 HP, then retry.", WIDTH / 2, 425, 22, "#fff", "center");
+    }
+    drawButton("RETURN TO MAP", 80, 590, 380, 70, true, () => setMode("map"));
+    drawButton("RETRY STAGE", 80, 685, 380, 64, true, () => startStage(state.result.stage));
+  }
+
+  function render() {
+    uiTargets = [];
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
+  }
+
+  function canvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) * WIDTH / rect.width, y: (event.clientY - rect.top) * HEIGHT / rect.height };
+  }
+
+  function attemptUpgrade(definition) {
+    const current = rank(definition.id);
+    if (definition.capture) {
+      state.toast = hasRecruit(definition.capture) ? `${definition.name} captured — branch unlocked` : `Clear stage ${definition.stage} to capture ${definition.name}`;
+      state.toastTimer = 1.8; return;
+    }
+    if (!upgradeUnlocked(definition)) {
+      state.toast = definition.recruit ? `Recruit the ${definition.branch.toLowerCase()} first` : "Purchase the prerequisite first";
+      state.toastTimer = 1.8; return;
+    }
+    if (current >= definition.max) return;
+    const cost = definition.costs[current];
+    if (state.save.gold < cost) { state.toast = `Need ${cost - state.save.gold} more gold`; state.toastTimer = 1.8; return; }
+    state.save.gold -= cost;
+    state.save.upgrades[definition.id] = current + 1;
+    if (definition.id === "autoTarget") state.save.autoTargetEnabled = true;
+    writeSave();
+  }
+
+  function toggleAutoTarget() {
+    if (!autoTargetUnlocked()) return;
+    state.save.autoTargetEnabled = !state.save.autoTargetEnabled;
+    writeSave(); render();
+  }
+
+  function targetAt(point) {
+    return uiTargets.find(target => point.x >= target.x && point.x <= target.x + target.width && point.y >= target.y && point.y <= target.y + target.height);
+  }
+
+  let aimPointer = null;
+  let aimGesture = false;
+  canvas.addEventListener("pointerdown", event => {
+    if (!event.isPrimary) return;
+    const point = canvasPoint(event);
+    aimGesture = state.mode === "combat" && !targetAt(point);
+    if (aimGesture) {
+      state.mouse = point;
+      aimPointer = event.pointerId;
+      canvas.setPointerCapture?.(event.pointerId);
+    }
+  });
+  canvas.addEventListener("pointermove", event => {
+    if (!event.isPrimary || state.mode !== "combat") return;
+    if (event.pointerType === "mouse" || event.pointerId === aimPointer) {
+      const point = canvasPoint(event);
+      if (!targetAt(point)) state.mouse = point;
+    }
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    canvas.addEventListener(type, event => { if (aimPointer === event.pointerId) aimPointer = null; });
+  }
+  canvas.addEventListener("click", event => {
+    if (aimGesture) { aimGesture = false; return; }
+    targetAt(canvasPoint(event))?.action();
+    render();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.code === "Space" && autoTargetUnlocked()) {
+      event.preventDefault(); if (!event.repeat) toggleAutoTarget();
+    }
+    if (event.key.toLowerCase() === "f") {
+      if (!document.fullscreenElement) canvas.requestFullscreen?.(); else document.exitFullscreen?.();
+    }
+  });
+
+  window.render_game_to_text = () => JSON.stringify({
+    coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
+    unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
+    party: { x: state.party.x, y: state.party.y, hp: Math.ceil(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits] },
+    combat: state.mode === "combat" ? {
+      direction: "north-to-south", cameraScroll: Math.round(state.scroll), stage: state.stage.number, traversalSeconds: 30, elapsedSeconds: Number(state.stageTime.toFixed(2)), bossDefeated: state.bossDefeated, progressPercent: Math.min(100, Math.floor(state.stageTime / state.stage.duration * 100)),
+      aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, gold: enemy.gold, speed: enemy.speed })),
+      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
+      drops: state.drops.map(drop => ({ x: Math.round(drop.x), y: Math.round(drop.y), value: drop.value })), runGold: state.runGold
+    } : null,
+    upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],
+    captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.stage, captured: hasRecruit(definition.capture) })),
+    bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
+  });
+
+  window.advanceTime = ms => {
+    const steps = Math.max(1, Math.round(ms / (1000 / 60)));
+    for (let index = 0; index < steps; index += 1) update(FIXED_STEP);
+    render();
+  };
+
+  window.__scollTest = {
+    getSave: () => JSON.parse(JSON.stringify(state.save)),
+    setSave: save => { state.save = { ...defaultSave(), ...save, upgrades: { ...(save.upgrades || {}) } }; writeSave(); render(); },
+    startStage,
+    clearCombat: () => { if (state.mode === "combat") { state.enemies.forEach(enemy => damageEnemy(enemy, enemy.hp)); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
+    resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); state.selectedStage = 1; setMode("title"); }
+  };
+
+  render();
+  if (!window.__vt_pending) {
+    let previous = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.05, (now - previous) / 1000);
+      previous = now; update(dt); render(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+})();

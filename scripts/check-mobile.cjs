@@ -1,0 +1,68 @@
+const { chromium, devices } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+(async () => {
+  fs.mkdirSync('output/mobile', { recursive: true });
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({ ...devices['iPhone 13'] });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(String(error)));
+    await page.addInitScript(() => { window.__vt_pending = true; });
+    await page.goto(process.env.GAME_URL || 'http://localhost:5173');
+    const read = () => page.evaluate(() => JSON.parse(window.render_game_to_text()));
+    const tap = async (x, y) => { const b = await page.locator('canvas').boundingBox(); await page.touchscreen.tap(b.x + x * b.width / 540, b.y + y * b.height / 900); };
+    const shot = async name => { await page.evaluate(() => window.advanceTime(0)); await page.screenshot({ path: `output/mobile/${name}.png` }); };
+    await shot('title');
+    await tap(270, 700); assert.equal((await read()).mode, 'map');
+    await shot('map');
+    await tap(155, 665); assert.equal((await read()).selectedStage, 1, 'Locked stage cannot be selected');
+    await page.evaluate(() => window.__scollTest.setSave({ gold: 500 }));
+    await tap(390, 830); await tap(166, 160);
+    await tap(270, 430); await tap(270, 600);
+    assert.equal((await read()).upgrades.magnet, 1);
+    assert.equal((await read()).upgrades.autoTarget, 1);
+    await tap(270, 160); await shot('capture-locked');
+    await tap(270, 838); await tap(150, 830);
+    assert.equal((await read()).mode, 'combat');
+    assert.equal((await read()).party.y, 300);
+    await tap(270, 850); assert.equal((await read()).autoTargetEnabled, false);
+    const b = await page.locator('canvas').boundingBox();
+    const cdp = await context.newCDPSession(page);
+    const touch = (x, y) => ({ x: b.x + x * b.width / 540, y: b.y + y * b.height / 900 });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touch(120, 500)] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [touch(410, 640)] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    let s = await read(); assert(Math.abs(s.combat.aim.x - 410) < 3); assert(Math.abs(s.combat.aim.y - 640) < 3);
+    await page.evaluate(() => window.advanceTime(8000));
+    s = await read(); assert.equal(s.party.y, 300); assert.equal(s.party.x, 270);
+    assert(s.combat.cameraScroll > 0); assert(s.combat.enemies.some(enemy => enemy.y > 300));
+    assert.equal(await page.evaluate(() => window.scrollY), 0);
+    await shot('touch-combat');
+    await page.evaluate(() => { const save = window.__scollTest.getSave(); window.__scollTest.setSave({ ...save, unlockedStage: 10 }); window.__scollTest.startStage(3); window.__scollTest.clearCombat(); });
+    await shot('capture-result');
+    await tap(270, 625); await tap(390, 830); await tap(270, 160);
+    assert.equal((await read()).captureNodes[0].captured, true);
+    await tap(270, 430); assert.equal((await read()).upgrades.strikerPower, 1);
+    await shot('capture-upgrades');
+    const save = await page.evaluate(() => window.__scollTest.getSave());
+    await page.reload(); assert.deepEqual(await page.evaluate(() => window.__scollTest.getSave()), save);
+    await page.evaluate(() => { window.__scollTest.setSave({ upgrades: { autoTarget: 1, power: 3, speed: 3, health: 3 }, autoTargetEnabled: true }); window.__scollTest.startStage(1); window.advanceTime(60000); });
+    s = await read(); assert.equal(s.result?.won, true, 'Real southbound combat defeats miniboss and clears');
+    assert.equal(s.unlockedStage, 2); await shot('stage-clear');
+    await page.evaluate(() => { window.__scollTest.startStage(1); });
+    await tap(270, 850); await tap(15, 350);
+    await page.evaluate(() => window.advanceTime(29000));
+    s = await read(); assert(s.combat.enemies.some(enemy => enemy.type === 'boss')); await shot('miniboss');
+    for (const [name, width, height] of [['small-phone',320,568],['android',412,915],['landscape',844,390],['desktop',1440,900]]) {
+      await page.setViewportSize({ width, height });
+      const box = await page.locator('canvas').boundingBox();
+      assert(Math.abs(box.width / box.height - 0.6) < 0.01);
+      assert(box.x >= 0 && box.y >= 0 && box.x + box.width <= width + 1 && box.y + box.height <= height + 1, `${name} fits screen`);
+      await shot(name);
+    }
+    assert.deepEqual(errors, []);
+    console.log('PASS: touch menus/drag aim/toggle, vertical camera, real stage+boss clear, capture upgrades, reload persistence, four viewport sizes, no browser errors');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exit(1); });
