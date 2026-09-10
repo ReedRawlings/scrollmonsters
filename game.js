@@ -64,6 +64,7 @@
   ];
 
   upgradeDefs.push(
+    { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
     { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: () => "+5 shared party HP", requires: ["health"] },
     { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(30, 3), effect: () => "+5 shared party HP", requires: ["vitality"] }
@@ -81,10 +82,10 @@
     ]
   });
 
-  function expectedStageGold(stageNumber) {
+  function expectedStageGold(stageNumber, travelRank = 0) {
     const stage = stageConfigs[stageNumber - 1];
     const regularWindow = stage.duration;
-    const expectedSpawns = 1 + (regularWindow - 0.35) / stage.spawnRate;
+    const expectedSpawns = 1 + (regularWindow - 0.35 / (1 + travelRank * 0.05)) / (stage.spawnRate / (1 + travelRank * 0.05));
     return Math.round(1 + expectedSpawns * balanceModel.expectedKillRate);
   }
 
@@ -194,6 +195,7 @@
   const hasRecruit = id => state.save.recruits.includes(id);
   const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
   const playerDamage = () => 1 + rank("power");
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
   const playerProjectiles = () => 1 + rank("multishot");
@@ -221,7 +223,7 @@
     state.party.maxHp = maxPartyHealth();
     state.party.hp = state.party.maxHp;
     state.stageTime = 0;
-    state.spawnTimer = 0.35;
+    state.spawnTimer = 0.35 / travelMultiplier();
     state.fireTimer = 0;
     state.scroll = 0;
     state.runGold = 0;
@@ -406,7 +408,7 @@
     if (state.mode !== "combat") return;
     state.stageTime += dt;
     const previousScroll = state.scroll;
-    state.scroll += 24 * dt;
+    state.scroll += 24 * travelMultiplier() * dt;
     const cameraStep = state.scroll - previousScroll;
     for (const rock of state.obstacles) rock.y -= cameraStep;
     state.spawnTimer -= dt;
@@ -418,7 +420,7 @@
     }
     if (state.stageTime < state.stage.duration && state.spawnTimer <= 0 && !bossWindow) {
       spawnEnemy();
-      state.spawnTimer = state.stage.spawnRate * (0.82 + Math.random() * 0.35);
+      state.spawnTimer = state.stage.spawnRate / travelMultiplier() * (0.82 + Math.random() * 0.35);
     }
     if (state.fireTimer <= 0) {
       firePlayerVolley();
@@ -816,7 +818,7 @@
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: Math.ceil(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits] },
     combat: state.mode === "combat" ? {
-      direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
+      direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
