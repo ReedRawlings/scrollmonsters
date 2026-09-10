@@ -30,6 +30,7 @@ api.startStage(1);
 assert.equal(state.party.x, 270); assert.equal(state.party.y, 450);
 updateCombat(1 / 60);
 assert(state.projectiles[0].vy > 0, 'Default fire points south');
+assert.equal(state.projectiles[0].source, 'player'); assert(state.projectiles[0].age > 0, 'Player projectile animation advances');
 const initialY = state.party.y;
 updateCombat(1); assert.equal(state.party.y, initialY); assert.equal(state.scroll, 24 + 24 / 60);
 spawnEnemy('basic'); const movingEnemy = state.enemies.at(-1);
@@ -45,6 +46,7 @@ api.setSave({ unlockedStage: 10 }); api.startStage(3); const laterY = state.part
 assert.equal(state.party.y, laterY); assert(state.scroll > 0, 'Stage 3+ uses camera scrolling');
 for (let stage = 1; stage <= 10; stage++) {
   api.setSave({ unlockedStage: 10 }); api.startStage(stage);
+  state.party.maxHp = 999; state.party.hp = 999;
   state.stageTime = 29; state.fireTimer = 999; state.spawnTimer = 999;
   updateCombat(1 / 60);
   assert(!state.bossSpawned, 'Boss cannot spawn before 30 seconds');
@@ -81,8 +83,9 @@ for (let stage = 1; stage <= 10; stage++) {
 }
 api.setSave({}); api.startStage(1); state.spawnTimer = 999; state.fireTimer = 999;
 spawnEnemy('basic', 'south'); damageEnemy(state.enemies[0], state.enemies[0].hp); assert.equal(state.runGold, 1, 'Kill gold is picked up immediately');
+assert(state.effects.some(effect => effect.type === 'earthImpact'), 'Player hits create the animated earth impact');
 state.party.hp = 0; updateCombat(1 / 60); assert.equal(state.result.won, false); assert.equal(state.save.gold, 1);
-api.setSave({ gold: 1000, fangEssence: 100, unlockedStage: 10 });
+api.setSave({ gold: 1000, fangEssence: 100, mossEssence: 100, unlockedStage: 10 });
 for (const capture of captureDefs) {
   const upgrade = upgradeDefs.find(def => def.recruit === capture.capture);
   attemptUpgrade(upgrade); assert.equal(state.save.upgrades[upgrade.id], undefined);

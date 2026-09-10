@@ -16,13 +16,15 @@
     basic: "enemy-basic.svg", armored: "enemy-armored.svg", ranged: "enemy-ranged.svg", boss: "boss.svg",
     gold: "gold.svg", heart: "heart.svg", heal: "heal.svg", crosshair: "crosshair.svg", autoTarget: "auto-target.svg",
     lock: "lock.svg", nodeComplete: "node-complete.svg", nodeOpen: "node-open.svg", playerShot: "projectile-player.svg",
-    enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg"
+    enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg",
+    earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
+    earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png"
   };
   const assets = {};
   Object.entries(assetPaths).forEach(([key, file]) => {
     const image = new Image();
     image.onload = () => render();
-    image.src = `assets/placeholder/${file}`;
+    image.src = file.includes("/") ? file : `assets/placeholder/${file}`;
     assets[key] = image;
   });
 
@@ -307,7 +309,7 @@
 
   function shoot(x, y, targetX, targetY, friendly, damage, speed = 560, source = "player", angleOffset = 0) {
     const angle = Math.atan2(targetY - y, targetX - x) + angleOffset;
-    state.projectiles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source });
+    state.projectiles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0 });
   }
 
   function firePlayerVolley() {
@@ -353,13 +355,13 @@
       if (enemy.type === "boss" && [5, 8, 10].includes(state.stage.number)) state.runMossEssence += 2 * fangYield(state.stage.number);
       if (enemy.type === "boss" && [3, 6, 9].includes(state.stage.number)) state.runEssence += 2 * fangYield(state.stage.number);
     }
-    state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.3, maxLife: 0.3, radius: enemy.r + 10 });
   }
 
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp -= amount;
-    state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.12, maxLife: 0.12, radius: 22 });
+    const playerImpact = source === "player";
+    state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
@@ -489,6 +491,7 @@
 
     for (const projectile of [...state.projectiles]) {
       const oldX = projectile.x, oldY = projectile.y;
+      projectile.age = (projectile.age || 0) + dt;
       projectile.x += projectile.vx * dt;
       projectile.y += projectile.vy * dt;
       let hit = false;
@@ -540,6 +543,19 @@
     ctx.globalAlpha = alpha;
     ctx.drawImage(image, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
     ctx.globalAlpha = 1;
+  }
+
+  function drawSheetFrame(name, x, y, frame, frameCount, size = 100, rotation = 0, alpha = 1) {
+    const image = assets[name];
+    if (!image?.complete || !image.naturalWidth) return false;
+    const frameWidth = image.naturalWidth / frameCount;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.rotate(rotation);
+    ctx.drawImage(image, frame * frameWidth, 0, frameWidth, image.naturalHeight, -size / 2, -size / 2, size, size);
+    ctx.restore();
+    return true;
   }
 
   function drawText(value, x, y, size = 18, color = "#fff", align = "left") {
@@ -717,11 +733,20 @@
     if (state.bossSpawned && !state.bossDefeated) {
       drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
     }
-    for (const projectile of state.projectiles) drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3);
+    for (const projectile of state.projectiles) {
+      if (projectile.source === "player") {
+        const frame = Math.floor(projectile.age * 12) % 4;
+        const rotation = Math.atan2(projectile.vy, projectile.vx);
+        if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 100, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 3);
+      } else drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3);
+    }
     for (const effect of state.effects) {
       const alpha = clamp(effect.life / effect.maxLife, 0, 1);
       if (effect.type === "aoe") {
         ctx.strokeStyle = `rgba(185,124,255,${alpha})`; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * (1.1 - alpha * 0.1), 0, Math.PI * 2); ctx.stroke();
+      } else if (effect.type === "earthImpact") {
+        const frame = Math.min(7, Math.floor((1 - effect.life / effect.maxLife) * 8));
+        if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2, alpha);
       } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2, alpha);
     }
     if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
@@ -857,7 +882,8 @@
       direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
-      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
+      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
+      effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],

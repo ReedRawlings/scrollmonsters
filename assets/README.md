@@ -21,3 +21,12 @@ These are starting values for playtesting, not confirmed user requirements:
 - Use simple generated sound effects later; audio does not block the first playable loop.
 
 Next implementation milestone: one playable combat stage with cursor-directed auto-fire, enemies, shared health, gold, results, one permanent damage upgrade, and browser saving. Then add the overworld, recruitment milestones, creature abilities, and the rest of the upgrade tree.
+
+## Added earth effects
+
+The player attack uses two sheets from `SoggySocks Earth FX/PNG/`:
+
+- `proj_earth_1_sheet.png`: four 100 × 100 cells, looping at 12 FPS and rotated along projectile velocity.
+- `impact_earth_3_sheet.png`: eight 100 × 100 cells, played once over 0.48 seconds when a player projectile damages an enemy.
+
+The visible pixel art occupies a small centered region inside each transparent cell. Cells render at 100 × 100 canvas pixels to retain that native visual scale. The original SVG projectile and impact remain runtime fallbacks if either PNG cannot load.

@@ -13,6 +13,14 @@ Original prompt: Read GDD.md and assets/README.md. Use the develop-web-game skil
 - Playtest a fresh-save journey through all ten stages to tune the new miniboss difficulty and economy.
 - Add terrain later, as requested.
 
+## September 10 — earth projectile and impact sprites
+
+- Integrated `proj_earth_1_sheet.png` as the player's four-frame looping projectile, rotated along shot velocity at 12 FPS.
+- Integrated `impact_earth_3_sheet.png` as an eight-frame, 0.48-second player-hit animation on enemies.
+- Sheets use 100 × 100 source cells containing small centered pixel art and render at native cell size; previous SVGs remain load fallbacks.
+- Companion, enemy, obstacle, AOE, and healing effects retain their existing visuals.
+- Added projectile animation frames and active effect types to `render_game_to_text` for deterministic inspection.
+
 ## September 9 — opening movement and melee bosses
 
 - Stages 1–2 now keep terrain fixed while the party advances south from y=180 toward y=480. Companions follow the moving formation.
