@@ -61,12 +61,12 @@ console.log('PASS: monsters approach relative to both player and ground from all
 for (const x of [70,270,470]) {
   const g=fresh();g.api.startStage(1);g.state.spawnTimer=999;g.state.fireTimer=999;g.spawnEnemy('basic');
   const e=g.state.enemies[0];e.x=x;let lastDistance=Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y);
-  for(let frame=0;frame<600 && g.state.enemies.includes(e);frame++){
+  for(let frame=0;frame<600 && g.state.party.hp === 10;frame++){
     g.updateCombat(1/60);const distance=Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y);
     assert(distance<=lastDistance, 'Approach distance must decrease every frame, including beside the player');
     lastDistance=distance;
   }
-  assert.equal(g.state.enemies.length,0,'Enemy must reach party instead of drifting past');
+  assert(g.state.enemies.includes(e),'Enemy remains alive after contact');
   assert.equal(g.state.party.hp,9,'Enemy contact must damage the party');
 }
 console.log('PASS: all lanes converge every frame and make contact, without drifting past the player');

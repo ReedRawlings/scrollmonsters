@@ -33,9 +33,9 @@
       number,
       name: stageNames[index],
       duration: 30,
-      // Later stages add gradual durability while encounter density supplies most of the pressure.
+      // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
-      hpScale: 1 + (number - 1) * 0.22,
+      hpScale: 1 + (number - 1) * 0.45 + (number - 1) ** 2 * 0.045,
       bossHpScale: 0.82 + number * 0.18,
       damageScale: 0.76 + number * 0.095,
       boss: true,
@@ -139,6 +139,23 @@
     return { levelsPlayed, enteringStage, goldEarned, ...offense, requiredDps, coverage: offense.dps / requiredDps };
   }
 
+  // Fixed stage tuning from an explicit expected loadout, never the player's live save.
+  function stageDpsEstimate(stageNumber) {
+    const gold = expectedCampaignGold(stageNumber - 1);
+    const offense = projectOffense(gold);
+    const effectivePlayerDps = offense.damage / offense.fireInterval * (1 + (offense.projectiles - 1) * 0.65) * 0.75;
+    const fangletDps = stageNumber >= 4 ? 2 / 1.05 : 0;
+    const partyDps = effectivePlayerDps + fangletDps;
+    return { stage: stageNumber, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
+      basicHp: stageNumber <= 2 ? 1 : Math.max(2, Math.round(partyDps * 0.4)),
+      bossHp: stageNumber === 1 ? 28 : Math.round(partyDps * (stageNumber === 5 || stageNumber === 10 ? 15 : 12)) };
+  }
+  for (const stage of stageConfigs) {
+    const estimate = stageDpsEstimate(stage.number);
+    if (stage.number >= 3) stage.hpScale = estimate.basicHp;
+    stage.bossHpScale = estimate.bossHp / (28 * (stage.majorBoss ? 1.5 : 1));
+  }
+
   const captureDefs = [
     { id: "captureStriker", name: "Fanglet", branch: "STRIKER", capture: "striker", stage: 3, currency: "fangEssence", cost: 8, requires: [] },
     { id: "captureHealer", name: "Mossbud", branch: "HEALER", capture: "healer", stage: 5, requires: [] },
@@ -169,7 +186,7 @@
   const state = {
     mode: "title", save: loadSave(), mouse: { x: WIDTH / 2, y: HEIGHT * 0.8 }, selectedStage: 1, stage: null,
     party: { x: WIDTH / 2, y: HEIGHT / 3, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
-    scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
+    obstacles: [], scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
     companions: [], result: null, toast: "", toastTimer: 0, goldFraction: 0
   };
 
@@ -213,6 +230,12 @@
     state.bossSpawned = false;
     state.bossDefeated = false;
     state.enemies = [];
+    // Two staggered rocks, outside the party's travel corridor; no corridor-wide walls.
+    state.obstacles = [0, 1].map(index => ({
+      x: index === 0 ? 115 + Math.random() * 65 : 360 + Math.random() * 65,
+      y: 330 + index * 300 + Math.random() * 90,
+      r: 24 + Math.random() * 8
+    }));
     state.projectiles = [];
     state.drops = [];
     state.effects = [];
@@ -254,7 +277,7 @@
     state.enemies.push({
       type, species, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4, damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
-      gold: 1, attackTimer: base.cooldown,
+      gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
   }
@@ -395,6 +418,7 @@
       state.scroll = (78 + state.stage.number * 2) * Math.min(state.stageTime, state.stage.duration);
     }
     const cameraStep = state.scroll - previousScroll;
+    for (const rock of state.obstacles) rock.y -= cameraStep;
     state.spawnTimer -= dt;
     state.fireTimer -= dt;
     const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration;
@@ -420,12 +444,13 @@
       const dx = state.party.x - enemy.x, dy = state.party.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
-      const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + 20 : 240) : 0;
+      const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + 20 : 240) : enemy.r + 20;
       const travel = Math.min(enemy.speed * dt + cameraStep, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
-      if (enemyVisible(enemy)) enemy.attackTimer -= dt;
-      if ((enemy.type === "ranged" || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && enemy.attackTimer <= 0) {
+      const touchingParty = Math.hypot(enemy.x - state.party.x, enemy.y - state.party.y) <= enemy.r + 21;
+      if (enemyVisible(enemy)) { enemy.attackTimer -= dt; enemy.meleeTimer -= dt; }
+      if (((enemy.type === "ranged" && !touchingParty) || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && enemy.attackTimer <= 0) {
         const shots = enemy.type === "boss" && state.stage.number > 1 && enemy.hp < enemy.maxHp * 0.45 ? 3 : 1;
         for (let index = 0; index < shots; index += 1) {
           shoot(enemy.x, enemy.y - enemy.r, state.party.x, state.party.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type, (index - (shots - 1) / 2) * 0.13);
@@ -437,17 +462,30 @@
         state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.25, maxLife: 0.25, radius: 30 });
         enemy.attackTimer = enemy.attackCooldown;
       }
-      if (enemy.type !== "boss" && Math.hypot(enemy.x - state.party.x, enemy.y - state.party.y) <= enemy.r + 20) {
+      if (enemy.type !== "boss" && touchingParty && enemy.meleeTimer <= 0) {
         state.party.hp -= enemy.damage;
         state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.25, maxLife: 0.25, radius: 30 });
-        removeEnemy(enemy);
+        enemy.meleeTimer = enemy.meleeCooldown;
       }
     }
 
     for (const projectile of [...state.projectiles]) {
+      const oldX = projectile.x, oldY = projectile.y;
       projectile.x += projectile.vx * dt;
       projectile.y += projectile.vy * dt;
       let hit = false;
+      if (projectile.source === "player") {
+        const dx = projectile.x - oldX, dy = projectile.y - oldY;
+        const rock = state.obstacles.find(obstacle => {
+          const t = clamp(((obstacle.x - oldX) * dx + (obstacle.y - oldY) * dy) / Math.max(0.001, dx * dx + dy * dy), 0, 1);
+          return Math.hypot(oldX + t * dx - obstacle.x, oldY + t * dy - obstacle.y) <= obstacle.r + projectile.r;
+        });
+        if (rock) {
+          state.effects.push({ type: "impact", x: projectile.x, y: projectile.y, life: 0.15, maxLife: 0.15, radius: 12 });
+          state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+          continue;
+        }
+      }
       if (projectile.friendly) {
         const enemy = state.enemies.find(candidate => enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
         if (enemy) {
@@ -631,7 +669,14 @@
   }
 
   function drawCombat() {
-    drawBackground(); drawRoad(); drawSprite("player", state.party.x, state.party.y, 52);
+    drawBackground(); drawRoad();
+    for (const rock of state.obstacles) {
+      if (rock.y < 126 - rock.r || rock.y > HEIGHT - 96 + rock.r) continue;
+      ctx.fillStyle = "#514c43"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r + 9, rock.r * 2, rock.r * 2 - 4);
+      ctx.fillStyle = "#858a8b"; ctx.fillRect(rock.x - rock.r + 4, rock.y - rock.r, rock.r * 2 - 8, rock.r * 2 - 5);
+      ctx.fillStyle = "#b9bdb3"; ctx.fillRect(rock.x - rock.r + 8, rock.y - rock.r + 4, rock.r, 6);
+    }
+    drawSprite("player", state.party.x, state.party.y, 52);
     for (const companion of state.companions) drawSprite(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
     for (const enemy of state.enemies) {
       drawSprite(enemy.species === "fanglet" ? "striker" : enemy.type, enemy.x, enemy.y, enemy.type === "boss" ? 92 : enemy.r * 2.5);
@@ -782,7 +827,7 @@
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
-      goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), blocks: "player shots"})), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fanglet", "Mossbud", "Novawisp"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
@@ -801,7 +846,7 @@
     startStage,
     clearCombat: () => { if (state.mode === "combat") { [...state.enemies].forEach(enemy => { if (state.mode === "combat") damageEnemy(enemy, enemy.hp); }); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
     resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); state.selectedStage = 1; setMode("title"); },
-    balanceProjection
+    balanceProjection, stageDpsEstimate
   };
 
   render();

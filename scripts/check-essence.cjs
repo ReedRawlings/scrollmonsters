@@ -5,8 +5,8 @@ const context = new Proxy({}, { get: (o,k) => o[k] ?? (()=>{}), set: (o,k,v) => 
 let saved;
 const math = Object.create(Math); math.random = () => 0.99;
 const sandbox = { Math: math, document: {getElementById:()=>({width:540,height:900,getContext:()=>context,addEventListener(){}}),addEventListener(){}},Image:class{},localStorage:{getItem:()=>saved||null,setItem:(k,v)=>saved=v},window:{__vt_pending:true},console};
-vm.runInNewContext(fs.readFileSync('game.js','utf8').replace('  render();\n  if (!window.__vt_pending)', '  window.review = {state, spawnEnemy, damageEnemy, removeEnemy, finishStage, attemptUpgrade, captureDefs, upgradeDefs};\n  render();\n  if (!window.__vt_pending)'),sandbox);
-const {state,spawnEnemy,damageEnemy,removeEnemy,finishStage,attemptUpgrade,captureDefs,upgradeDefs}=sandbox.window.review;
+vm.runInNewContext(fs.readFileSync('game.js','utf8').replace('  render();\n  if (!window.__vt_pending)', '  window.review = {state, updateCombat, spawnEnemy, damageEnemy, removeEnemy, finishStage, attemptUpgrade, captureDefs, upgradeDefs};\n  render();\n  if (!window.__vt_pending)'),sandbox);
+const {state,updateCombat,spawnEnemy,damageEnemy,removeEnemy,finishStage,attemptUpgrade,captureDefs,upgradeDefs}=sandbox.window.review;
 const api=sandbox.window.__scollTest;
 const capture=captureDefs[0], bite=upgradeDefs.find(d=>d.id==='strikerFollowup');
 api.setSave({gold:100,unlockedStage:10}); attemptUpgrade(capture); assert.equal(state.save.recruits.length,0);
@@ -32,3 +32,15 @@ for (const stage of [1,2]) {
   assert.equal(earlyFang.species,'fanglet'); assert.equal(earlyFang.hp,2); assert.equal(earlyFang.damage,2);
 }
 console.log('PASS: capture costs, currency isolation, prerequisites, no double purchase, random/pity drops, contact exclusion, defeat banking, later yields, boss reward, non-chaining follow-up');
+
+api.setSave({unlockedStage:10});api.startStage(1);state.spawnTimer=999;state.fireTimer=999;
+spawnEnemy('basic');const melee=state.enemies[0];melee.x=state.party.x+37;melee.y=state.party.y;
+updateCombat(1/60);assert(state.enemies.includes(melee));assert.equal(state.party.hp,9);
+for(let i=0;i<60;i++)updateCombat(1/60);assert.equal(state.party.hp,9,'Melee respects cooldown');
+for(let i=0;i<40;i++)updateCombat(1/60);assert.equal(state.party.hp,8,'Enemy attacks again');
+api.startStage(1);state.spawnTimer=999;state.fireTimer=999;
+state.obstacles=[{x:100,y:400,r:26}];state.projectiles=[{x:100,y:360,vx:0,vy:3000,r:6,source:'player',friendly:true,damage:1}];
+updateCombat(1/60);assert.equal(state.projectiles.length,0,'Swept collision catches player shots');
+state.projectiles=[{x:200,y:360,vx:0,vy:3000,r:6,source:'player',friendly:true,damage:1}];
+updateCombat(1/60);assert.equal(state.projectiles.length,1,'Clear firing lane remains open');
+console.log('PASS: persistent melee cooldown and sparse obstacle projectile blocking');
