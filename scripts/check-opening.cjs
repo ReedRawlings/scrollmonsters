@@ -38,31 +38,31 @@ assert(results.every(r=>r.upgraded.won),'One damage and one health rank can beat
 const game=fresh();const {state,api,spawnEnemy,damageEnemy,updateCombat,attemptUpgrade,upgradeDefs}=game;
 api.startStage(1);state.fireTimer=999;state.spawnTimer=999;
 spawnEnemy('basic');const enemy=state.enemies[0];
-assert(enemy.y-enemy.r*1.25>900,'Entire monster starts offscreen');assert.equal(enemy.hp,1);assert.equal(enemy.gold,1);assert.equal(enemy.speed,32);
+assert(enemy.x<0||enemy.x>540||enemy.y<126||enemy.y>804,'Entire monster starts outside the combat area');assert.equal(enemy.hp,1);assert.equal(enemy.gold,1);assert.equal(enemy.speed,92 * 1.4);
 state.projectiles.push({x:enemy.x,y:enemy.y,vx:0,vy:0,r:6,friendly:true,damage:1});updateCombat(1/60);assert.equal(enemy.hp,1,'Cannot hit offscreen monsters');
-enemy.y=700;damageEnemy(enemy,1);assert.equal(state.enemies.length,0);assert.equal(state.drops[0].value,1);
+enemy.x=270;enemy.y=700;damageEnemy(enemy,1);assert.equal(state.enemies.length,0);assert.equal(state.runGold,1);
 spawnEnemy('basic');const charger=state.enemies[0];charger.x=80;charger.y=310;
 const hp=state.party.hp;updateCombat(1/60);assert.equal(state.party.hp,hp,'Passing the party latitude is not a hit');assert(charger.x>80,'Monsters home horizontally toward player');
-charger.x=state.party.x;charger.y=state.party.y+30;updateCombat(1/60);assert.equal(state.party.hp,hp-1);assert.equal(state.drops.length,1,'Contact does not award a kill reward');
+charger.x=state.party.x;charger.y=state.party.y+30;updateCombat(1/60);assert.equal(state.party.hp,hp-1);assert.equal(state.runGold,1,'Contact does not award a kill reward');
 api.setSave({gold:10});attemptUpgrade(upgradeDefs.find(d=>d.id==='power'));attemptUpgrade(upgradeDefs.find(d=>d.id==='health'));api.startStage(1);
 assert.equal(state.party.maxHp,15);assert.equal(state.save.gold,0);updateCombat(1/60);assert.equal(state.projectiles[0].damage,2);
-console.log('PASS: opening balance across 20 seeds; 1 HP/1 gold; slow offscreen homing/contact; no offscreen hits; affordable +1 damage/+5 health');
+console.log('PASS: opening balance across 20 seeds; 1 HP/1 gold; fast offscreen homing/contact; no offscreen hits; affordable +1 damage/+5 health');
 
 for (const x of [70,270,470]) {
   const g=fresh();g.api.startStage(1);g.state.spawnTimer=999;g.state.fireTimer=999;g.spawnEnemy('basic');
   const e=g.state.enemies[0];e.x=x;e.y=700;
-  const startDistance=Math.hypot(e.x-270,e.y-300), worldY=e.y+g.state.scroll;
+  const startDistance=Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y), worldY=e.y+g.state.scroll;
   for(let frame=0;frame<60;frame++)g.updateCombat(1/60);
-  assert(Math.hypot(e.x-270,e.y-300)<startDistance, 'Enemy must approach on screen');
+  assert(Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y)<startDistance, 'Enemy must approach on screen');
   assert(e.y+g.state.scroll<worldY, 'Enemy must approach relative to scrolling ground');
 }
 console.log('PASS: monsters approach relative to both player and ground from all spawn lanes');
 
 for (const x of [70,270,470]) {
   const g=fresh();g.api.startStage(1);g.state.spawnTimer=999;g.state.fireTimer=999;g.spawnEnemy('basic');
-  const e=g.state.enemies[0];e.x=x;let lastDistance=Math.hypot(e.x-270,e.y-300);
+  const e=g.state.enemies[0];e.x=x;let lastDistance=Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y);
   for(let frame=0;frame<600 && g.state.enemies.includes(e);frame++){
-    g.updateCombat(1/60);const distance=Math.hypot(e.x-270,e.y-300);
+    g.updateCombat(1/60);const distance=Math.hypot(e.x-g.state.party.x,e.y-g.state.party.y);
     assert(distance<=lastDistance, 'Approach distance must decrease every frame, including beside the player');
     lastDistance=distance;
   }

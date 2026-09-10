@@ -1,0 +1,11 @@
+const {chromium,devices}=require('playwright');const assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({headless:true});try{const p=await browser.newPage({...devices['iPhone 13']});const errors=[];p.on('pageerror',e=>errors.push(String(e)));await p.addInitScript(()=>window.__vt_pending=true);await p.goto('http://localhost:5173');const tap=async(x,y)=>{const b=await p.locator('canvas').boundingBox();await p.touchscreen.tap(b.x+x*b.width/540,b.y+y*b.height/900)};
+await p.evaluate(()=>window.__scollTest.setSave({gold:1000}));await tap(270,700);await tap(390,830);
+await p.screenshot({path:'output/compact-talents.png'});
+await tap(380,520);let s=await p.evaluate(()=>window.__scollTest.getSave());assert(!s.upgrades.fortitude);
+for(const y of [270,410,540])await tap(380,y);
+s=await p.evaluate(()=>window.__scollTest.getSave());for(const key of ['health','vitality','fortitude'])assert.equal(s.upgrades[key],1);
+await p.screenshot({path:'output/compact-talents-bought.png'});
+await tap(166,160);await p.screenshot({path:'output/compact-shared.png'});
+await tap(270,838);await tap(150,830);await p.evaluate(()=>window.advanceTime(500));let st=await p.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(st.party.maxHp,25);assert.equal(st.combat.enemies[0].speed,92*1.4);
+await p.reload();assert.deepEqual(await p.evaluate(()=>window.__scollTest.getSave()),s);assert.deepEqual(errors,[]);console.log('PASS: compact touch nodes, health prerequisites/stacking/save reload, exact 40% opening speed increase');}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

@@ -46,8 +46,8 @@ The main decisions are which upgrades to buy, where to aim during combat, and wh
 | Automatic targeting | Unlockable player ability that selects enemy targets automatically. After unlocking it, press Space to toggle it on/off without interrupting auto-fire. Unlock requirement and target priority remain undecided. |
 | Recruitment | Completing stage 3 recruits the single-target attacker; completing stage 5 recruits the healer; completing stage 10 recruits the AOE attacker. These are stage-completion milestones, not character levels. Proposed behavior: recruits are permanent and join an empty active slot immediately. |
 | Survival | One shared party health bar. Enemy hits reduce health; zero health ends the run. |
-| Collection | A starting party ability periodically attracts nearby drops. Upgrades improve its range and frequency. |
-| Rewards | Gold collected from battles funds permanent upgrades. Proposed default: the collection ability gathers gold drops, and collected gold is retained after defeat. |
+| Collection | Gold from defeated enemies is added automatically without a pickup action. Golden Echo upgrades increase battle-gold yield. |
+| Rewards | Automatically collected battle gold funds permanent upgrades and is retained after defeat. |
 | Progression | No character levels or experience-level system. Purchase permanent upgrades with battle gold. Proposed flow: buy upgrades between stage attempts; starting a stage restores shared party health. |
 | Saving | Save gold, purchased upgrades, completed/unlocked stages, recruited creatures, and active party locally in the browser. |
 
@@ -127,7 +127,7 @@ This document uses that conversation and subsequent user decisions in the curren
 ## September 9 prototype update
 
 - Each stage traverses its route in 30 seconds. Terrain work is deferred.
-- Uncollected drops never expire; off-screen drops remain accounted for and are banked when the attempt ends.
+- Defeated enemies award gold immediately; no manual or proximity pickup is required.
 - Every stage has a required miniboss, with stronger bosses at stages 5 and 10. A boss must be defeated through damage to count toward stage completion. Combat may continue after traversal.
 - Each capturable monster has a capture root node in the upgrade tree, connected to its upgrades. Current capture milestones remain stages 3, 5, and 10.
 
@@ -145,4 +145,23 @@ The opening boss should defeat an unupgraded party. A failed attempt retains ear
 
 ## Stage scaling update
 
-Later stages now increase both regular monster health and spawn density. The opening stage remains unchanged. By stage 10, the nominal spawn interval is approximately 0.5 seconds and basic monsters have 8 HP, giving offensive upgrades a role in earning more kills and surviving larger crowds. Boss health retains its separate existing curve. See BALANCE.md for values and validation limits.
+Later stages increase regular monster health gradually and spawn density more noticeably. The opening stage remains unchanged. By stage 10, the nominal spawn interval is approximately 0.5 seconds and basic monsters have 3 HP, so enemies become slightly tougher without turning every regular target into a damage sponge. Boss health retains its separate existing curve. See BALANCE.md for values and validation limits.
+
+## Opening movement and boss update
+
+Stages 1–2 now show literal party movement: terrain remains fixed while the player and companions advance south. Their regular encounters contain charging basic and armored enemies with higher ground speeds. From stage 3 onward, the camera-scroll travel presentation resumes.
+
+Bosses in stages 1–5 also charge toward the party and attack at melee range without projectiles. Bosses in stages 6–10 retain the ranged stand-off behavior. Every boss must still be defeated through damage before its stage can clear.
+
+The opening party now advances at 14 pixels/second, and enemies can enter from any of the four edges rather than only from the south. Base player fire rate is reduced by 20% to one shot every 0.425 seconds. Kill gold is added immediately; Golden Echo replaces collection-range upgrades with increased battle-gold yield.
+
+## September 10 — Fanglet essence progression
+
+This supersedes Fanglet's automatic stage-3 recruitment. No XP or creature levels are added. Existing captured Fanglets and gold talent ranks are preserved.
+
+- Wild Fanglets use the Fanglet sprite and occur among regular enemies, retaining the encounter's combat stats. Species density by stage 1–10: 20%, 30%, 70%, 35%, 25%, 65%, 30%, 40%, 75%, 35%. The map shows the selected stage's density and essence bundle size.
+- Wild Fanglet kills have a 30% essence drop chance, guaranteed on the fifth consecutive dry Fanglet kill. The dry-kill counter persists when a run ends. Contact removals award nothing.
+- Drops yield 1 essence in stages 1–3, 2 in 4–6, 3 in 7–9, and 4 in 10. Stage 3/6/9 bosses guarantee two bundles. Essence banks on victory or defeat alongside gold.
+- Fanglet capture costs 8 Fanglet essence, with no stage-clear prerequisite. Once captured, Follow-Up Bite costs 20 essence: a normal Fanglet projectile kill fires one bonus shot at another visible enemy. Bonus kills cannot trigger another bonus.
+- Fang Focus and Fang Rhythm retain their existing gold prices. Each node uses one currency; FE denotes Fanglet essence. Gold yield upgrades do not multiply essence.
+- Prices, density and drop amounts are provisional. Spawn lures, other species' essence systems, and evolution/prestige remain future work.

@@ -26,7 +26,7 @@ const fs = require('node:fs');
  await page.screenshot({path:'output/opening/first-defeat.png'});
  await tap(270,625);await tap(390,830);
  await page.screenshot({path:'output/opening/damage-node.png'});
- await tap(270,270);await tap(166,160);await tap(270,270);
+ await tap(140,270);await tap(380,270);
  const bought=await read();assert.equal(bought.upgrades.power,1);assert.equal(bought.upgrades.health,1);assert.equal(bought.bankedGold,first.bankedGold-10);
  await page.screenshot({path:'output/opening/health-node.png'});
  await tap(270,838);await tap(150,830);

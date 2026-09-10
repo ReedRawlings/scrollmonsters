@@ -13,6 +13,35 @@ Original prompt: Read GDD.md and assets/README.md. Use the develop-web-game skil
 - Playtest a fresh-save journey through all ten stages to tune the new miniboss difficulty and economy.
 - Add terrain later, as requested.
 
+## September 9 — opening movement and melee bosses
+
+- Stages 1–2 now keep terrain fixed while the party advances south from y=180 toward y=480. Companions follow the moving formation.
+- Opening basic and armored enemies use faster ground speeds of 92 and 70 px/s.
+- Bosses in stages 1–5 now approach to melee range and attack there without projectiles. Stages 6–10 retain ranged stand-off attacks.
+- Gold drops stay with the static ground in stages 1–2 and move with camera travel in later stages.
+
+## September 9 — upgrade costs and gradual enemy scaling
+
+- Confirmed every multi-rank skill-tree node has strictly ascending costs and added a regression assertion for that invariant.
+- Replaced the steep regular-enemy HP curve with `1 + 0.22 × (stage − 1)`, increasing from ×1 at stage 1 to ×2.98 at stage 10.
+- Kept the existing modest damage curve, boss scaling, and encounter-density progression.
+- Browser verification was intentionally skipped at the user's request.
+
+## September 9 — campaign economy and DPS model
+
+- Added reusable projections connecting expected stage spawns, an 82% kill rate, earned gold, a 35% offense budget, purchased damage/speed/multishot ranks, and required stage DPS.
+- Expected campaign gold assumes two stage-1 attempts and one attempt per later clear; projections can accept actual earned gold instead.
+- Added regression checks requiring non-decreasing projected DPS, sub-3× coverage, an intentionally underpowered fresh stage 1, and sufficient expected coverage afterward.
+- Documented the formulas, recommended offense path, and stage-by-stage projection table in `BALANCE.md`.
+
+## September 9 — multidirectional encounters and automatic gold
+
+- Reduced base firing rate by 20%, changing the interval from 0.34 to 0.425 seconds and updating the campaign DPS projection.
+- Increased stage 1–2 party travel from 10 to 14 px/s, with a y=600 safety cap.
+- Enemies and bosses now choose north, east, south, or west spawn edges and remain untargetable until fully inside the combat area.
+- Defeated enemies add gold immediately. Repurposed Gather Song into Golden Echo, granting +10% battle gold per rank while preserving the existing `magnet` save identifier and Hunter's Eye prerequisite.
+- Deterministic checks cover all four spawn directions, immediate gold, the opening retry economy, and the revised 0.67–1.71× player-only DPS coverage curve.
+
 ## September 9 — traversal, minibosses, drops, monster nodes
 
 - Set all stages to 30 seconds of traversal, including test URLs. Stages 1–2 advance the party across the full duration; later-stage scrolling ends at 30 seconds. Combat can continue until remaining enemies are defeated.
@@ -63,3 +92,18 @@ Original prompt: Read GDD.md and assets/README.md. Use the develop-web-game skil
 - New regression checks prove distance to the player decreases AND world-space movement relative to the ground is toward the player, from left/center/right lanes.
 - Faster on-screen boss entry made its triple volley overly punishing at close range; stage 1 now fires single shots. Later boss volleys remain. Twenty seeded runs still give 0/20 fresh wins and 20/20 wins after the first damage/health upgrades.
 - Added per-frame distance checks through contact for every spawn lane: enemies never increase their distance or drift past the party, and contact deals damage. Opening browser loss → purchases → retry checks passed; two gameplay screenshots/state snapshots were reviewed.
+
+## September 10 — faster monsters and compact health talents
+
+- All monster movement speeds, including minibosses and major bosses, are multiplied by 1.4. Player/projectile speed and spawn timing are unchanged.
+- Moved the existing Health +5 node to Player, preserving its saved ranks. Added Vitality +5 (10/15/25G) and Fortitude +5 (15/25/35G), each with three +5 shared-HP ranks, requiring the previous health node. All three health talents stack.
+- Compact 232×108 talent cards replace 460×136 cards. Six Player talents fit into two columns with visible prerequisite connections; cards retain full-area touch targets.
+- Game regression checks passed. Phone browser checks passed for prerequisite locking, health purchases, stacked health on stage start, save/reload, and the exact +40% opening monster speed. Skill harness screenshot/state and compact talent screenshots were visually inspected.
+
+## September 10 — Fanglet essence first implementation
+
+- Added species-tagged wild Fanglets, stage-specific density, random/pity essence drops, later-stage bundles and hunting-boss rewards. Added banked/run essence to map, talents, combat, results and text state.
+- Fanglet now costs 8 essence to capture; Follow-Up Bite costs 20 essence after capture and grants a non-chaining bonus shot on Fanglet kills. Existing gold talents and old captured Fanglets persist. No XP.
+- Added check-essence.cjs for costs/prerequisites, currency isolation, drops, defeat banking and follow-up behavior; updated capture regression and mobile interactions. Opening 20-seed tests remain 0 fresh wins / 20 upgraded wins. Mobile captures, purchases, save/reload, combat and four viewport checks pass with no browser errors.
+- Browser launch requires sandbox escalation on this Mac; the skill harness uses a local copy with unsupported graphics flags removed.
+- Remaining: playtest essence pacing; spawn lures and prestige are deliberately deferred.
