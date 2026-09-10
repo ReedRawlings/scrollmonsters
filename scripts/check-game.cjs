@@ -27,11 +27,11 @@ for (let levelsPlayed = 0; levelsPlayed < 10; levelsPlayed += 1) {
   previousProjectedDps = projection.dps;
 }
 api.startStage(1);
-assert.equal(state.party.x, 270); assert.equal(state.party.y, 180);
+assert.equal(state.party.x, 270); assert.equal(state.party.y, 450);
 updateCombat(1 / 60);
 assert(state.projectiles[0].vy > 0, 'Default fire points south');
 const initialY = state.party.y;
-updateCombat(1); assert(state.party.y > initialY); assert.equal(state.scroll, 0);
+updateCombat(1); assert.equal(state.party.y, initialY); assert.equal(state.scroll, 24 + 24 / 60);
 spawnEnemy('basic'); const movingEnemy = state.enemies.at(-1);
 assert.equal(enemyVisible(movingEnemy), false); const spawnDistance = Math.hypot(movingEnemy.x - state.party.x, movingEnemy.y - state.party.y);
 updateCombat(1 / 60); assert(Math.hypot(movingEnemy.x - state.party.x, movingEnemy.y - state.party.y) < spawnDistance);

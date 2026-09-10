@@ -185,7 +185,7 @@
 
   const state = {
     mode: "title", save: loadSave(), mouse: { x: WIDTH / 2, y: HEIGHT * 0.8 }, selectedStage: 1, stage: null,
-    party: { x: WIDTH / 2, y: HEIGHT / 3, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
+    party: { x: WIDTH / 2, y: HEIGHT / 2, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
     obstacles: [], scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
     companions: [], result: null, toast: "", toastTimer: 0, goldFraction: 0
   };
@@ -216,7 +216,7 @@
     state.selectedStage = stageNumber;
     state.stage = stageConfigs[stageNumber - 1];
     state.party.x = WIDTH / 2;
-    state.party.y = stageNumber <= 2 ? 180 : HEIGHT / 3;
+    state.party.y = HEIGHT / 2;
     state.mouse = { x: WIDTH / 2, y: HEIGHT * 0.8 };
     state.party.maxHp = maxPartyHealth();
     state.party.hp = state.party.maxHp;
@@ -406,17 +406,7 @@
     if (state.mode !== "combat") return;
     state.stageTime += dt;
     const previousScroll = state.scroll;
-    if (state.stage.number <= 2) {
-      state.scroll = 0;
-      state.party.y = Math.min(600, state.party.y + 14 * dt);
-      const offsets = { striker: [-64, -48], healer: [64, -48], aoe: [0, -100] };
-      state.companions.forEach(companion => {
-        companion.x = state.party.x + offsets[companion.type][0];
-        companion.y = state.party.y + offsets[companion.type][1];
-      });
-    } else {
-      state.scroll = (78 + state.stage.number * 2) * Math.min(state.stageTime, state.stage.duration);
-    }
+    state.scroll += 24 * dt;
     const cameraStep = state.scroll - previousScroll;
     for (const rock of state.obstacles) rock.y -= cameraStep;
     state.spawnTimer -= dt;
@@ -438,14 +428,12 @@
     if (state.mode !== "combat") return;
 
     for (const enemy of [...state.enemies]) {
-      // Add the distance covered by the party's route to the closing speed.
-      // Apply the full step toward the party, never as an independent vertical
-      // offset that could carry side-lane enemies past their target.
+      // Enemies steer toward the fixed party independently of decorative terrain scroll.
       const dx = state.party.x - enemy.x, dy = state.party.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
       const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + 20 : 240) : enemy.r + 20;
-      const travel = Math.min(enemy.speed * dt + cameraStep, Math.max(0, distance - stopDistance));
+      const travel = Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
       const touchingParty = Math.hypot(enemy.x - state.party.x, enemy.y - state.party.y) <= enemy.r + 21;
@@ -551,7 +539,7 @@
   function drawBackground() {
     ctx.fillStyle = "#70b55f";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    const offset = state.mode === "combat" ? state.scroll % 32 : 0;
+    const offset = state.mode === "combat" ? (state.scroll * 0.45) % 32 : 0;
     for (let x = 0; x < WIDTH; x += 32) {
       for (let y = -32 - offset; y < HEIGHT; y += 32) drawSprite("grass", x + 16, y + 16, 32);
     }
@@ -823,7 +811,7 @@
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: Math.ceil(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits] },
     combat: state.mode === "combat" ? {
-      direction: "north-to-south", movementMode: state.stage.number <= 2 ? "party-advances-static-ground" : "camera-scroll", cameraScroll: Math.round(state.scroll), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
+      direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
