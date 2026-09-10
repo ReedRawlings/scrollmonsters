@@ -29,7 +29,7 @@ for (const stage of [1,2]) {
   api.setSave({unlockedStage:10}); api.startStage(stage);
   state.stageTime=14.99; spawnEnemy('basic'); assert.equal(state.enemies.at(-1).species,null);
   state.stageTime=15; spawnEnemy('basic'); const earlyFang=state.enemies.at(-1);
-  assert.equal(earlyFang.species,'fanglet'); assert.equal(earlyFang.hp,2); assert.equal(earlyFang.damage,2);
+  assert.equal(earlyFang.species,'fanglet'); assert.equal(earlyFang.hp,stage===1?2:4); assert.equal(earlyFang.damage,2);
 }
 console.log('PASS: capture costs, currency isolation, prerequisites, no double purchase, random/pity drops, contact exclusion, defeat banking, later yields, boss reward, non-chaining follow-up');
 

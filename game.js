@@ -33,6 +33,7 @@
       number,
       name: stageNames[index],
       duration: 30,
+      hpMultiplier: number === 1 ? 1 : 2,
       // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
       hpScale: 1 + (number - 1) * 0.45 + (number - 1) ** 2 * 0.045,
@@ -129,7 +130,7 @@
     const bossHealth = Math.round(28 * stage.bossHpScale * bossMultiplier);
     const regularDemand = averageRegularHealth / stage.spawnRate;
     const bossDemand = bossHealth / balanceModel.bossDamageWindow;
-    return balanceModel.safetyFactor * Math.max(regularDemand, bossDemand);
+    return stage.hpMultiplier * balanceModel.safetyFactor * Math.max(regularDemand, bossDemand);
   }
 
   function balanceProjection(levelsPlayed, goldEarned = expectedCampaignGold(levelsPlayed)) {
@@ -146,7 +147,7 @@
     const effectivePlayerDps = offense.damage / offense.fireInterval * (1 + (offense.projectiles - 1) * 0.65) * 0.75;
     const fangletDps = stageNumber >= 4 ? 2 / 1.05 : 0;
     const partyDps = effectivePlayerDps + fangletDps;
-    return { stage: stageNumber, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
+    return { stage: stageNumber, hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
       basicHp: stageNumber <= 2 ? 1 : Math.max(2, Math.round(partyDps * 0.4)),
       bossHp: stageNumber === 1 ? 28 : Math.round(partyDps * (stageNumber === 5 || stageNumber === 10 ? 15 : 12)) };
   }
@@ -272,7 +273,7 @@
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
     const species = type !== "boss" && (!openingStage || state.stageTime >= 15) && Math.random() < fangDensity(state.stage.number) ? "fanglet" : null;
     const openingFanglet = openingStage && species === "fanglet";
-    const hp = openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor);
+    const hp = (openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier;
     const spawn = spawnPoint(base.radius, forcedEdge);
     state.enemies.push({
       type, species, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
