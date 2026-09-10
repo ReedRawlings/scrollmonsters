@@ -698,7 +698,6 @@
     drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
     drawText(`Fang essence: ${state.save.fangEssence + state.runEssence}`, 24, 115, 16, "#a9e9eb");
     drawSprite("gold", 330, 91, 28); drawText(String(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
-    drawText(`+${state.runGold} this run`, 330, 115, 14, "#d3dbe5");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
     } else {
@@ -710,9 +709,8 @@
   function drawResult() {
     drawBackground(); drawRoad(); drawPanel(24, 130, 492, 650);
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
-    drawText(`Gold banked: +${state.result.gold}`, WIDTH / 2, 252, 24, "#ffe17d", "center");
     drawText(`Fanglet essence: +${state.result.essence} (${state.save.fangEssence} total)`, WIDTH / 2, 330, 20, "#a9e9eb", "center");
-    drawText(`Total gold: ${state.save.gold}`, WIDTH / 2, 290, 21, "#fff", "center");
+    drawText(`Total gold: ${state.save.gold}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
     if (state.result.newRecruit) {
       drawSprite(state.result.newRecruit, WIDTH / 2, 402, 90);
       const names = { striker: "FANGLET", healer: "MOSSBUD", aoe: "NOVAWISP" };

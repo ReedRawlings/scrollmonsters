@@ -160,3 +160,7 @@ Added Trail Pace to Shared: ten ranks, each adding 5% travel speed and enemy spa
 ## Retry wallet display
 
 Confirmed finishStage banks gold/essence before results; Retry calls startStage without modifying saved currencies, recruits or upgrades. Corrected combat HUD to show banked + current-run gold/essence instead of a run-only counter that appeared to erase rewards. A separate +N this run label preserves earnings feedback. Text state now includes totalGold/totalEssence.
+
+## Total gold only
+
+Removed run-earned gold labels from combat and results. Only total gold is displayed; internal run accounting remains for correct reward banking.
