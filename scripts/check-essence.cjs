@@ -25,4 +25,10 @@ fang();damageEnemy(second,100,'strikerFollowup');assert.equal(state.projectiles.
 math.random=()=>0;damageEnemy(fang(),100);assert.equal(state.runEssence,2,'later kills yield larger bundles');
 spawnEnemy('boss');damageEnemy(state.enemies.at(-1),10000);assert.equal(state.runEssence,6,'hunting boss guaranteed reward');finishStage(false);assert.equal(state.save.fangEssence,6);
 assert.equal(JSON.parse(saved).fangEssence,6);
+for (const stage of [1,2]) {
+  api.setSave({unlockedStage:10}); api.startStage(stage);
+  state.stageTime=14.99; spawnEnemy('basic'); assert.equal(state.enemies.at(-1).species,null);
+  state.stageTime=15; spawnEnemy('basic'); const earlyFang=state.enemies.at(-1);
+  assert.equal(earlyFang.species,'fanglet'); assert.equal(earlyFang.hp,2); assert.equal(earlyFang.damage,2);
+}
 console.log('PASS: capture costs, currency isolation, prerequisites, no double purchase, random/pity drops, contact exclusion, defeat banking, later yields, boss reward, non-chaining follow-up');

@@ -107,3 +107,11 @@ Original prompt: Read GDD.md and assets/README.md. Use the develop-web-game skil
 - Added check-essence.cjs for costs/prerequisites, currency isolation, drops, defeat banking and follow-up behavior; updated capture regression and mobile interactions. Opening 20-seed tests remain 0 fresh wins / 20 upgraded wins. Mobile captures, purchases, save/reload, combat and four viewport checks pass with no browser errors.
 - Browser launch requires sandbox escalation on this Mac; the skill harness uses a local copy with unsupported graphics flags removed.
 - Remaining: playtest essence pacing; spawn lures and prestige are deliberately deferred.
+
+## September 10 — hidden buildup and boss victory
+
+- The 30-second clock is background encounter pacing only. Regular spawns continue through the buildup; the boss spawns at 30 seconds. No timer or timed progress is shown to players.
+- Boss death immediately completes the round, banks earned gold/essence and unlocks the next stage. Remaining enemies are not required kills and award no free rewards. Combat updates stop on victory.
+- Stages 1–2 cannot spawn wild Fanglets before 15 seconds. After that, their existing random densities apply; these Fanglets have exactly 2 HP and 2 damage, bypassing stage stat scaling. Later stages retain their existing behavior.
+- Expected earnings now use the full 30-second regular spawn window. Old campaign economy estimates are superseded; later-stage balance needs playtesting with the increased gold income.
+- Verified boss spawn boundary, immediate victory with surviving enemies, correct reward banking, early Fanglet boundary/stats, mobile controls and saving. Twenty seeded opening runs retain 0 fresh wins / 20 upgraded wins.

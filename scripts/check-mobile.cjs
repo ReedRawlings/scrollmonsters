@@ -55,7 +55,7 @@ const fs = require('node:fs');
     assert.equal(s.unlockedStage, 2); await shot('stage-clear');
     await page.evaluate(() => { window.__scollTest.startStage(1); });
     await tap(270, 850); await tap(15, 350);
-    await page.evaluate(() => window.advanceTime(22500));
+    await page.evaluate(() => window.advanceTime(30500));
     s = await read(); assert(s.combat.enemies.some(enemy => enemy.type === 'boss')); await shot('miniboss');
     for (const [name, width, height] of [['small-phone',320,568],['android',412,915],['landscape',844,390],['desktop',1440,900]]) {
       await page.setViewportSize({ width, height });

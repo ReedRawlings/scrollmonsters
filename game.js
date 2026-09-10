@@ -77,7 +77,7 @@
 
   function expectedStageGold(stageNumber) {
     const stage = stageConfigs[stageNumber - 1];
-    const regularWindow = stage.duration * 0.72;
+    const regularWindow = stage.duration;
     const expectedSpawns = 1 + (regularWindow - 0.35) / stage.spawnRate;
     return Math.round(1 + expectedSpawns * balanceModel.expectedKillRate);
   }
@@ -247,11 +247,13 @@
     }[type];
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
-    const hp = Math.round(base.hp * hpScale * bossFactor);
+    const species = type !== "boss" && (!openingStage || state.stageTime >= 15) && Math.random() < fangDensity(state.stage.number) ? "fanglet" : null;
+    const openingFanglet = openingStage && species === "fanglet";
+    const hp = openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor);
     const spawn = spawnPoint(base.radius, forcedEdge);
     state.enemies.push({
-      type, species: type !== "boss" && Math.random() < fangDensity(state.stage.number) ? "fanglet" : null, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
-      hp, maxHp: hp, speed: base.speed * 1.4, damage: Math.max(1, Math.round(base.damage * state.stage.damageScale)),
+      type, species, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
+      hp, maxHp: hp, speed: base.speed * 1.4, damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
@@ -312,12 +314,13 @@
   }
 
   function damageEnemy(enemy, amount, source = "player") {
-    if (!state.enemies.includes(enemy)) return;
+    if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp -= amount;
     state.effects.push({ type: "impact", x: enemy.x, y: enemy.y, life: 0.12, maxLife: 0.12, radius: 22 });
     if (enemy.hp <= 0) {
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
+      if (enemy.type === "boss") { finishStage(true); return; }
       if (source === "striker" && rank("strikerFollowup")) {
         const companion = state.companions.find(member => member.type === "striker");
         const target = companion && nearestEnemy(companion.x, companion.y);
@@ -328,6 +331,7 @@
 
   function updateCompanions(dt) {
     for (const companion of state.companions) {
+      if (state.mode !== "combat") return;
       companion.timer -= dt;
       companion.pulse = Math.max(0, companion.pulse - dt);
       if (companion.timer > 0) continue;
@@ -356,7 +360,7 @@
 
   function finishStage(won) {
     if (state.mode !== "combat") return;
-    if (won && (!state.bossDefeated || state.stageTime < state.stage.duration)) return;
+    if (won && !state.bossDefeated) return;
     const firstClear = won && !state.save.completed.includes(state.stage.number);
     let newRecruit = null;
     state.save.gold += state.runGold;
@@ -376,6 +380,7 @@
   }
 
   function updateCombat(dt) {
+    if (state.mode !== "combat") return;
     state.stageTime += dt;
     const previousScroll = state.scroll;
     if (state.stage.number <= 2) {
@@ -392,7 +397,7 @@
     const cameraStep = state.scroll - previousScroll;
     state.spawnTimer -= dt;
     state.fireTimer -= dt;
-    const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration * 0.72;
+    const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration;
     if (bossWindow && !state.bossSpawned) {
       spawnEnemy("boss");
       state.bossSpawned = true;
@@ -406,6 +411,7 @@
       state.fireTimer = playerFireInterval();
     }
     updateCompanions(dt);
+    if (state.mode !== "combat") return;
 
     for (const enemy of [...state.enemies]) {
       // Add the distance covered by the party's route to the closing speed.
@@ -446,6 +452,7 @@
         const enemy = state.enemies.find(candidate => enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
         if (enemy) {
           damageEnemy(enemy, projectile.damage, projectile.source);
+          if (state.mode !== "combat") return;
           hit = true;
         }
       } else if (Math.hypot(projectile.x - state.party.x, projectile.y - state.party.y) < 26) {
@@ -459,7 +466,7 @@
     state.effects.forEach(effect => { effect.life -= dt; });
     state.effects = state.effects.filter(effect => effect.life > 0);
     if (state.party.hp <= 0) finishStage(false);
-    else if (state.stageTime >= state.stage.duration && state.bossDefeated && state.enemies.length === 0) finishStage(true);
+    else if (state.bossDefeated) finishStage(true);
   }
 
   function update(dt) {
@@ -648,7 +655,7 @@
     ctx.fillStyle = "#ef476f"; ctx.fillRect(60, 30, 230 * clamp(state.party.hp / state.party.maxHp, 0, 1), 29);
     drawText(`${Math.max(0, Math.ceil(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
     drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
-    drawText(`${Math.min(30, Math.floor(state.stageTime))}/30s SOUTH ↓`, 30, 91, 20, "#a8d9ff");
+    drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
     drawText(`Fang essence +${state.runEssence}`, 24, 115, 16, "#a9e9eb");
     drawSprite("gold", 330, 91, 28); drawText(String(state.runGold), 354, 91, 22, "#ffe17d");
     if (autoTargetUnlocked()) {
@@ -771,9 +778,9 @@
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: Math.ceil(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits] },
     combat: state.mode === "combat" ? {
-      direction: "north-to-south", movementMode: state.stage.number <= 2 ? "party-advances-static-ground" : "camera-scroll", cameraScroll: Math.round(state.scroll), stage: state.stage.number, traversalSeconds: 30, elapsedSeconds: Number(state.stageTime.toFixed(2)), bossDefeated: state.bossDefeated, progressPercent: Math.min(100, Math.floor(state.stageTime / state.stage.duration * 100)),
+      direction: "north-to-south", movementMode: state.stage.number <= 2 ? "party-advances-static-ground" : "camera-scroll", cameraScroll: Math.round(state.scroll), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, gold: enemy.gold, speed: enemy.speed })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage })),
       goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
@@ -792,7 +799,7 @@
     getSave: () => JSON.parse(JSON.stringify(state.save)),
     setSave: save => { state.save = { ...defaultSave(), ...save, upgrades: { ...(save.upgrades || {}) } }; writeSave(); render(); },
     startStage,
-    clearCombat: () => { if (state.mode === "combat") { state.enemies.forEach(enemy => damageEnemy(enemy, enemy.hp)); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
+    clearCombat: () => { if (state.mode === "combat") { [...state.enemies].forEach(enemy => { if (state.mode === "combat") damageEnemy(enemy, enemy.hp); }); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
     resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); state.selectedStage = 1; setMode("title"); },
     balanceProjection
   };
