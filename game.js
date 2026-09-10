@@ -44,30 +44,29 @@
     };
   });
 
-  const damageRankCosts = firstFive => [
-    ...firstFive,
-    ...Array.from({ length: 5 }, (_, index) => Math.round(firstFive[4] * 1.35 ** (index + 1)))
-  ];
+  // Every ability compounds from its own starting price; rank 1 uses exponent zero.
+  const abilityRankCosts = (baseCost, ranks) =>
+    Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
   const upgradeDefs = [
-    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: damageRankCosts([5, 12, 24, 40, 60]), effect: rank => `+1 damage (${2 + rank} total)`, requires: [] },
-    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: [8, 14, 24], effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
-    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: [15, 30], effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
-    { id: "health", name: "Health +5", branch: "PLAYER", max: 3, costs: [5, 12, 24], effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
-    { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: [5, 12, 18], effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
-    { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: [10], effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 10, costs: damageRankCosts([8, 14, 24, 40, 60]), effect: rank => `+1 damage (${3 + rank} total)`, requires: [], recruit: "striker" },
-    { id: "strikerSpeed", name: "Fang Rhythm", branch: "STRIKER", max: 2, costs: [10, 22], effect: rank => `Striker cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
-    { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: [8, 14, 24], effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
-    { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: [10, 22], effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
-    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 10, costs: damageRankCosts([10, 18, 30, 50, 75]), effect: rank => `+1 damage (${4 + rank} total)`, requires: [], recruit: "aoe" },
-    { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: [12, 24], effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+1 damage (${2 + rank} total)`, requires: [] },
+    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
+    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: abilityRankCosts(30, 2), effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
+    { id: "health", name: "Health +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
+    { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
+    { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
+    { id: "strikerPower", name: "Fang Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${3 + rank} total)`, requires: [], recruit: "striker" },
+    { id: "strikerSpeed", name: "Fang Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Striker cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
+    { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
+    { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
+    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 10, costs: abilityRankCosts(25, 10), effect: rank => `+1 damage (${4 + rank} total)`, requires: [], recruit: "aoe" },
+    { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: abilityRankCosts(30, 2), effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
   ];
 
   upgradeDefs.push(
-    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: [20], currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
-    { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: [10, 18, 30], effect: () => "+5 shared party HP", requires: ["health"] },
-    { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: [15, 30, 42], effect: () => "+5 shared party HP", requires: ["vitality"] }
+    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fanglet kill: one extra bite", requires: [], recruit: "striker" },
+    { id: "vitality", name: "Vitality +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: () => "+5 shared party HP", requires: ["health"] },
+    { id: "fortitude", name: "Fortitude +5", branch: "PLAYER", max: 3, costs: abilityRankCosts(30, 3), effect: () => "+5 shared party HP", requires: ["vitality"] }
   );
 
   const balanceModel = Object.freeze({
