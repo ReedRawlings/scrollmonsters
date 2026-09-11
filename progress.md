@@ -325,3 +325,41 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Corrected interpretation: restored original 232×108 two-column upgrade cards and spacing, retaining condensed name/rank/price header and wrapped description below. Click bounds restored with cards.
 - All regular monsters and tameable creature frames use consistent 3× integer scaling (16×16 source to 48×48 display), including pets, wild captures and menu appearances. Boss art retains its own scale.
 - Syntax and browser checks passed. Restored node and party screenshots visually inspected in output/wood-client/upgrades.png and output/creature-scale-client/shot-0.png.
+
+## September 11 — minimal trail HUD
+
+- Removed stage and direction/boss labels from the trail header. Shows HP gauge/count, gold and separate essence totals only.
+- No timer-driven health animation existed; replaced fractional source cropping with a fixed texture and integer-pixel clipping to prevent fractional-edge shimmer. Gauge only responds to actual HP changes.
+- Syntax and browser checks passed; screenshot inspected and gauge crop identical across successive frames with unchanged HP.
+
+## September 11 — readable node text and prerequisite paths
+
+- Kept two-column 232×108 cards, removed rank/total counters to free header space, enlarged names/prices/descriptions, and restored prerequisite lines behind cards with cross-column paths through the gutter.
+- Damage and Health descriptions show only the resulting next-purchase total (or current value at maximum), calculated from actual current stats.
+- Reduced trail header height and used native-size static health receptacle to trim unused space. No gameplay or hitbox changes.
+- Syntax and node browser preview passed; screenshot inspected for text fit and requirement connections.
+
+## September 11 — music and menu sounds
+
+- Adventure Begin loops on title/map/upgrades/results. Each round randomly selects one looping track from Dark Forest, Dark Castle, Fight (17), Road, Final Area, Tension, Dungeon.
+- Accept4 plays on menu target clicks; Success1 plays only on successful upgrade/capture purchases. Music volume 30%, effects 55%. Reuses a single music element so tracks cannot overlap.
+- Audio unlocks on first pointer/keyboard interaction for browser autoplay rules; hidden tabs pause audio and visible tabs resume music. Playback rejection is caught.
+- Syntax and browser harness passed. Instrumented playback confirmed Accept4, Success1 on a real purchase, and active round music. Screenshot inspected; no browser error output. Audio was verified through browser playback state, not a listening review.
+
+## September 11 — targeted Fanglet ground traps
+
+- Replaced normal, double/triple and on-kill follow-up Fanglet projectiles with instant targeted damage and ground_trap_sheet animation attached to the victim. Existing crits, damage, cooldowns, follow-up chance and Mending Bite remain; follow-ups cannot chain.
+- Provisional range 360 pixels from Fanglet. Wounded in-range visible enemies are prioritized by lowest absolute HP; ties random. If none are wounded, select randomly among visible enemies in range. Each additional attack reselects a living target.
+- Actual sheet is 1000×100 (ten padded 100×100 cells), rendered 3× over 0.6 seconds. Surviving victims carry the effect with them; lethal strikes finish visually at the kill location unless the stage ends.
+- Syntax and targeted browser checks passed: lowest HP selection, exclusion of out-of-range enemy, guaranteed follow-up damage, two trap effects, no Fanglet projectiles. Late animation screenshot visually inspected. No balance re-simulation performed.
+
+## September 11 — equal player/Fangle damage ranks
+
+- Aligned Fangle base damage to player base 1; both now deal 1 + own damage rank + shared Party Bond bonus. Updated Fangle upgrade preview. Normal and follow-up traps inherit the same damage function.
+- Syntax and rank 0–10 parity checks passed with/without Party Bond. Attack cadence and individual critical upgrades remain separate.
+
+## September 11 — restore rank/currency headers
+
+- Node headers again show title, current/maximum rank, and G-prefixed gold or E-prefixed essence cost. Header columns are measured to avoid overlap within existing 232×108 cards; descriptions and connections retained.
+- Syntax and browser screenshot checks passed.
+- Prior damage audit: scripts/check-fangle-damage.cjs passes 44 actual-hit comparisons across ranks, Party Bond and criticals, plus follow-up damage and animation timing. Controlled 10-second rank-5 output was player 138 vs Fangle 60 due to cadence. No damage rebalance made during the audit.

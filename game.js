@@ -18,6 +18,7 @@
     lock: "lock.svg", nodeComplete: "node-complete.svg", nodeOpen: "node-open.svg", playerShot: "projectile-player.svg",
     enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg",
     earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
+    groundTrap: "assets/SoggySocks Combat FX/PNG/ground_trap_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
     playerWalk: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Walk.png",
     playerAttack: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Attack.png",
@@ -46,6 +47,47 @@
     image.onload = () => render();
     image.src = file.includes("/") ? file : `assets/placeholder/${file}`;
     assets[key] = image;
+  });
+
+  const roundTracks = ["37 - Dark Forest.ogg", "10 - Dark Castle.ogg", "17 - Fight.ogg", "23 - Road.ogg", "24 - Final Area.ogg", "28 - Tension.ogg", "21 - Dungeon.ogg"];
+  const menuTrack = "1 - Adventure Begin.ogg";
+  const music = typeof Audio === "undefined" ? null : new Audio();
+  const soundEffects = typeof Audio === "undefined" ? {} : {
+    select: new Audio("assets/Ninja Adventure - Asset Pack/Audio/Sounds/Menu/Accept4.wav"),
+    success: new Audio("assets/Ninja Adventure - Asset Pack/Audio/Jingles/Success1.wav")
+  };
+  let audioUnlocked = false;
+  let currentTrack = null;
+  if (music) { music.loop = true; music.volume = 0.3; music.preload = "auto"; }
+  Object.values(soundEffects).forEach(sound => { sound.volume = 0.55; sound.preload = "auto"; });
+  function playAudio(sound) {
+    if (sound && audioUnlocked && !document.hidden) sound.play()?.catch(() => {});
+  }
+  function setMusic(track) {
+    if (!music) return;
+    if (track !== currentTrack) {
+      music.pause();
+      currentTrack = track;
+      music.src = `assets/Ninja Adventure - Asset Pack/Audio/Musics/${track}`;
+    }
+    playAudio(music);
+  }
+  function unlockAudio() {
+    audioUnlocked = true;
+    if (!currentTrack) setMusic(menuTrack);
+    else playAudio(music);
+  }
+  function playSound(name) {
+    const sound = soundEffects[name];
+    if (!sound) return;
+    sound.currentTime = 0;
+    playAudio(sound);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      music?.pause();
+      Object.values(soundEffects).forEach(sound => sound.pause());
+    } else playAudio(music);
   });
 
   const stageNames = ["Mossy Mile", "Pebble Pass", "Bramble Bend", "Amber Road", "Old Mill", "Fern Crossing", "Dusty Rise", "Rune Trail", "Moonlit Gate", "Crownroot Keep"];
@@ -78,7 +120,7 @@
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
     { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${3 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
+    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Fangle Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
     { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
@@ -254,7 +296,7 @@
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
   const partyDamageBonus = () => hasRecruit("healer") && rank("partyBond") > 0 ? 5 : 0;
   const playerDamage = () => 1 + rank("power") + partyDamageBonus();
-  const strikerDamage = () => 2 + rank("strikerPower") + partyDamageBonus();
+  const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
   const rollAttackCount = (secondId, thirdId) => {
     if (!rank(secondId) || Math.random() >= shotChance(rank(secondId))) return 1;
@@ -266,6 +308,7 @@
 
   function setMode(mode) {
     state.mode = mode;
+    setMusic(mode === "combat" ? roundTracks[Math.floor(Math.random() * roundTracks.length)] : menuTrack);
     state.toast = "";
     render();
   }
@@ -460,6 +503,24 @@
     }
   }
 
+  const fangletRange = 360;
+  function fangletTarget(companion) {
+    const candidates = state.enemies.filter(enemy => enemyVisible(enemy) && enemy.hp > 0 && Math.hypot(enemy.x - companion.x, enemy.y - companion.y) <= fangletRange);
+    const wounded = candidates.filter(enemy => enemy.hp < enemy.maxHp);
+    const lowest = wounded.length ? Math.min(...wounded.map(enemy => enemy.hp)) : null;
+    const pool = wounded.length ? wounded.filter(enemy => enemy.hp === lowest) : candidates;
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  }
+
+  function fangletAttack(companion, source = "striker") {
+    if (state.mode !== "combat") return;
+    const target = fangletTarget(companion);
+    if (!target) return;
+    const hit = criticalAmount("striker", strikerDamage());
+    state.effects.push({ type: "groundTrap", target, x: target.x, y: target.y, life: 0.6, maxLife: 0.6, source, critical: hit.critical });
+    damageEnemy(target, hit.amount, source);
+  }
+
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp = precise(enemy.hp - amount);
@@ -468,15 +529,14 @@
       state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("strikerFollowupHeal")));
     }
     const playerImpact = source === "player";
-    state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
+    if (source !== "striker" && source !== "strikerFollowup") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
       if (enemy.type === "boss") { finishStage(true); return; }
       if (source === "striker" && rank("strikerFollowup") && Math.random() < Math.min(5, rank("strikerFollowup")) * 0.2) {
         const companion = state.companions.find(member => member.type === "striker");
-        const target = companion && nearestEnemy(companion.x, companion.y);
-        if (target) shoot(companion.x, companion.y, target.x, target.y, true, strikerDamage(), 510, "strikerFollowup");
+        if (companion) fangletAttack(companion, "strikerFollowup");
       }
     }
   }
@@ -490,12 +550,9 @@
       companion.pulse = Math.max(0, companion.pulse - dt);
       if (companion.timer > 0) continue;
       if (companion.type === "striker") {
-        const target = nearestEnemy(companion.x, companion.y);
-        if (target) {
+        if (fangletTarget(companion)) {
           const count = rollAttackCount("strikerDouble", "strikerTriple");
-          for (let index = 0; index < count; index += 1) {
-            shoot(companion.x + (index - (count - 1) / 2) * 10, companion.y + 15, target.x, target.y, true, strikerDamage(), 510, "striker");
-          }
+          for (let index = 0; index < count; index += 1) fangletAttack(companion);
         }
         companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
       } else if (companion.type === "healer") {
@@ -691,7 +748,12 @@
       if (hit || projectile.x < -40 || projectile.x > WIDTH + 40 || projectile.y < -40 || projectile.y > HEIGHT + 40) state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
     }
 
-    state.effects.forEach(effect => { effect.life -= dt; });
+    state.effects.forEach(effect => {
+      effect.life -= dt;
+      if (effect.type === "groundTrap" && state.enemies.includes(effect.target)) {
+        effect.x = effect.target.x; effect.y = effect.target.y;
+      }
+    });
     state.effects = state.effects.filter(effect => effect.life > 0);
     if (state.party.hp <= 0) finishStage(false);
     else if (state.bossDefeated) finishStage(true);
@@ -919,7 +981,24 @@
       if (index === upgradeBranch) drawWood("woodFocus", x - 3, 125, 102, 72, 3);
     });
     const positions = treePositions();
-    // Compact rows reserve fixed columns for rank and numeric cost.
+    // Draw prerequisite paths first so cards and text stay unobstructed.
+    for (const item of positions) for (const id of treeRequirements(item.definition)) {
+      const parent = positions.find(candidate => candidate.definition.id === id);
+      if (!parent) continue;
+      const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(id) >= (item.definition.requiredRanks?.[id] || 1);
+      ctx.strokeStyle = ready ? "#ffd873" : "#483326"; ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (parent.x === item.x) {
+        ctx.moveTo(parent.x + 116, parent.y + parent.height);
+        ctx.lineTo(item.x + 116, item.y);
+      } else {
+        const fromX = parent.x < item.x ? parent.x + 232 : parent.x;
+        const toX = parent.x < item.x ? item.x : item.x + 232;
+        ctx.moveTo(fromX, parent.y + 54); ctx.lineTo(270, parent.y + 54);
+        ctx.lineTo(270, item.y + 54); ctx.lineTo(toX, item.y + 54);
+      }
+      ctx.stroke();
+    }
     for (const item of positions) {
       const def = item.definition, current = rank(def.id);
       const captured = def.capture && hasRecruit(def.capture);
@@ -927,17 +1006,24 @@
       const maxed = !def.capture && current >= def.max;
       const cost = maxed || def.capture ? 0 : def.costs[current];
       drawPanel(item.x, item.y, 232, item.height, available ? "#253753f5" : "#303541f5");
-      ctx.font = '14px "NinjaPixel", monospace';
-      const nameSize = Math.min(14, 14 * 123 / Math.max(1, ctx.measureText(def.name).width));
-      drawText(def.name, item.x + 10, item.y + 23, nameSize, available ? "#fff" : "#eee0ca");
-      drawText(`${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`, item.x + 178, item.y + 23, 12, "#fff", "right");
       const price = def.capture ? (captured ? 0 : def.cost || 0) : maxed ? 0 : cost;
-      drawText(String(price), item.x + 222, item.y + 23, 12, "#fff", "right");
+      const rankLabel = `${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`;
+      const costLabel = `${def.currency ? "E" : "G"}${price}`;
+      ctx.font = '14px "NinjaPixel", monospace';
+      const costWidth = ctx.measureText(costLabel).width;
+      const rankWidth = ctx.measureText(rankLabel).width;
+      const rankRight = item.x + 222 - costWidth - 8;
+      const nameWidth = rankRight - rankWidth - 8 - (item.x + 10);
+      ctx.font = '18px "NinjaPixel", monospace';
+      const nameSize = Math.min(18, 18 * nameWidth / Math.max(1, ctx.measureText(def.name).width));
+      drawText(def.name, item.x + 10, item.y + 23, nameSize, available ? "#fff" : "#eee0ca");
+      drawText(rankLabel, rankRight, item.y + 23, 14, "#fff", "right");
+      drawText(costLabel, item.x + 222, item.y + 23, 14, "#fff", "right");
       const effect = def.capture
         ? captured ? "Unlock monster talents" : `Clear stage ${def.requiresStageClear || def.stage} to capture${def.currency ? ` / ${currencyName(def.currency)}` : ""}`
-        : !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
+        : def.id === "power" ? `${playerDamage() + (maxed ? 0 : 1)} damage` : def.id === "health" ? `${maxPartyHealth() + (maxed ? 0 : 5)} HP` : !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
       const description = effect + (!def.capture && def.currency ? ` / ${currencyName(def.currency)}` : "");
-      ctx.font = '14px "NinjaPixel", monospace';
+      ctx.font = '17px "NinjaPixel", monospace';
       const lines = [""];
       for (const word of description.split(" ")) {
         const last = lines.length - 1;
@@ -945,7 +1031,7 @@
         if (ctx.measureText(next).width > 208 && lines[last]) lines.push(word);
         else lines[last] = next;
       }
-      lines.slice(0, 3).forEach((line, index) => drawText(line, item.x + 12, item.y + 51 + index * 18, 14, "#fff"));
+      lines.slice(0, 3).forEach((line, index) => drawText(line, item.x + 12, item.y + 49 + index * 21, 17, "#fff"));
       uiTargets.push({ x: item.x, y: item.y, width: 232, height: item.height, action: () => attemptUpgrade(def) });
     }
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 742, 17, "#ffde83", "center");
@@ -1010,26 +1096,32 @@
       const alpha = clamp(effect.life / effect.maxLife, 0, 1);
       if (effect.type === "aoe") {
         ctx.strokeStyle = `rgba(185,124,255,${alpha})`; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * (1.1 - alpha * 0.1), 0, Math.PI * 2); ctx.stroke();
+      } else if (effect.type === "groundTrap") {
+        const frame = Math.min(9, Math.floor((1 - effect.life / effect.maxLife) * 10));
+        drawSheetFrame("groundTrap", effect.x, effect.y, frame, 10, 300);
       } else if (effect.type === "earthImpact") {
         const frame = Math.min(7, Math.floor((1 - effect.life / effect.maxLife) * 8));
         if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2, alpha);
       } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2, alpha);
     }
     if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
-    drawPanel(12, 12, WIDTH - 24, 114);
+    drawPanel(12, 12, WIDTH - 24, 96);
     const healthRatio = clamp(state.party.hp / state.party.maxHp, 0, 1);
     const vessel = assets.healthVessel, fill = assets.healthFill;
-    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 21, 51, 84);
+    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 20, 34, 56);
     if (fill?.naturalWidth && healthRatio > 0) {
-      const h = 40 * healthRatio;
-      ctx.drawImage(fill, 0, 40 - h, 22, h, 34, 33 + (40 - h) * 1.5, 33, h * 1.5);
+      // Fixed artwork; only the integer-pixel reveal changes with actual HP.
+      const height = Math.round(40 * healthRatio);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(31, 68 - height, 22, height); ctx.clip();
+      ctx.drawImage(fill, 31, 28, 22, 40);
+      ctx.restore();
     }
-    drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 92, 43, 20, "#fff");
-    drawText(`STAGE ${state.stage.number}`, 340, 43, 22, "#fff");
+    drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 75, 36, 20, "#fff");
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
-    drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND", 92, 76, 18, "#ffe2b2");
-    drawSprite("gold", 350, 76, 24); drawText(formatAmount(state.save.gold + state.runGold), 372, 76, 20, "#ffe17d");
-    drawText(`Essence: Fangle ${state.save.fangEssence + state.runEssence} / Buttermant ${state.save.mossEssence + state.runMossEssence}`, 92, 108, 14, "#e8d4ad");
+    drawSprite("gold", 350, 36, 24); drawText(formatAmount(state.save.gold + state.runGold), 372, 36, 20, "#ffe17d");
+    drawText(`Fangle essence: ${state.save.fangEssence + state.runEssence}`, 75, 62, 16, "#fff");
+    drawText(`Buttermant essence: ${state.save.mossEssence + state.runMossEssence}`, 75, 86, 16, "#fff");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
     } else {
@@ -1081,6 +1173,7 @@
         } else {
           state.save[definition.currency] -= definition.cost;
           state.save.recruits.push(definition.capture);
+          playSound("success");
           writeSave();
           state.toast = `${definition.name} captured! Talents unlocked`;
         }
@@ -1099,6 +1192,7 @@
     if (state.save[currency] < cost) { state.toast = `Need ${formatAmount(cost - state.save[currency])} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
     state.save[currency] = precise(state.save[currency] - cost);
     state.save.upgrades[definition.id] = current + 1;
+    playSound("success");
     state.toast = "";
     state.toastTimer = 0;
     if (definition.id === "autoTarget") state.save.autoTargetEnabled = true;
@@ -1119,6 +1213,7 @@
   let aimGesture = false;
   canvas.addEventListener("pointerdown", event => {
     if (!event.isPrimary) return;
+    unlockAudio();
     const point = canvasPoint(event);
     aimGesture = state.mode === "combat" && !targetAt(point);
     if (aimGesture) {
@@ -1139,11 +1234,14 @@
   }
   canvas.addEventListener("click", event => {
     if (aimGesture) { aimGesture = false; return; }
-    targetAt(canvasPoint(event))?.action();
+    unlockAudio();
+    const target = targetAt(canvasPoint(event));
+    if (target) { playSound("select"); target.action(); }
     render();
   });
 
   document.addEventListener("keydown", event => {
+    unlockAudio();
     if (event.code === "Space" && autoTargetUnlocked()) {
       event.preventDefault(); if (!event.repeat) toggleAutoTarget();
     }
@@ -1153,6 +1251,7 @@
   });
 
   window.render_game_to_text = () => JSON.stringify({
+    audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music && !music.paused },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
