@@ -197,3 +197,61 @@ Player Health +5 is now one ten-rank node, adding +5 shared HP per rank (60 tota
 ## South-spawning destructible rocks
 
 Stages 1–3 have no rocks. From stage 4, rocks enter from below the south edge every 3.5–4.5 seconds of base travel (faster with Trail Pace), moving north with terrain and despawning above the playfield. Spawn positions avoid the central party corridor. Each rock has 15 HP. Player Rock Breaker costs 30G, requires one Damage +1 rank, and unlocks player-shot damage against rocks. Shots use actual player damage and are absorbed on impact, including the destroying shot. Without the node rocks block shots without losing HP. Damaged rocks show health bars after unlock, and destruction clears the firing lane. No rock rewards are awarded.
+
+## September 10 — chance-based Spark upgrades
+
+Replaced guaranteed Split Spark projectiles with ten 10%-chance ranks. Added Triple Spark (ten ranks, 30G base, existing 1.35 price curve), requiring Split Spark rank 5. Third-shot rolls are conditional on a second shot. Updated expected DPS, rank-aware prerequisites/connection states, locked-node text, and Player tab layout. Saves retain purchased ranks. Successful purchases clear stale prerequisite messages.
+
+Validation: check-spark.cjs covers chance boundaries, conditional third shots, guaranteed shots at max, prerequisite purchases, cap, and average DPS. Game regression and 20-seed opening checks passed. Fixed an outdated opening test wallet (10G -> 30G) to match existing 15G starting damage/health prices. Browser checked rank-4 lock -> rank-5 purchase -> Triple Spark purchase -> save reload without errors. Skill client gameplay and upgrade screenshots were visually inspected in output/spark-client. Natural campaign pacing needs playtesting because early Split Spark ranks now provide less damage than the former guaranteed projectiles.
+
+## September 10 — Fangle Double/Triple Bite
+
+Added ten-rank Double Bite after Fangle Rhythm and ten-rank Triple Bite after Double Bite rank 5, each 10% per rank, 30G base, existing 1.35 cost curve. Shared shot-count roller preserves conditional third attacks for player and Fangle. Fangle fires full-damage projectiles toward the same target; on-kill Follow-Up Bite remains separate and non-recursive. Generalized prerequisite labels and painted connectors behind all cards to keep labels readable.
+
+Passed check-spark.cjs including Fangle capture/rank gating, both caps, actual projectile counts/damage, threshold rolls, and Follow-Up Bite non-chaining; check-game.cjs passed. Skill browser gameplay and native purchase/reload checks passed with no page errors; inspected output/bite-client screenshots. Legacy check-essence.cjs still assumes a 20-essence Follow-Up Bite and 8G Fangle Focus, while current definitions already charge 30 essence and 20G; this unrelated stale test fails at line 21.
+
+## September 10 — critical chance and damage for all party members
+
+Added eight nodes across Player/Fangle/Buttermant/Tinmin: 10 chance ranks (+1% each) and five multiplier ranks (+10 percentage points each, 150% base to 200% max). Buttermant gets critical healing. Gold bases 20/30 with existing cost curve; multiplier requires chance rank 1 and pets require capture. Per-projectile crits cover player/Fangle/follow-up, one roll per Tinmin blast, one per actual heal; no enemy crit changes. Expanded larger branch tabs to four rows and retained existing saves.
+
+check-crits.cjs passes all owners' gates/caps/boundaries, actual projectile damage, follow-up, AOE targets, heal cap and DPS. Existing spark and game regressions and opening checks pass. Browser gameplay uses output/crit-client; purchase/reload checks cover all four tabs.
+
+## September 10 — 110% crit baseline and decimal gold
+
+Corrected critical multiplier to 100% + 10% per purchased rank (110% first, 150% fifth) for all party members, including healing and expected player DPS. Preserved fractional combat values; normalized enemy HP subtraction and heals to six decimals. Replaced whole-gold accumulation with immediate fractional credits, normalized banking/purchases, and decimal-aware HUD/results/shortage formatting. Removed per-run goldFraction remainder.
+
+Crit tests pass for all owners and now also cover 1.1 damage, fractional health and exact death, 1.1G per kill, banking across runs, affordability and decimal remainders after purchase, and repeated fractional additions. Existing spark and game regression checks pass. Browser checks use output/decimal-client with a fractional wallet and save/reload.
+
+## September 10 — estimated party output and economy audit
+
+Updated standalone calculate-dps.cjs to include optional saved loadouts with all creature offensive ranks/crit/extra attacks, separate healing, travel/gold bonuses, real spawn HP, HP/sec crowd load, boss time and gold ranges. Default explicitly labels legacy budget/capture assumptions. Printed stages 1–10 and all-upgrade ceiling; checked formulas against passing crit/spark combat tests. Findings recorded in BALANCE.md: default stage-10 party 10.73 DPS vs 46.84 HP/sec spawn load, 556 boss HP, 50.53G full-traversal estimate at 82% kills (optimistic under that DPS). No gameplay tuning changed.
+
+## September 10 — all earned gold reinvested
+
+Replaced default calculator's 35% hypothetical baseline with a seeded real-combat campaign simulator. Buys all eligible affordable gold upgrades after every attempt using an explicit marginal-benefit policy; no reserved budget. Actual gold/essence, capture costs, retries, health and party ranks are simulated. Ledger and no-affordable-purchase-left assertions pass across ten completed campaigns. Stage 8 averaged 37.5 attempts; stage 10 winning party DPS 104.9 with 99.62G per attempt. Full rows and caveats in BALANCE.md; raw records output/economy-simulation.json. Gameplay unchanged.
+
+## September 10 — isolate normal kills from boss outcome
+
+Added hybrid default to simulation: 90% regular gold kills with actual spawn count and sampled species essence, then expected-DPS/discrete-hit boss survival. Full party HP and one landed hit per volley are explicit configurable baseline assumptions; triple-hit sensitivity available. Full simulation preserved as SIM_MODE=full with failure telemetry. Ten seeds completed for baseline and three-hit sensitivity; stage-8 means 20.6/26.8 attempts, so a significant wall remains. Reproduced original seed-1 full stage-8 33 attempts, mostly losses after boss spawn. Documented HP/damage step and caveats in BALANCE.md. No combat tuning changed.
+
+## September 10 — boss shots, pet hitboxes and following line
+
+Removed low-health boss triple fire. Pets follow player anchor in a 40px-spaced northward line. Nearest-member enemy targeting, member-specific melee impacts and swept enemy-projectile collisions now reduce shared HP once per hit; earliest intercepted body consumes the projectile. No offensive stat changes. Added party bodies to text state. Simulator triple-hit option removed and duplicated failure loadouts trimmed.
+
+check-party-hits.cjs passes: formation, player/all pets projectile collisions, pet melee hits/cooldowns, fast projectile first interception, lethal pet hit, every stage-6–10 boss full/low HP single shot. Existing game/spark/crit and opening checks passed. Skill browser gameplay inspected in output/party-hit-client; line is visible, no browser errors. Hybrid ten-seed audit still reports stage-8 20.6 attempts.
+
+Line-count audit: game.js was 989 lines before this change (now 1005), CSS 33, HTML 15. Approximately 165k lines were in output, dominated by generated simulation JSON (not runtime code). Historical artifacts retained; new reports avoid repeated loadouts on every failed attempt.
+
+## September 10 — ignored reports and unlock timing
+
+Added /output/ to .gitignore and removed previously tracked output artifacts from the Git index using --cached; all local files retained. Verified git check-ignore and zero tracked output entries. No commit created.
+
+Added chronological first-eligibility, rank-purchase and capture events to the simulator, with stage/attempt, cumulative gold and combat seconds. Prints first-rank summaries across ten seeds and writes ignored output/unlock-timing-hybrid.json. Existing stage results unchanged. Observed first purchases: Split Spark stage 4/~255G earned, Triple Spark stage 9/~2915G, Double Bite stages 7–8/~1231G, Triple Bite stage 10/~3645G. These depend on the purchase policy; capture timing uses essence/stage rules, not gold. Menu time excluded.
+
+## September 11 — priced Party Bond calculator scenario
+
+Added calculator-only +5 party damage hypothetical node, then corrected it to cost 50G per user instruction. Requires Buttermant capture and actual purchase; no healing bonus. All-affordable spending policy includes the new node. Baseline comparison uses bonus=0. Tested capture/price/cap and damage math; ten-seed ledger checks pass. Available stage 4, bought stages 4–5 (~432G cumulative earnings); stage-8 mean attempts 3.1 vs 20.6 baseline, campaign total 34 vs 73.1. No live game changes.
+
+## September 11 — Party Bond implemented
+
+Live Buttermant-branch node, one rank at 50G after capture, +5 to player and Fangle including Follow-Up Bite before crits. No healing/Tinmin bonus. Calculator uses actual definition without duplicating the node or bonus. Unit checks passed before user directed that tests are not needed; browser checks had already been launched. No further tests requested or run after that instruction.

@@ -44,7 +44,7 @@ enemy.x=270;enemy.y=700;damageEnemy(enemy,1);assert.equal(state.enemies.length,0
 spawnEnemy('basic');const charger=state.enemies[0];charger.x=80;charger.y=310;
 const hp=state.party.hp;updateCombat(1/60);assert.equal(state.party.hp,hp,'Passing the party latitude is not a hit');assert(charger.x>80,'Monsters home horizontally toward player');
 charger.x=state.party.x;charger.y=state.party.y+30;updateCombat(1/60);assert.equal(state.party.hp,hp-1);assert.equal(state.runGold,1,'Contact does not award a kill reward');
-api.setSave({gold:10});attemptUpgrade(upgradeDefs.find(d=>d.id==='power'));attemptUpgrade(upgradeDefs.find(d=>d.id==='health'));api.startStage(1);
+api.setSave({gold:30});attemptUpgrade(upgradeDefs.find(d=>d.id==='power'));attemptUpgrade(upgradeDefs.find(d=>d.id==='health'));api.startStage(1);
 assert.equal(state.party.maxHp,15);assert.equal(state.save.gold,0);updateCombat(1/60);assert.equal(state.projectiles[0].damage,2);
 console.log('PASS: opening balance across 20 seeds; 1 HP/1 gold; fast offscreen homing/contact; no offscreen hits; affordable +1 damage/+5 health');
 

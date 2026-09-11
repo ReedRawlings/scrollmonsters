@@ -30,3 +30,11 @@ Design: GDD.md. Tuning: BALANCE.md. Work log: progress.md.
 ## Reset for testing
 
 Refresh to return to the title screen, then choose **RESET PROGRESS** and confirm. This removes only this game's save in the current browser on the current site address, then reloads into a fresh game. Cancel keeps your progress. Saves on other browsers or deployment URLs are separate.
+
+## Progression estimates
+
+Run `node scripts/calculate-dps.cjs` to simulate spending all affordable gold using the 90% regular-kill / independent-boss model. It prints stage estimates and first-purchase/capture timing across ten seeds. Availability and purchases are recorded separately; gold totals are cumulative earnings, not individual upgrade prices. Times exclude menu and shopping time.
+
+Generated reports, screenshots and temporary browser harnesses live in `output/`, which is ignored by Git. Reusable scripts in `scripts/` remain tracked. Detailed unlock summaries are in `output/unlock-timing-hybrid.json`.
+
+Current calculator what-if: Party Bond is a 50G node unlocked by Buttermant capture, granting +5 damage to attacking members only. It is implemented in the live game for player and Fangle damage. Run `BUTTERMANT_PARTY_BONUS=0 node scripts/calculate-dps.cjs` for the no-node baseline. Scenario report filenames end in `-buttermant5-cost50.json`.

@@ -230,3 +230,35 @@ Stages 1–3 have no rocks. From stage 4, rocks enter from below the south edge 
 ## Animated party roster
 
 The current visual roster is the player plus Fangle (single-target attacker), Buttermant (healer), and Tinmin (AOE attacker). The player loops the four visible walking poses from row 3 of `assets/Sprites/MainCharacter/16x16 Walk-Sheet.png`; each pet loops its four-frame PNG strip. All party animations currently run at a provisional 8 FPS. Legacy internal role identifiers and essence save fields remain unchanged so existing browser saves continue to load.
+
+## Split Spark and Triple Spark — September 10
+
+Split Spark now has ten ranks, each adding 10 percentage points to the chance of a second projectile (10% at rank 1, 100% at rank 10). Split Spark rank 5 unlocks Triple Spark, a separate ten-rank node. When a second projectile triggers, Triple Spark rolls for a third with 10% per rank. Both maxed guarantees three projectiles per volley. Both nodes start at 30G and use the existing rounded 1.35-per-rank price curve. Existing Split Spark ranks are retained with the new effects. Damage projections use the expected shot count `1 + secondChance × (1 + thirdChance)`.
+
+## Fangle extra attacks — September 10
+
+Double Bite requires Fangle capture and one Fangle Rhythm rank. Its ten ranks add 10 percentage points per rank to the chance of a second regular attack projectile. Rank 5 unlocks Triple Bite, with ten ranks giving 10%–100% chance for a third projectile when the second triggers. Both maxed guarantees three full-damage projectiles per normal Fangle attack, aimed at the same target. Both start at 30 gold and use the existing rounded 1.35 price curve. Follow-Up Bite remains a separate essence-funded on-kill attack; its bonus projectile does not roll Double/Triple Bite or chain another follow-up.
+
+## Critical upgrades — September 10
+
+Player, Fangle, Buttermant and Tinmin each have independent Crit Chance (10 ranks, +1 percentage point each; 0% before purchase, 1%–10%) and Crit Damage (5 ranks, +10 percentage points to the multiplier each). Base critical output is 100%, increasing to 110%–150% with damage ranks. Buttermant's equivalent is named Crit Healing and increases healing, capped at party maximum HP. Crit Chance starts at 20G; Crit Damage/Healing starts at 30G, with the existing rounded 1.35 rank curve. One Crit Chance rank unlocks the multiplier node; pet upgrades require capture.
+
+Player and Fangle roll independently per projectile, including Fangle's on-kill follow-up. Tinmin rolls once per blast and applies the same multiplier to every target. Buttermant rolls once per actual heal, stacking with Deep Bloom. Fractional damage/healing is retained. Enemy attacks do not use party crit upgrades. Player DPS calculations include average crit output. Upgrade tabs with eight nodes use four rows and two columns to fit portrait screens.
+
+## Fractional damage and gold — September 10
+
+Crit Damage/Healing rank 1 now gives 110% output; ranks 2–5 give 120%/130%/140%/150%. A character with only Crit Chance has no critical output bonus until buying a multiplier rank. Fractional damage and healing are retained (1 damage at 110% = 1.1 damage). Enemy health subtraction normalizes to six decimal places to avoid residual floating-point health.
+
+Gold gain now credits the full fractional amount immediately, including Golden Echo: one 1G kill with rank 1 earns 1.1G. Fractions are banked after victory or defeat, retained across runs and save/reload, and preserved after purchases. Removed the whole-gold accumulator that discarded a remainder at the end of a run. Gold accounting normalizes to six decimal places; HUD/menu/result and purchase shortage displays omit unnecessary trailing zeros. Upgrade price curves are unchanged.
+
+## Single boss shots and vulnerable following pets — September 10
+
+Ranged bosses now fire exactly one projectile per attack at every health level; removed low-health triple volleys. Early melee bosses retain their existing attacks. Companions form a close northward line behind the southbound player, with 40px spacing and positions following the player anchor. Player and companions share the existing health pool; no separate pet HP/death system is introduced.
+
+Enemies approach/aim at the nearest party member. Melee contact on a pet damages shared HP using existing cooldowns. Enemy projectiles use swept collision against party hitboxes (20px player, 18px pet), damage the first body only and disappear, preventing a single shot from damaging multiple members in the line. Impact feedback appears at the struck body. Offensive damage, attack cadence and upgrade formulas are unchanged; actual target positioning and exposure can change combat outcomes.
+
+The hybrid boss calculator now permanently models one shot per attack; the obsolete BOSS_VOLLEY_HITS sensitivity option is removed. Its default stage-8 result remains 20.6 mean attempts because it already assumed one hit per volley. Future failure reports omit repeated full loadouts per loss, retaining concise failure metrics plus stage-winning loadouts. Historical reports are retained.
+
+## Party Bond — September 11
+
+Party Bond is now a live, single-rank 50G node in Buttermant's upgrade branch. Capturing Buttermant unlocks the purchase. Buying it adds +5 flat damage to player shots and Fangle attacks, including Follow-Up Bite, before critical multipliers. It does not increase healing or Tinmin damage. The purchased rank persists with existing upgrade saves.

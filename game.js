@@ -55,13 +55,13 @@
     Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
   const upgradeDefs = [
-    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+1 damage (${2 + rank} total)`, requires: [] },
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
-    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 2, costs: abilityRankCosts(30, 2), effect: rank => `${rank + 2} projectiles per volley`, requires: ["speed"] },
+    { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
     { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${3 + rank} total)`, requires: [], recruit: "striker" },
+    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${3 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Fangle Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
     { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
@@ -70,11 +70,22 @@
   ];
 
   upgradeDefs.push(
+    { id: "partyBond", name: "Party Bond", branch: "HEALER", recruit: "healer", max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
+    { id: "strikerDouble", name: "Double Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second bite chance`, requires: ["strikerSpeed"], recruit: "striker" },
+    { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
+    { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
     { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 1, costs: abilityRankCosts(30, 1), currency: "mossEssence", effect: () => "Double healing below half HP", requires: [], recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fangle kill: one extra bite", requires: [], recruit: "striker" },
   );
+
+  for (const [owner, branch, recruit] of [["player", "PLAYER", null], ["striker", "STRIKER", "striker"], ["healer", "HEALER", "healer"], ["aoe", "AOE", "aoe"]]) {
+    upgradeDefs.push(
+      { id: `${owner}CritChance`, name: "Crit Chance", branch, recruit, max: 10, costs: abilityRankCosts(20, 10), requires: [], effect: level => `${level + 1}% critical ${owner === "healer" ? "heal" : "hit"} chance` },
+      { id: `${owner}CritDamage`, name: owner === "healer" ? "Crit Healing" : "Crit Damage", branch, recruit, max: 5, costs: abilityRankCosts(30, 5), requires: [`${owner}CritChance`], effect: level => `${110 + level * 10}% critical ${owner === "healer" ? "healing" : "damage"}` }
+    );
+  }
 
   const balanceModel = Object.freeze({
     offenseShare: 0.35,
@@ -104,11 +115,16 @@
     return gold;
   }
 
-  function playerDpsFor(upgrades) {
-    const damage = 1 + (upgrades.power || 0);
-    const projectiles = 1 + (upgrades.multishot || 0);
+  const precise = value => Math.round(value * 1e6) / 1e6;
+  const formatAmount = value => String(precise(value));
+  const shotChance = level => Math.min(10, Math.max(0, level || 0)) / 10;
+  const expectedProjectiles = upgrades => 1 + shotChance(upgrades.multishot) * (1 + shotChance(upgrades.tripleSpark));
+
+  function playerDpsFor(upgrades, flatBonus = upgrades.partyBond ? 5 : 0) {
+    const damage = 1 + (upgrades.power || 0) + flatBonus;
+    const projectiles = expectedProjectiles(upgrades);
     const interval = 0.425 * (1 - (upgrades.speed || 0) * 0.1);
-    return damage * projectiles / interval;
+    return damage * projectiles / interval * (1 + Math.min(10, upgrades.playerCritChance || 0) / 100 * (Math.min(5, upgrades.playerCritDamage || 0) * 0.1));
   }
 
   function projectOffense(goldEarned) {
@@ -127,7 +143,7 @@
       spent,
       upgrades,
       damage: 1 + (upgrades.power || 0),
-      projectiles: 1 + (upgrades.multishot || 0),
+      projectiles: expectedProjectiles(upgrades),
       fireInterval: 0.425 * (1 - (upgrades.speed || 0) * 0.1),
       dps: playerDpsFor(upgrades)
     };
@@ -174,9 +190,10 @@
   const treePositions = () => {
     const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
-    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / 3) * 256, y: 230 + index % 3 * 136 }));
+    const rows = definitions.length > 6 ? 4 : 3;
+    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: 230 + index % rows * (rows === 4 ? 120 : 136) }));
   };
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
@@ -205,7 +222,7 @@
     mode: "title", save: loadSave(), mouse: { x: WIDTH / 2, y: HEIGHT * 0.8 }, selectedStage: 1, stage: null,
     party: { x: WIDTH / 2, y: HEIGHT / 2, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
     obstacles: [], scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
-    companions: [], result: null, toast: "", toastTimer: 0, goldFraction: 0, animationTime: 0
+    companions: [], result: null, toast: "", toastTimer: 0, animationTime: 0
   };
 
   const rank = id => state.save.upgrades[id] || 0;
@@ -213,9 +230,15 @@
   const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
-  const playerDamage = () => 1 + rank("power");
+  const partyDamageBonus = () => hasRecruit("healer") && rank("partyBond") > 0 ? 5 : 0;
+  const playerDamage = () => 1 + rank("power") + partyDamageBonus();
+  const strikerDamage = () => 2 + rank("strikerPower") + partyDamageBonus();
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
-  const playerProjectiles = () => 1 + rank("multishot");
+  const rollAttackCount = (secondId, thirdId) => {
+    if (!rank(secondId) || Math.random() >= shotChance(rank(secondId))) return 1;
+    return 2 + (rank(thirdId) > 0 && Math.random() < shotChance(rank(thirdId)) ? 1 : 0);
+  };
+  const playerProjectiles = () => rollAttackCount("multishot", "tripleSpark");
   const maxPartyHealth = () => 10 + rank("health") * 5;
   const autoTargetUnlocked = () => rank("autoTarget") > 0;
 
@@ -226,8 +249,27 @@
   }
 
   function setupCompanions() {
-    const offsets = { striker: [-64, -48], healer: [64, -48], aoe: [0, -100] };
-    state.companions = state.save.recruits.map((type, index) => ({ type, x: state.party.x + offsets[type][0], y: state.party.y + offsets[type][1], timer: 0.4 + index * 0.45, pulse: 0 }));
+    state.companions = state.save.recruits.map((type, index) => ({ type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
+  }
+
+  const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 20 }, ...state.companions.map(companion => ({ ...companion, r: 18 }))];
+  const nearestPartyBody = (x, y) => partyBodies().reduce((best, body) => Math.hypot(body.x - x, body.y - y) < Math.hypot(best.x - x, best.y - y) ? body : best);
+  function hitParty(body, damage) {
+    state.party.hp = precise(state.party.hp - damage);
+    state.effects.push({ type: "impact", x: body.x, y: body.y, life: 0.25, maxLife: 0.25, radius: 30 });
+  }
+  function projectilePartyHit(projectile, oldX, oldY) {
+    const dx = projectile.x - oldX, dy = projectile.y - oldY, lengthSquared = dx * dx + dy * dy;
+    return partyBodies().map(body => {
+      const radius = body.r + projectile.r, ox = oldX - body.x, oy = oldY - body.y;
+      const c = ox * ox + oy * oy - radius * radius;
+      if (c <= 0) return { body, t: 0 };
+      if (!lengthSquared) return null;
+      const b = 2 * (ox * dx + oy * dy), discriminant = b * b - 4 * lengthSquared * c;
+      if (discriminant < 0) return null;
+      const t = (-b - Math.sqrt(discriminant)) / (2 * lengthSquared);
+      return t >= 0 && t <= 1 ? { body, t } : null;
+    }).filter(Boolean).sort((a, b) => a.t - b.t)[0]?.body;
   }
 
   function startStage(stageNumber) {
@@ -246,7 +288,6 @@
     state.runGold = 0;
     state.runEssence = 0;
     state.runMossEssence = 0;
-    state.goldFraction = 0;
     state.bossSpawned = false;
     state.bossDefeated = false;
     state.enemies = [];
@@ -313,9 +354,18 @@
     }, null)?.enemy || null;
   }
 
+  function criticalAmount(owner, amount) {
+    const chance = Math.min(10, rank(`${owner}CritChance`)) / 100;
+    const critical = chance > 0 && Math.random() < chance;
+    return { amount: critical ? precise(amount * (1 + Math.min(5, rank(`${owner}CritDamage`)) * 0.1)) : amount, critical };
+  }
+
   function shoot(x, y, targetX, targetY, friendly, damage, speed = 560, source = "player", angleOffset = 0) {
     const angle = Math.atan2(targetY - y, targetX - x) + angleOffset;
-    state.projectiles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0 });
+    const owner = source === "strikerFollowup" ? "striker" : source;
+    const result = friendly ? criticalAmount(owner, damage) : { amount: damage, critical: false };
+    damage = result.amount;
+    state.projectiles.push({ critical: result.critical, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0 });
   }
 
   function firePlayerVolley() {
@@ -330,12 +380,7 @@
   }
 
   function awardGold(value) {
-    state.goldFraction += value * (1 + rank("magnet") * 0.1);
-    const wholeGold = Math.floor(state.goldFraction + 1e-9);
-    if (wholeGold > 0) {
-      state.runGold += wholeGold;
-      state.goldFraction -= wholeGold;
-    }
+    state.runGold = precise(state.runGold + value * (1 + rank("magnet") * 0.1));
   }
 
   function removeEnemy(enemy, reward = false) {
@@ -365,7 +410,7 @@
 
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
-    enemy.hp -= amount;
+    enemy.hp = precise(enemy.hp - amount);
     const playerImpact = source === "player";
     state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
@@ -375,24 +420,31 @@
       if (source === "striker" && rank("strikerFollowup")) {
         const companion = state.companions.find(member => member.type === "striker");
         const target = companion && nearestEnemy(companion.x, companion.y);
-        if (target) shoot(companion.x, companion.y, target.x, target.y, true, 2 + rank("strikerPower"), 510, "strikerFollowup");
+        if (target) shoot(companion.x, companion.y, target.x, target.y, true, strikerDamage(), 510, "strikerFollowup");
       }
     }
   }
 
   function updateCompanions(dt) {
-    for (const companion of state.companions) {
+    for (const [index, companion] of state.companions.entries()) {
+      companion.x = state.party.x;
+      companion.y = state.party.y - (index + 1) * 40;
       if (state.mode !== "combat") return;
       companion.timer -= dt;
       companion.pulse = Math.max(0, companion.pulse - dt);
       if (companion.timer > 0) continue;
       if (companion.type === "striker") {
         const target = nearestEnemy(companion.x, companion.y);
-        if (target) shoot(companion.x, companion.y + 15, target.x, target.y, true, 2 + rank("strikerPower"), 510, "striker");
+        if (target) {
+          const count = rollAttackCount("strikerDouble", "strikerTriple");
+          for (let index = 0; index < count; index += 1) {
+            shoot(companion.x + (index - (count - 1) / 2) * 10, companion.y + 15, target.x, target.y, true, strikerDamage(), 510, "striker");
+          }
+        }
         companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
       } else if (companion.type === "healer") {
         if (state.party.hp < state.party.maxHp) {
-          state.party.hp = Math.min(state.party.maxHp, state.party.hp + (2 + rank("healPower")) * (rank("deepBloom") && state.party.hp < state.party.maxHp / 2 ? 2 : 1));
+          state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + criticalAmount("healer", (2 + rank("healPower")) * (rank("deepBloom") && state.party.hp < state.party.maxHp / 2 ? 2 : 1)).amount));
           companion.pulse = 0.7;
           state.effects.push({ type: "heal", x: state.party.x, y: state.party.y, life: 0.7, maxLife: 0.7, radius: 54 });
         }
@@ -401,7 +453,8 @@
         const target = nearestEnemy(companion.x, companion.y);
         if (target) {
           const radius = 70 + rank("aoeRadius") * 22;
-          state.enemies.filter(enemy => Math.hypot(enemy.x - target.x, enemy.y - target.y) <= radius).forEach(enemy => damageEnemy(enemy, 3 + rank("aoePower")));
+          const blast = criticalAmount("aoe", 3 + rank("aoePower"));
+          state.enemies.filter(enemy => Math.hypot(enemy.x - target.x, enemy.y - target.y) <= radius).forEach(enemy => damageEnemy(enemy, blast.amount));
           state.effects.push({ type: "aoe", x: target.x, y: target.y, life: 0.55, maxLife: 0.55, radius });
         }
         companion.timer = 3.3;
@@ -414,7 +467,7 @@
     if (won && !state.bossDefeated) return;
     const firstClear = won && !state.save.completed.includes(state.stage.number);
     let newRecruit = null;
-    state.save.gold += state.runGold;
+    state.save.gold = precise(state.save.gold + state.runGold);
     state.save.fangEssence += state.runEssence;
     state.save.mossEssence += state.runMossEssence;
     if (won) {
@@ -467,30 +520,26 @@
 
     for (const enemy of [...state.enemies]) {
       // Enemies steer toward the fixed party independently of decorative terrain scroll.
-      const dx = state.party.x - enemy.x, dy = state.party.y - enemy.y;
+      const targetBody = nearestPartyBody(enemy.x, enemy.y);
+      const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
-      const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + 20 : 240) : enemy.r + 20;
+      const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
       const travel = Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
-      const touchingParty = Math.hypot(enemy.x - state.party.x, enemy.y - state.party.y) <= enemy.r + 21;
+      const touchingParty = Math.hypot(enemy.x - targetBody.x, enemy.y - targetBody.y) <= enemy.r + targetBody.r + 1;
       if (enemyVisible(enemy)) { enemy.attackTimer -= dt; enemy.meleeTimer -= dt; }
       if (((enemy.type === "ranged" && !touchingParty) || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && enemy.attackTimer <= 0) {
-        const shots = enemy.type === "boss" && state.stage.number > 1 && enemy.hp < enemy.maxHp * 0.45 ? 3 : 1;
-        for (let index = 0; index < shots; index += 1) {
-          shoot(enemy.x, enemy.y - enemy.r, state.party.x, state.party.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type, (index - (shots - 1) / 2) * 0.13);
-        }
+        shoot(enemy.x, enemy.y - enemy.r, targetBody.x, targetBody.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type);
         enemy.attackTimer = enemy.attackCooldown;
       }
-      if (meleeBoss && distance <= enemy.r + 21 && enemy.attackTimer <= 0) {
-        state.party.hp -= enemy.damage;
-        state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.25, maxLife: 0.25, radius: 30 });
+      if (meleeBoss && touchingParty && enemy.attackTimer <= 0) {
+        hitParty(targetBody, enemy.damage);
         enemy.attackTimer = enemy.attackCooldown;
       }
       if (enemy.type !== "boss" && touchingParty && enemy.meleeTimer <= 0) {
-        state.party.hp -= enemy.damage;
-        state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.25, maxLife: 0.25, radius: 30 });
+        hitParty(targetBody, enemy.damage);
         enemy.meleeTimer = enemy.meleeCooldown;
       }
     }
@@ -524,10 +573,9 @@
           if (state.mode !== "combat") return;
           hit = true;
         }
-      } else if (Math.hypot(projectile.x - state.party.x, projectile.y - state.party.y) < 26) {
-        state.party.hp -= projectile.damage;
-        state.effects.push({ type: "impact", x: state.party.x, y: state.party.y, life: 0.2, maxLife: 0.2, radius: 30 });
-        hit = true;
+      } else {
+        const body = projectilePartyHit(projectile, oldX, oldY);
+        if (body) { hitParty(body, projectile.damage); hit = true; }
       }
       if (hit || projectile.x < -40 || projectile.x > WIDTH + 40 || projectile.y < -40 || projectile.y > HEIGHT + 40) state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
     }
@@ -640,7 +688,7 @@
     drawText(title, 24, 35, 26, "#ffe17d");
     if (subtitle) drawText(subtitle, 24, 77, 17, "#b9cee5");
     drawSprite("gold", 420, 35, 28);
-    drawText(String(state.save.gold), 441, 35, 20, "#ffe17d");
+    drawText(formatAmount(state.save.gold), 441, 35, 20, "#ffe17d");
   }
 
   function drawTitle() {
@@ -692,8 +740,13 @@
     drawButton("UPGRADES", 280, 798, 220, 62, true, () => setMode("upgrades"));
   }
 
+  function rankRequirementText(definition) {
+    const [id, level] = Object.entries(definition.requiredRanks)[0];
+    return `Requires ${upgradeDefs.find(candidate => candidate.id === id).name} rank ${level}`;
+  }
+
   function upgradeUnlocked(definition) {
-    return (!definition.recruit || hasRecruit(definition.recruit)) && definition.requires.every(id => rank(id) > 0);
+    return (!definition.recruit || hasRecruit(definition.recruit)) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
   function drawUpgrades() {
@@ -709,10 +762,13 @@
       for (const requirement of treeRequirements(item.definition)) {
         const parent = positions.find(candidate => candidate.definition.id === requirement);
         if (!parent) continue;
-        const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(requirement) > 0;
+        const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(requirement) >= (item.definition.requiredRanks?.[requirement] || 1);
         ctx.strokeStyle = ready ? "#ffe17d" : "#58677a"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(parent.x + 116, parent.y + 108); ctx.lineTo(item.x + 116, item.y); ctx.stroke();
       }
+    }
+    // Paint cards over all connectors so cross-column links cannot cover labels.
+    for (const item of positions) {
       const def = item.definition, current = rank(def.id);
       const captured = def.capture && hasRecruit(def.capture);
       const available = def.capture ? (captured || !!def.currency) : upgradeUnlocked(def);
@@ -727,7 +783,7 @@
       } else {
         drawText(`Rank ${current}/${def.max}`, item.x + 10, item.y + 44, 15, "#d3dbe5");
         drawText(maxed ? "" : `${cost}${def.currency === "mossEssence" ? " ME" : def.currency ? " FE" : "G"}`, item.x + 220, item.y + 44, 15, state.save[def.currency || "gold"] >= cost ? "#ffe17d" : "#ff8d8d", "right");
-        const effect = maxed ? "MAXED" : def.id === "autoTarget" ? "Unlock auto-target" : def.id === "health" ? "+5 shared party HP" : def.effect(current);
+        const effect = !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : maxed ? "MAXED" : def.id === "autoTarget" ? "Unlock auto-target" : def.id === "health" ? "+5 shared party HP" : def.effect(current);
         const lines = [""];
         for (const word of effect.split(" ")) {
           if ((lines[lines.length - 1] + word).length > 25) lines.push("");
@@ -786,11 +842,11 @@
     drawSprite("heart", 38, 44, 28);
     ctx.fillStyle = "#513040"; ctx.fillRect(60, 30, 230, 29);
     ctx.fillStyle = "#ef476f"; ctx.fillRect(60, 30, 230 * clamp(state.party.hp / state.party.maxHp, 0, 1), 29);
-    drawText(`${Math.max(0, Math.ceil(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
+    drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
     drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
     drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
     drawText(`Essence: Fangle ${state.save.fangEssence + state.runEssence} • Buttermant ${state.save.mossEssence + state.runMossEssence}`, 24, 115, 16, "#a9e9eb");
-    drawSprite("gold", 330, 91, 28); drawText(String(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
+    drawSprite("gold", 330, 91, 28); drawText(formatAmount(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
     } else {
@@ -803,7 +859,7 @@
     drawBackground(); drawRoad(); drawPanel(24, 130, 492, 650);
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
     drawText(`Fangle essence: +${state.result.essence} (${state.save.fangEssence} total)`, WIDTH / 2, 330, 20, "#a9e9eb", "center");
-    drawText(`Total gold: ${state.save.gold}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
+    drawText(`Total gold: ${formatAmount(state.save.gold)}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
     drawText(`Buttermant essence: ${state.save.mossEssence}`, WIDTH / 2, 365, 20, "#a9e9eb", "center");
     if (state.result.newRecruit) {
       drawPet(state.result.newRecruit, WIDTH / 2, 402, 90);
@@ -845,15 +901,17 @@
       state.toastTimer = 1.8; return;
     }
     if (!upgradeUnlocked(definition)) {
-      state.toast = definition.recruit ? `Recruit the ${definition.branch.toLowerCase()} first` : "Purchase the prerequisite first";
+      state.toast = definition.id === "partyBond" ? "Capture Buttermant first" : definition.requiredRanks ? rankRequirementText(definition) : definition.recruit ? `Recruit the ${definition.branch.toLowerCase()} first` : "Purchase the prerequisite first";
       state.toastTimer = 1.8; return;
     }
     if (current >= definition.max) return;
     const cost = definition.costs[current];
     const currency = definition.currency || "gold";
-    if (state.save[currency] < cost) { state.toast = `Need ${cost - state.save[currency]} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
-    state.save[currency] -= cost;
+    if (state.save[currency] < cost) { state.toast = `Need ${formatAmount(cost - state.save[currency])} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
+    state.save[currency] = precise(state.save[currency] - cost);
     state.save.upgrades[definition.id] = current + 1;
+    state.toast = "";
+    state.toastTimer = 0;
     if (definition.id === "autoTarget") state.save.autoTargetEnabled = true;
     writeSave();
   }
@@ -908,15 +966,15 @@
   window.render_game_to_text = () => JSON.stringify({
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: Math.ceil(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits], memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animationFrame: Math.floor(state.animationTime * 8) % playerWalkFrames.length },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animationFrame: Math.floor(state.animationTime * 8) % playerWalkFrames.length },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
-      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
+      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: state.save.gold + state.runGold, totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
