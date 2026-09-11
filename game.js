@@ -35,6 +35,7 @@
     demonWalk: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Walk.png",
     demonHit: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Hit.png",
     monsterArmored: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Beast/Beast.png",
+    petRoster: "assets/Sprites/Pets/minimize_F-Sheet.png",
     petFangle: "assets/Sprites/Pets/Fangle.png",
     petButtermant: "assets/Sprites/Pets/buttermant.png",
     petTinmin: "assets/Sprites/Pets/tinmin.png"
@@ -213,8 +214,8 @@
     let definitions = treeDefs.filter(definition => definition.branch === branch);
     if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
-    const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
-    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136) }));
+    const height = Math.min(62, 510 / definitions.length - 4);
+    return definitions.map((definition, index) => ({ definition, x: 24, y: 212 + index * (height + 4), height }));
   };
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
@@ -578,8 +579,18 @@
     const previousScroll = state.scroll;
     state.scroll += 24 * travelMultiplier() * dt;
     const cameraStep = state.scroll - previousScroll;
-    for (const coin of state.drops) { coin.age += dt; coin.y -= cameraStep; }
-    state.drops = state.drops.filter(coin => coin.y + 70 > 126);
+    for (const coin of state.drops) {
+      coin.age += dt;
+      coin.y -= cameraStep;
+      if (coin.age >= 0.65) {
+        const dx = state.party.x - (coin.x + coin.offsetX), dy = state.party.y - (coin.y + coin.offsetY);
+        const distance = Math.hypot(dx, dy);
+        const step = (300 + Math.max(0, coin.age - 0.65) * 500) * dt;
+        if (distance <= 20 + step) coin.collected = true;
+        else { coin.x += dx / distance * step; coin.y += dy / distance * step; }
+      }
+    }
+    state.drops = state.drops.filter(coin => !coin.collected);
     for (const rock of state.obstacles) rock.y -= cameraStep;
     state.obstacles = state.obstacles.filter(rock => rock.y + rock.r >= 126);
     if (state.stage.number >= 4) {
@@ -728,13 +739,13 @@
   function playerAnimation() {
     const elapsed = state.animationTime - (state.playerAttackStartedAt ?? -Infinity);
     const attacking = state.mode === "combat" && elapsed >= 0 && elapsed < playerAttackDuration;
-    return { animation: attacking ? "attack" : "walk", frame: attacking ? Math.min(3, Math.floor(elapsed / playerAttackDuration * 4)) : Math.floor(state.animationTime * 8) % 4 };
+    return { animation: attacking ? "attack" : "walk", frame: attacking ? 0 : Math.floor(state.animationTime * 8) % 4 };
   }
 
   function drawPlayer(x, y, height = 54, alpha = 1) {
     const { animation, frame } = playerAnimation();
     const drawn = animation === "attack"
-      ? drawGridFrame("playerAttack", x, y, frame, 4, 0, 1, height, height, alpha)
+      ? drawGridFrame("playerAttack", x, y, 0, 4, 0, 1, height, height, alpha)
       : drawGridFrame("playerWalk", x, y, 0, 4, frame, 4, height, height, alpha);
     if (!drawn) drawSprite("player", x, y, height, alpha);
   }
@@ -752,17 +763,27 @@
       return;
     }
     const sheet = monsterSheets[enemy.type];
-    const size = enemy.type === "boss" ? 92 : enemy.r * 2.5;
+    const size = enemy.type === "boss" ? 92 : 16;
     if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
       drawSprite(enemy.type, enemy.x, enemy.y, size);
     }
   }
 
-  function drawPet(type, x, y, size = 44, alpha = 1) {
-    const sheet = { striker: "petFangle", healer: "petButtermant", aoe: "petTinmin" }[type];
-    const frame = Math.floor(state.animationTime * 8) % 4;
-    if (!sheet || !drawGridFrame(sheet, x, y, frame, 4, 0, 1, size, size, alpha)) drawSprite(type, x, y, size, alpha);
+  function drawPet(type, x, y, size = 16, alpha = 1, facing = "south") {
+    const row = { striker: 0, healer: 1, aoe: 2 }[type];
+    const image = assets.petRoster;
+    if (row === undefined || !image?.naturalWidth) return;
+    const direction = facing === "north" ? 1 : facing === "east" || facing === "west" ? 2 : 0;
+    const column = (Math.floor(state.animationTime * 8) % 4) * 3 + direction;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(Math.round(x), Math.round(y));
+    if (facing === "west") ctx.scale(-1, 1);
+    ctx.drawImage(image, column * 16, row * 32, 16, 16, -8, -8, 16, 16);
+    ctx.restore();
   }
+
+  const captureFacing = edge => ({ north: "south", south: "north", east: "west", west: "east" }[edge] || "south");
 
   function drawText(value, x, y, size = 18, color = "#fff", align = "left") {
     ctx.font = `${size}px "NinjaPixel", monospace`;
@@ -776,7 +797,7 @@
   }
 
   // Stretch only the centers and edges, preserving the pixel-art corners.
-  function drawWood(name, x, y, width, height, border = 3, scale = 3) {
+  function drawWood(name, x, y, width, height, border = 7, scale = 2) {
     const image = assets[name];
     if (!image?.complete || !image.naturalWidth) return;
     const sw = image.naturalWidth, sh = image.naturalHeight;
@@ -792,8 +813,7 @@
 
   function drawPanel(x, y, width, height, color = "") {
     drawWood(color === "#303541f5" ? "woodDisabled" : "woodPanel", x, y, width, height);
-    ctx.fillStyle = "#38291feb";
-    ctx.fillRect(x + 12, y + 12, width - 24, height - 24);
+
   }
 
   function drawButton(label, x, y, width, height, active = true, action = null) {
@@ -868,7 +888,7 @@
       const point = mapNodePosition(number);
       const complete = state.save.completed.includes(number), open = number <= state.save.unlockedStage;
       drawWood(open ? "woodButton" : "woodButtonDisabled", point.x - 36, point.y - 36, 72, 72, 2);
-      if (number === state.selectedStage) drawWood("woodFocus", point.x - 42, point.y - 42, 84, 84);
+      if (number === state.selectedStage) drawWood("woodFocus", point.x - 42, point.y - 42, 84, 84, 3);
       if (complete) drawText("*", point.x + 24, point.y - 24, 16, "#fff3b0", "center");
       drawText(String(number), point.x, point.y, 24, "#fff", "center");
       if ([3, 5, 10].includes(number)) drawPet(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
@@ -896,43 +916,29 @@
     branches.forEach((name, index) => {
       const x = 14 + index * 104;
       drawButton(name, x, 128, 96, 66, true, () => { upgradeBranch = index; });
-      if (index === upgradeBranch) drawWood("woodFocus", x - 3, 125, 102, 72);
+      if (index === upgradeBranch) drawWood("woodFocus", x - 3, 125, 102, 72, 3);
     });
     const positions = treePositions();
-    for (const item of positions) {
-      for (const requirement of treeRequirements(item.definition)) {
-        const parent = positions.find(candidate => candidate.definition.id === requirement);
-        if (!parent) continue;
-        const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(requirement) >= (item.definition.requiredRanks?.[requirement] || 1);
-        ctx.strokeStyle = ready ? "#ffe17d" : "#58677a"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(parent.x + 116, parent.y + 108); ctx.lineTo(item.x + 116, item.y); ctx.stroke();
-      }
-    }
-    // Paint cards over all connectors so cross-column links cannot cover labels.
+    // Compact rows reserve fixed columns for rank and numeric cost.
     for (const item of positions) {
       const def = item.definition, current = rank(def.id);
       const captured = def.capture && hasRecruit(def.capture);
       const available = def.capture ? (captured || (!!def.currency && captureStageUnlocked(def))) : upgradeUnlocked(def);
       const maxed = !def.capture && current >= def.max;
       const cost = maxed || def.capture ? 0 : def.costs[current];
-      drawPanel(item.x, item.y, 232, 108, available ? "#253753f5" : "#303541f5");
-      drawText(def.name, item.x + 10, item.y + 20, 17, available ? "#fff" : "#bac1cb");
-      if (def.capture) {
-        drawPet(def.capture, item.x + 205, item.y + 47, 30, captured ? 1 : 0.5);
-        drawText(captured ? "CAPTURED" : (!captureStageUnlocked(def) ? `Clear stage ${def.requiresStageClear}` : def.currency ? `${def.cost} ${currencyName(def.currency)}` : `Clear stage ${def.stage}`), item.x + 10, item.y + 45, 15, captured ? "#8ce99a" : "#ffe17d");
-        drawText("Unlock monster talents", item.x + 10, item.y + 81, 14, "#d3dbe5");
-      } else {
-        drawText(`Rank ${current}/${def.max}`, item.x + 10, item.y + 44, 15, "#d3dbe5");
-        drawText(maxed ? "" : `${cost}${def.currency === "mossEssence" ? " ME" : def.currency ? " FE" : "G"}`, item.x + 220, item.y + 44, 15, state.save[def.currency || "gold"] >= cost ? "#ffe17d" : "#ff8d8d", "right");
-        const effect = !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : maxed ? "MAXED" : def.id === "autoTarget" ? "Unlock auto-target" : def.id === "health" ? "+5 shared party HP" : def.effect(current);
-        const lines = [""];
-        for (const word of effect.split(" ")) {
-          if ((lines[lines.length - 1] + word).length > 25) lines.push("");
-          lines[lines.length - 1] += word + " ";
-        }
-        lines.slice(0, 2).forEach((line, index) => drawText(line.trim(), item.x + 10, item.y + 72 + index * 18, 14, "#ffe17d"));
-      }
-      uiTargets.push({ x: item.x, y: item.y, width: 232, height: 108, action: () => attemptUpgrade(def) });
+      drawPanel(item.x, item.y, 492, item.height, available ? "#253753f5" : "#303541f5");
+      drawText(def.name, item.x + 14, item.y + 18, 17, available ? "#fff" : "#eee0ca");
+      drawText(`${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`, item.x + 375, item.y + 18, 16, "#fff", "right");
+      const price = def.capture ? (captured ? 0 : def.cost || 0) : maxed ? 0 : cost;
+      drawText(String(price), item.x + 477, item.y + 18, 16, "#fff", "right");
+      const effect = def.capture
+        ? captured ? "Unlock monster talents" : `Clear stage ${def.requiresStageClear || def.stage} to capture${def.currency ? ` / ${currencyName(def.currency)}` : ""}`
+        : !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
+      const description = effect + (!def.capture && def.currency ? ` / ${currencyName(def.currency)}` : "");
+      ctx.font = '14px "NinjaPixel", monospace';
+      const textSize = Math.min(14, 14 * 464 / Math.max(1, ctx.measureText(description).width));
+      drawText(description, item.x + 14, item.y + item.height - 15, textSize, "#fff");
+      uiTargets.push({ x: item.x, y: item.y, width: 492, height: item.height, action: () => attemptUpgrade(def) });
     }
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 742, 17, "#ffde83", "center");
     drawButton("BACK TO MAP", 100, 804, 340, 68, true, () => setMode("map"));
@@ -976,8 +982,8 @@
       }
     }
     for (const enemy of state.enemies) {
-      if (enemy.species === "fanglet") drawPet("striker", enemy.x, enemy.y, enemy.r * 2.5);
-      else if (enemy.species === "mossbud") drawPet("healer", enemy.x, enemy.y, enemy.r * 2.5);
+      if (enemy.species === "fanglet") drawPet("striker", enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
+      else if (enemy.species === "mossbud") drawPet("healer", enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
       else drawMonster(enemy);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
@@ -989,7 +995,7 @@
       if (projectile.source === "player") {
         const frame = Math.floor(projectile.age * 12) % 4;
         const rotation = Math.atan2(projectile.vy, projectile.vx);
-        if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 100, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 3);
+        if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 200, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 6);
       } else drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3);
     }
     for (const effect of state.effects) {
@@ -1149,7 +1155,7 @@
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
-      coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, settled: coin.age >= 0.5 })),
+      coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,

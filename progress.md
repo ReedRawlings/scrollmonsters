@@ -305,3 +305,17 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Loaded NormalFont.ttf as NinjaPixel in CSS and all canvas text; font-load completion repaints deterministic screens. Added word spacing and fitted narrow branch labels.
 - Replaced combat health bar with the rectangular BackgroundWood receptacle and bottom-up ProgressHealth fill, retaining numeric HP. Asset is vertical, displayed beside the HUD text.
 - Syntax and browser captures passed; visually inspected title, map, upgrades and combat. Menu click navigation works; no browser error logs in final captures. Existing balance and saves unchanged.
+
+## September 11 — attack pose, homing coins, compact nodes
+
+- Corrected EggBoy attacks to hold only the first 16×16 column of the 64×16 Attack strip for 0.24s per volley; the sheet has only one frame in that column.
+- Coins pop, briefly rest, then accelerate toward the player while spinning and disappear on contact. Existing immediate gold credit is retained without duplicate pickup rewards. Browser trace shows 16 -> 8 -> 0 coins and animated travel.
+- Upgrade cards are compact full-width two-line rows: name, numeric current/total rank, numeric price; description below. Essence currency is named in relevant descriptions. Hit areas follow the new row dimensions.
+- Removed custom brown interior overlay and fixed panel nine-slicing to preserve its full border. Focus assets use their own smaller slices. Final menu screenshot inspected; syntax and browser harness passed.
+
+## September 11 — native creature pixels and directional capture atlas
+
+- Doubled player earth projectile rendering from 100 to 200 source-canvas display size (including fallback); damage/collision unchanged.
+- Regular monsters and capture pets now render at exactly 16×16 game pixels, independent of enemy radius, role, and menu context. DemonCyclop retains its separate boss size. Combat radii unchanged.
+- New minimize_F-Sheet.png is 192×80: creature rows begin at y=0/32/64, with fully transparent spacer rows at y=16/48. Four animation steps use columns step*3 + facing offset. South=0, north=1, east=2; west mirrors east. Wild spawn edges reverse facing; party pets face south.
+- Browser preview caught and corrected spacer-row indexing. Final screenshot shows all three pets; four-facing preview inspected. Syntax check and browser captures passed. Existing save IDs/display names preserved.
