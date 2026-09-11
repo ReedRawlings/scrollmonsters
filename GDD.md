@@ -281,3 +281,11 @@ The corrected ten-seed hybrid estimate gives stage 4 a mean of 5.9 attempts (5â€
 - The first stage-4 attempt schedules a 15G treasure chest 5â€“10 seconds into the run. It enters from the south, scrolls along the center lane, and has 5 HP and must be destroyed by player shots to award gold. Rocks are excluded from its lane while active. The reward is a flat 15G, banked with the run even on defeat after destruction.
 - The first-attempt flag is saved when stage 4 starts, so abandoning or losing early does not repeat the guarantee. Existing saves that already cleared stage 4 skip the guarantee. After that introduction, each stage attempt (including replays) rolls once at 0.1% for a chest; no chest upgrades yet.
 - The hybrid calculator shares chest scheduling/destruction and boss essence rewards with gameplay. Its ideal regular-clear and stage-4 7 HP pre-boss damage assumptions remain in effect.
+
+### Ranked essence traits
+- Follow-Up Bite now has five ranks: 20/40/60/80/100% chance on a regular Fangle attack kill to fire one extra bite at a remaining visible enemy. Extra bites cannot chain. Prices: 30/41/55/74/100 Fangle essence.
+- Rank 1 unlocks Mending Bite: five ranks healing 1/2/3/4/5 shared HP per landed follow-up, capped at max HP. Prices: 60/81/109/148/199 Fangle essence. Misses do not heal; this heal is flat, not a critical heal.
+- Deep Bloom now has five ranks: 20/40/60/80/100% chance per eligible Buttermant heal to double its healing while below half shared HP. Prices: 30/41/55/74/100 Buttermant essence. Above or at half HP it does not trigger.
+- Existing saved rank-1 purchases remain rank 1 (now a 20% trigger chance). The hybrid boss calculator rolls Deep Bloom chance at each eligible heal; Follow-Up Bite and Mending Bite remain excluded from isolated boss math because no regular-enemy kills are modeled during the boss fight.
+
+- Bloom Guard: one purchase for 200 Buttermant essence, unlocked by Deep Bloom rank 5. Each Deep Bloom proc can grant a single shared shield blocking the entire next damaging hit on any party member. No stacking or expiry; a 2-second cooldown starts when granted. A fresh Deep Bloom proc is required to reapply it after the cooldown. Shield and cooldown reset each stage attempt. Blue rings show protection; calculator includes boss-hit absorption.

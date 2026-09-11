@@ -76,9 +76,11 @@
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
     { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
-    { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 1, costs: abilityRankCosts(30, 1), currency: "mossEssence", effect: () => "Double healing below half HP", requires: [], recruit: "healer" },
+    { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "mossEssence", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
+    { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "mossEssence", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
-    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 1, costs: abilityRankCosts(30, 1), currency: "fangEssence", effect: () => "Fangle kill: one extra bite", requires: [], recruit: "striker" },
+    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "fangEssence", effect: rank => `${20 * (rank + 1)}% extra bite on Fangle kill`, requires: [], recruit: "striker" },
+    { id: "strikerFollowupHeal", name: "Mending Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "fangEssence", effect: rank => `Follow-Up Bite heals for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "striker" },
   );
 
   for (const [owner, branch, recruit] of [["player", "PLAYER", null], ["striker", "STRIKER", "striker"], ["healer", "HEALER", "healer"], ["aoe", "AOE", "aoe"]]) {
@@ -193,8 +195,8 @@
     let definitions = treeDefs.filter(definition => definition.branch === branch);
     if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
-    const rows = definitions.length > 6 ? 4 : 3;
-    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: 230 + index % rows * (rows === 4 ? 120 : 136) }));
+    const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
+    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136) }));
   };
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
@@ -256,6 +258,11 @@
   const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 20 }, ...state.companions.map(companion => ({ ...companion, r: 18 }))];
   const nearestPartyBody = (x, y) => partyBodies().reduce((best, body) => Math.hypot(body.x - x, body.y - y) < Math.hypot(best.x - x, best.y - y) ? body : best);
   function hitParty(body, damage) {
+    if (state.party.shield && damage > 0) {
+      state.party.shield = false;
+      state.effects.push({ type: "heal", x: body.x, y: body.y, life: 0.3, maxLife: 0.3, radius: 40 });
+      return;
+    }
     state.party.hp = precise(state.party.hp - damage);
     state.effects.push({ type: "impact", x: body.x, y: body.y, life: 0.25, maxLife: 0.25, radius: 30 });
   }
@@ -282,6 +289,8 @@
     state.mouse = { x: WIDTH / 2, y: HEIGHT * 0.8 };
     state.party.maxHp = maxPartyHealth();
     state.party.hp = state.party.maxHp;
+    state.party.shield = false;
+    state.party.shieldReadyAt = 0;
     state.stageTime = 0;
     state.spawnTimer = 0.35 / travelMultiplier();
     state.fireTimer = 0;
@@ -423,13 +432,16 @@
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp = precise(enemy.hp - amount);
+    if (source === "strikerFollowup" && rank("strikerFollowupHeal")) {
+      state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("strikerFollowupHeal")));
+    }
     const playerImpact = source === "player";
     state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
       if (enemy.type === "boss") { finishStage(true); return; }
-      if (source === "striker" && rank("strikerFollowup")) {
+      if (source === "striker" && rank("strikerFollowup") && Math.random() < Math.min(5, rank("strikerFollowup")) * 0.2) {
         const companion = state.companions.find(member => member.type === "striker");
         const target = companion && nearestEnemy(companion.x, companion.y);
         if (target) shoot(companion.x, companion.y, target.x, target.y, true, strikerDamage(), 510, "strikerFollowup");
@@ -456,7 +468,12 @@
         companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
       } else if (companion.type === "healer") {
         if (state.party.hp < state.party.maxHp) {
-          state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + criticalAmount("healer", (2 + rank("healPower")) * (rank("deepBloom") && state.party.hp < state.party.maxHp / 2 ? 2 : 1)).amount));
+          const deepBloom = state.party.hp < state.party.maxHp / 2 && rank("deepBloom") && Math.random() < Math.min(5, rank("deepBloom")) * 0.2;
+          state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + criticalAmount("healer", (2 + rank("healPower")) * (deepBloom ? 2 : 1)).amount));
+          if (deepBloom && rank("bloomShield") && !state.party.shield && state.stageTime >= state.party.shieldReadyAt) {
+            state.party.shield = true;
+            state.party.shieldReadyAt = state.stageTime + 2;
+          }
           companion.pulse = 0.7;
           state.effects.push({ type: "heal", x: state.party.x, y: state.party.y, life: 0.7, maxLife: 0.7, radius: 54 });
         }
@@ -870,6 +887,12 @@
     }
     drawPlayer(state.party.x, state.party.y, 54);
     for (const companion of state.companions) drawPet(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
+    if (state.party.shield) {
+      ctx.strokeStyle = "#8ce9ff"; ctx.lineWidth = 3;
+      for (const body of partyBodies()) {
+        ctx.beginPath(); ctx.arc(body.x, body.y, body.r + 9, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
     for (const enemy of state.enemies) {
       if (enemy.species === "fanglet") drawPet("striker", enemy.x, enemy.y, enemy.r * 2.5);
       else if (enemy.species === "mossbud") drawPet("healer", enemy.x, enemy.y, enemy.r * 2.5);
@@ -1032,7 +1055,7 @@
   window.render_game_to_text = () => JSON.stringify({
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animationFrame: Math.floor(state.animationTime * 8) % playerWalkFrames.length },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animationFrame: Math.floor(state.animationTime * 8) % playerWalkFrames.length },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },

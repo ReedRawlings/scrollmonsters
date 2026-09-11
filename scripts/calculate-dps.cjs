@@ -25,7 +25,7 @@ function party(u,recruits){
 }
 console.log(`Player/Fangle flat damage bonus after Buttermant: ${process.env.BUTTERMANT_PARTY_BONUS??5}; requires purchased partyBond rank 1 (50G); no healing bonus.`);
 console.log('Using supplied upgrades/recruits; static loadout comparison, not a campaign spending policy.');
-console.log('DPS is ideal sustained single-target output (all projectiles hit, no overkill/rocks/travel loss); healing is separate. Follow-Up Bite is excluded: its DPS depends on kill rate. Deep Bloom doubles healing only below half HP.');
+console.log('DPS is ideal sustained single-target output (all projectiles hit, no overkill/rocks/travel loss); healing is separate. Follow-Up Bite is excluded: its DPS depends on kill rate. Deep Bloom has a 20% per rank chance to double healing below half HP.');
 const rows=stages.map(stage=>{
  const gold=a.expectedCampaignGold(stage-1), u=supplied?.upgrades||a.projectOffense(gold).upgrades;
  const recruits=supplied?.recruits||[...(stage>=4?['striker']:[]),...(stage>=6?['healer']:[])];

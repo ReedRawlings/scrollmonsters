@@ -72,7 +72,7 @@ function bossFight(g,stage,preBossDamage=0) {
  const cfg=g.stageConfigs[stage-1],p=output(g),u=g.state.save.upgrades;
  const maxBossHp=Number((Math.round(28*cfg.bossHpScale*(cfg.majorBoss?1.5:1))*cfg.hpMultiplier*cfg.bossHpMultiplier).toFixed(6));
  const hit=Math.max(1,Math.round(5*cfg.damageScale));
- let bossHp=maxBossHp,hp=Math.max(0,p.hp*entryHp-preBossDamage),time=0,previousTime=0,nextAttack=2.4;
+ let bossHp=maxBossHp,hp=Math.max(0,p.hp*entryHp-preBossDamage),time=0,previousTime=0,nextAttack=2.4,shield=false,shieldReadyAt=0;
  if(hp<=0)return {won:false,seconds:0,hp,bossHp,hit,maxBossHp};
  const healInterval=4.6*(1-.15*r(u,'healSpeed'));let nextHeal=healInterval;
  // No approach delay, misses, rocks, leftover enemies, or overkill. Full focus on boss.
@@ -81,8 +81,13 @@ function bossFight(g,stage,preBossDamage=0) {
   const delta=time-previousTime;
   bossHp-=p.dps*delta;previousTime=time;
   if(bossHp<=1e-8){return {won:true,seconds:time,hp,bossHp:0,hit,maxBossHp};}
-  if(nextHeal<=time+1e-8&&p.heal>0){hp=Math.min(p.hp,hp+p.heal*healInterval*(r(u,'deepBloom')&&hp<p.hp/2?2:1));nextHeal+=healInterval;}
-  if(nextAttack<=time+1e-8){hp-=hit;nextAttack+=2.4;}
+  if(nextHeal<=time+1e-8&&p.heal>0){
+   const bloom=hp<p.hp/2&&r(u,'deepBloom')&&g.random()<Math.min(5,r(u,'deepBloom'))*.2;
+   hp=Math.min(p.hp,hp+p.heal*healInterval*(bloom?2:1));
+   if(bloom&&r(u,'bloomShield')&&!shield&&time>=shieldReadyAt){shield=true;shieldReadyAt=time+2;}
+   nextHeal+=healInterval;
+  }
+  if(nextAttack<=time+1e-8){if(shield)shield=false;else hp-=hit;nextAttack+=2.4;}
   if(hp<=0){return {won:false,seconds:time,hp,bossHp,hit,maxBossHp};}
  }
  throw Error('Boss model did not terminate');
