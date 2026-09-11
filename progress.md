@@ -8,6 +8,15 @@ Original prompt: Read GDD.md and assets/README.md. Use the develop-web-game skil
 - Documented combat, economy, upgrades, recruits, and test-mode pacing in `BALANCE.md`.
 - Fixed end-of-stage gold loss by banking uncollected earned drops, increased collection pull, made the overworld static, changed stages 1–2 to visibly advance the party against charging-only enemies, and increased travel/enemy/projectile speeds from player feedback.
 
+## September 10 — animated player and pet roster
+
+- Replaced the player placeholder with the four visible walking poses on row 3 of `16x16 Walk-Sheet.png`, looping at 8 FPS while skipping two nearly empty spacer cells.
+- Replaced companion placeholders with four-frame 8 FPS strips: Fangle as the single-target attacker, Buttermant as healer, and Tinmin as AOE attacker.
+- Applied the pet sprites across title, map milestones, capture nodes, combat, wild matching species, and recruitment results.
+- Preserved `striker`/`healer`/`aoe` save identifiers so existing browser saves remain compatible.
+- `node scripts/check-game.cjs` passed. `scripts/check-party-sprites.cjs` passed player/pet frame advancement, roster names, save reload, and browser errors.
+- The supplied develop-web-game client produced `output/party-sprites-client/shot-0.png` and matching text state with no error log; title and combat captures were visually inspected.
+
 ## TODO
 
 - Playtest a fresh-save journey through all ten stages to tune the new miniboss difficulty and economy.

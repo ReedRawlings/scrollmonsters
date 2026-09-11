@@ -30,3 +30,12 @@ The player attack uses two sheets from `SoggySocks Earth FX/PNG/`:
 - `impact_earth_3_sheet.png`: eight 100 × 100 cells, played once over 0.48 seconds when a player projectile damages an enemy.
 
 The visible pixel art occupies a small centered region inside each transparent cell. Cells render at 100 × 100 canvas pixels to retain that native visual scale. The original SVG projectile and impact remain runtime fallbacks if either PNG cannot load.
+
+## Character and pet animations
+
+- `Sprites/MainCharacter/16x16 Walk-Sheet.png`: the player uses the four visible walking poses on row 3 (columns 1, 3, 4, and 6) at 8 FPS, skipping two spacer/transition cells. The source cells are 16 × 24 pixels and render at a 2:3 aspect ratio.
+- `Sprites/Pets/Fangle.png`: four 16 × 16 frames for the single-target attacker.
+- `Sprites/Pets/buttermant.png`: four 16 × 16 frames for the healer.
+- `Sprites/Pets/tinmin.png`: four 16 × 16 frames for the AOE attacker.
+
+All pet strips loop at 8 FPS. Existing SVG character placeholders remain load fallbacks, and internal role/save identifiers stay unchanged for browser-save compatibility.

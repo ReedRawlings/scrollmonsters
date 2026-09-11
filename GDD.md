@@ -226,3 +226,7 @@ Player Health +5 is now one ten-rank node, adding +5 shared HP per rank (60 tota
 ## South-spawning destructible rocks
 
 Stages 1–3 have no rocks. From stage 4, rocks enter from below the south edge every 3.5–4.5 seconds of base travel (faster with Trail Pace), moving north with terrain and despawning above the playfield. Spawn positions avoid the central party corridor. Each rock has 15 HP. Player Rock Breaker costs 30G, requires one Damage +1 rank, and unlocks player-shot damage against rocks. Shots use actual player damage and are absorbed on impact, including the destroying shot. Without the node rocks block shots without losing HP. Damaged rocks show health bars after unlock, and destruction clears the firing lane. No rock rewards are awarded.
+
+## Animated party roster
+
+The current visual roster is the player plus Fangle (single-target attacker), Buttermant (healer), and Tinmin (AOE attacker). The player loops the four visible walking poses from row 3 of `assets/Sprites/MainCharacter/16x16 Walk-Sheet.png`; each pet loops its four-frame PNG strip. All party animations currently run at a provisional 8 FPS. Legacy internal role identifiers and essence save fields remain unchanged so existing browser saves continue to load.
