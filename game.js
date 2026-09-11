@@ -19,7 +19,22 @@
     enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg",
     earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
-    playerWalk: "assets/Sprites/MainCharacter/16x16 Walk-Sheet.png",
+    playerWalk: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Walk.png",
+    playerAttack: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Attack.png",
+    monsterBasic: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bamboo/SpriteSheet.png",
+    monsterRanged: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Axolot/SpriteSheet.png",
+    woodPanel: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel.png",
+    woodDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel_disabled.png",
+    woodButton: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/button_normal.png",
+    woodButtonDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/button_disabled.png",
+    woodFocus: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_focus.png",
+    healthVessel: "assets/Ninja Adventure - Asset Pack/Ui/Receptacle/Receptacle Rectangle/BackgroundWood.png",
+    healthFill: "assets/Ninja Adventure - Asset Pack/Ui/Receptacle/Receptacle Rectangle/ProgressHealth.png",
+    coinDrop: "assets/Ninja Adventure - Asset Pack/Items/Treasure/Coin2.png",
+    treasureChest: "assets/Ninja Adventure - Asset Pack/Items/Treasure/LittleTreasureChest.png",
+    demonWalk: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Walk.png",
+    demonHit: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Hit.png",
+    monsterArmored: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Beast/Beast.png",
     petFangle: "assets/Sprites/Pets/Fangle.png",
     petButtermant: "assets/Sprites/Pets/buttermant.png",
     petTinmin: "assets/Sprites/Pets/tinmin.png"
@@ -188,7 +203,10 @@
     { id: "captureAoe", name: "Tinmin", branch: "AOE", capture: "aoe", stage: 10, requires: [] }
   ];
   const petDisplayNames = { striker: "Fangle", healer: "Buttermant", aoe: "Tinmin" };
-  const playerWalkFrames = [0, 2, 3, 5];
+  const monsterSheets = { basic: "monsterBasic", ranged: "monsterRanged", armored: "monsterArmored" };
+  // Columns name spawn sections, not the monster's current movement heading.
+  const monsterColumns = { north: 0, south: 1, east: 2, west: 3 };
+  const playerAttackDuration = 0.24;
   const treeDefs = [...upgradeDefs, ...captureDefs];
   const treePositions = () => {
     const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
@@ -294,6 +312,7 @@
     state.stageTime = 0;
     state.spawnTimer = 0.35 / travelMultiplier();
     state.fireTimer = 0;
+    state.playerAttackStartedAt = -Infinity;
     state.scroll = 0;
     state.runGold = 0;
     state.runEssence = 0;
@@ -351,9 +370,10 @@
     const species = type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : canFang && speciesRoll < fangDensity(state.stage.number) ? "fanglet" : speciesRoll >= fangDensity(state.stage.number) && speciesRoll < fangDensity(state.stage.number) + mossDensity(state.stage.number) ? "mossbud" : null;
     const openingFanglet = openingStage && species === "fanglet";
     const hp = precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
-    const spawn = spawnPoint(base.radius, forcedEdge);
+    const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
+    const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
     state.enemies.push({
-      type, species, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
+      type, species, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
@@ -367,7 +387,7 @@
   const enemyVisible = enemy => enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
 
   function nearestEnemy(fromX = state.party.x, fromY = state.party.y, includeTreasure = false) {
-    const targets = includeTreasure && state.treasure ? [...state.enemies, state.treasure] : state.enemies;
+    const targets = includeTreasure && state.treasure && !state.treasure.open ? [...state.enemies, state.treasure] : state.enemies;
     return targets.filter(enemyVisible).reduce((best, enemy) => {
       const distance = Math.hypot(enemy.x - fromX, enemy.y - fromY);
       return !best || distance < best.distance ? { enemy, distance } : best;
@@ -389,6 +409,7 @@
   }
 
   function firePlayerVolley() {
+    state.playerAttackStartedAt = state.animationTime;
     const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy(state.party.x, state.party.y, true) : null;
     const targetX = target?.x ?? state.mouse.x;
     const targetY = target?.y ?? state.mouse.y;
@@ -396,6 +417,14 @@
     for (let index = 0; index < count; index += 1) {
       const spread = count === 1 ? 0 : (index - (count - 1) / 2) * 0.105;
       shoot(state.party.x, state.party.y + 20, targetX, targetY, true, playerDamage(), 560, "player", spread);
+    }
+  }
+
+  function spawnCoins(x, y, count) {
+    for (let index = 0; index < count; index++) {
+      const angle = index * 2.39996;
+      const radius = count === 1 ? 0 : 18 + 11 * Math.sqrt(index);
+      state.drops.push({ x, y, age: 0, offsetX: Math.cos(angle) * radius, offsetY: Math.sin(angle) * radius * 0.65, popHeight: 22 + (index % 3) * 5 });
     }
   }
 
@@ -409,6 +438,7 @@
     state.enemies.splice(index, 1);
     if (reward) {
       awardGold(enemy.gold);
+      spawnCoins(enemy.x, enemy.y, enemy.gold);
       if (enemy.species === "fanglet" && enemy.type !== "boss") {
         state.save.fangDryKills += 1;
         if (Math.random() < 0.3 || state.save.fangDryKills >= 5) {
@@ -432,6 +462,7 @@
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp = precise(enemy.hp - amount);
+    if (enemy.demonCyclop && amount > 0) enemy.hitStartedAt = state.animationTime;
     if (source === "strikerFollowup" && rank("strikerFollowupHeal")) {
       state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("strikerFollowupHeal")));
     }
@@ -515,7 +546,8 @@
 
   // Chests ride the center lane; only destroying one grants its reward.
   function updateTreasure(previousTime, currentTime) {
-    if (state.treasureSpawnAt === null || currentTime < state.treasureSpawnAt || state.treasureGold) return;
+    if (state.treasureSpawnAt === null || currentTime < state.treasureSpawnAt) return;
+    if (!state.treasure && state.treasureGold) return;
     if (!state.treasure) state.treasure = { x: WIDTH / 2, y: HEIGHT + 20, r: 20, hp: 5, maxHp: 5 };
     state.treasure.y -= 24 * travelMultiplier() * Math.max(0, currentTime - Math.max(previousTime, state.treasureSpawnAt));
     // Reserve the whole lane, including rocks that entered before the chest.
@@ -527,12 +559,14 @@
   }
 
   function damageTreasure(amount) {
-    if (!state.treasure) return;
+    if (!state.treasure || state.treasure.open) return;
     state.treasure.hp = precise(state.treasure.hp - amount);
     if (state.treasure.hp <= 0) {
       state.runGold = precise(state.runGold + 15);
       state.treasureGold = 15;
-      state.treasure = null;
+      state.treasure.hp = 0;
+      state.treasure.open = true;
+      spawnCoins(state.treasure.x, state.treasure.y, 15);
       state.toast = "Treasure chest +15 gold";
       state.toastTimer = 2;
     }
@@ -544,6 +578,8 @@
     const previousScroll = state.scroll;
     state.scroll += 24 * travelMultiplier() * dt;
     const cameraStep = state.scroll - previousScroll;
+    for (const coin of state.drops) { coin.age += dt; coin.y -= cameraStep; }
+    state.drops = state.drops.filter(coin => coin.y + 70 > 126);
     for (const rock of state.obstacles) rock.y -= cameraStep;
     state.obstacles = state.obstacles.filter(rock => rock.y + rock.r >= 126);
     if (state.stage.number >= 4) {
@@ -608,7 +644,7 @@
       if (projectile.source === "player") {
         const dx = projectile.x - oldX, dy = projectile.y - oldY;
         const chest = state.treasure;
-        if (chest && enemyVisible(chest)) {
+        if (chest && !chest.open && enemyVisible(chest)) {
           const t = clamp(((chest.x - oldX) * dx + (chest.y - oldY) * dy) / Math.max(0.001, dx * dx + dy * dy), 0, 1);
           if (Math.hypot(oldX + t * dx - chest.x, oldY + t * dy - chest.y) <= chest.r + projectile.r) {
             damageTreasure(projectile.damage);
@@ -689,9 +725,37 @@
     return true;
   }
 
+  function playerAnimation() {
+    const elapsed = state.animationTime - (state.playerAttackStartedAt ?? -Infinity);
+    const attacking = state.mode === "combat" && elapsed >= 0 && elapsed < playerAttackDuration;
+    return { animation: attacking ? "attack" : "walk", frame: attacking ? Math.min(3, Math.floor(elapsed / playerAttackDuration * 4)) : Math.floor(state.animationTime * 8) % 4 };
+  }
+
   function drawPlayer(x, y, height = 54, alpha = 1) {
-    const frame = Math.floor(state.animationTime * 8) % playerWalkFrames.length;
-    if (!drawGridFrame("playerWalk", x, y, playerWalkFrames[frame], 6, 2, 5, height * 2 / 3, height, alpha)) drawSprite("player", x, y, height, alpha);
+    const { animation, frame } = playerAnimation();
+    const drawn = animation === "attack"
+      ? drawGridFrame("playerAttack", x, y, frame, 4, 0, 1, height, height, alpha)
+      : drawGridFrame("playerWalk", x, y, 0, 4, frame, 4, height, height, alpha);
+    if (!drawn) drawSprite("player", x, y, height, alpha);
+  }
+
+  function demonAnimation(enemy) {
+    const elapsed = state.animationTime - (enemy.hitStartedAt ?? -Infinity);
+    const hit = elapsed >= 0 && elapsed < 0.3;
+    return { animation: hit ? "hit" : "walk", frame: hit ? Math.min(2, Math.floor(elapsed * 10)) : Math.floor(state.animationTime * 8) % 6 };
+  }
+
+  function drawMonster(enemy) {
+    if (enemy.demonCyclop) {
+      const { animation, frame } = demonAnimation(enemy);
+      if (!drawSheetFrame(animation === "hit" ? "demonHit" : "demonWalk", enemy.x, enemy.y, frame, animation === "hit" ? 3 : 6, 100)) drawSprite("boss", enemy.x, enemy.y, 92);
+      return;
+    }
+    const sheet = monsterSheets[enemy.type];
+    const size = enemy.type === "boss" ? 92 : enemy.r * 2.5;
+    if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
+      drawSprite(enemy.type, enemy.x, enemy.y, size);
+    }
   }
 
   function drawPet(type, x, y, size = 44, alpha = 1) {
@@ -701,7 +765,8 @@
   }
 
   function drawText(value, x, y, size = 18, color = "#fff", align = "left") {
-    ctx.font = `bold ${size}px ui-monospace, monospace`;
+    ctx.font = `${size}px "NinjaPixel", monospace`;
+    ctx.wordSpacing = "2px";
     ctx.textAlign = align;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#172335";
@@ -710,22 +775,34 @@
     ctx.fillText(value, x, y);
   }
 
-  function drawPanel(x, y, width, height, color = "#172335e8") {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = "#d6b36a";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, width, height);
+  // Stretch only the centers and edges, preserving the pixel-art corners.
+  function drawWood(name, x, y, width, height, border = 3, scale = 3) {
+    const image = assets[name];
+    if (!image?.complete || !image.naturalWidth) return;
+    const sw = image.naturalWidth, sh = image.naturalHeight;
+    const edge = Math.min(border * scale, width / 2, height / 2);
+    const sx = [0, border, sw - border], sy = [0, border, sh - border];
+    const srcW = [border, sw - border * 2, border], srcH = [border, sh - border * 2, border];
+    const dx = [x, x + edge, x + width - edge], dy = [y, y + edge, y + height - edge];
+    const dw = [edge, width - edge * 2, edge], dh = [edge, height - edge * 2, edge];
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
+      ctx.drawImage(image, sx[col], sy[row], srcW[col], srcH[row], dx[col], dy[row], dw[col], dh[row]);
+    }
+  }
+
+  function drawPanel(x, y, width, height, color = "") {
+    drawWood(color === "#303541f5" ? "woodDisabled" : "woodPanel", x, y, width, height);
+    ctx.fillStyle = "#38291feb";
+    ctx.fillRect(x + 12, y + 12, width - 24, height - 24);
   }
 
   function drawButton(label, x, y, width, height, active = true, action = null) {
     if (active && action) uiTargets.push({ x, y, width, height, action });
-    ctx.fillStyle = active ? "#f0c65a" : "#606b79";
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = "#392e21";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, width, height);
-    drawText(label, x + width / 2, y + height / 2, 16, active ? "#2b2218" : "#c4c9d0", "center");
+    drawWood(active ? "woodButton" : "woodButtonDisabled", x, y, width, height, 2);
+    // Long creature names must fit the narrow branch tabs.
+    ctx.font = '16px "NinjaPixel", monospace';
+    const size = Math.min(16, 16 * (width - 16) / Math.max(1, ctx.measureText(label).width));
+    drawText(label, x + width / 2, y + height / 2, size, active ? "#2b2218" : "#ded1b8", "center");
   }
 
   function drawBackground() {
@@ -747,8 +824,7 @@
   }
 
   function drawHeader(title, subtitle = "") {
-    ctx.fillStyle = "#172335ee";
-    ctx.fillRect(0, 0, WIDTH, 104);
+    drawPanel(0, 0, WIDTH, 104);
     drawText(title, 24, 35, 26, "#ffe17d");
     if (subtitle) drawText(subtitle, 24, 77, 17, "#b9cee5");
     drawSprite("gold", 420, 35, 28);
@@ -791,8 +867,9 @@
     for (let number = 1; number <= 10; number++) {
       const point = mapNodePosition(number);
       const complete = state.save.completed.includes(number), open = number <= state.save.unlockedStage;
-      if (number === state.selectedStage) { ctx.strokeStyle = "#fff3b0"; ctx.lineWidth = 4; ctx.strokeRect(point.x - 42, point.y - 42, 84, 84); }
-      drawSprite(complete ? "nodeComplete" : open ? "nodeOpen" : "lock", point.x, point.y, 72);
+      drawWood(open ? "woodButton" : "woodButtonDisabled", point.x - 36, point.y - 36, 72, 72, 2);
+      if (number === state.selectedStage) drawWood("woodFocus", point.x - 42, point.y - 42, 84, 84);
+      if (complete) drawText("*", point.x + 24, point.y - 24, 16, "#fff3b0", "center");
       drawText(String(number), point.x, point.y, 24, "#fff", "center");
       if ([3, 5, 10].includes(number)) drawPet(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
       if (open) uiTargets.push({ x: point.x - 44, y: point.y - 44, width: 88, height: 88, action: () => { state.selectedStage = number; } });
@@ -819,7 +896,7 @@
     branches.forEach((name, index) => {
       const x = 14 + index * 104;
       drawButton(name, x, 128, 96, 66, true, () => { upgradeBranch = index; });
-      if (index === upgradeBranch) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeRect(x, 128, 96, 66); }
+      if (index === upgradeBranch) drawWood("woodFocus", x - 3, 125, 102, 72);
     });
     const positions = treePositions();
     for (const item of positions) {
@@ -874,16 +951,21 @@
       }
     }
     if (state.treasure) {
-      const {x, y} = state.treasure;
-      ctx.fillStyle = "#3c241b"; ctx.fillRect(x - 22, y - 18, 44, 36);
-      ctx.fillStyle = "#b97532"; ctx.fillRect(x - 19, y - 15, 38, 30);
-      ctx.fillStyle = "#ffda65";
-      ctx.fillRect(x - 19, y - 3, 38, 5);
-      ctx.fillRect(x - 15, y - 15, 4, 30); ctx.fillRect(x + 11, y - 15, 4, 30);
-      ctx.fillRect(x - 4, y - 5, 8, 11);
-      drawText("15G", x, y - 32, 16, "#ffe17d", "center");
-      ctx.fillStyle = "#371c27"; ctx.fillRect(x - 20, y - 26, 40, 5);
-      ctx.fillStyle = "#ffe17d"; ctx.fillRect(x - 20, y - 26, 40 * state.treasure.hp / state.treasure.maxHp, 5);
+      const {x, y, open} = state.treasure;
+      drawGridFrame("treasureChest", x, y, open ? 1 : 0, 2, 0, 1, 48);
+      if (!open) {
+        drawText("15G", x, y - 32, 16, "#ffe17d", "center");
+        ctx.fillStyle = "#371c27"; ctx.fillRect(x - 20, y - 26, 40, 5);
+        ctx.fillStyle = "#ffe17d"; ctx.fillRect(x - 20, y - 26, 40 * state.treasure.hp / state.treasure.maxHp, 5);
+      }
+    }
+    for (const coin of state.drops) {
+      const progress = Math.min(1, coin.age / 0.5);
+      const x = coin.x + coin.offsetX * progress;
+      const groundY = coin.y + coin.offsetY * progress;
+      ctx.fillStyle = "#59452355";
+      ctx.beginPath(); ctx.ellipse(x, groundY + 7, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+      drawSheetFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 20);
     }
     drawPlayer(state.party.x, state.party.y, 54);
     for (const companion of state.companions) drawPet(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
@@ -896,7 +978,7 @@
     for (const enemy of state.enemies) {
       if (enemy.species === "fanglet") drawPet("striker", enemy.x, enemy.y, enemy.r * 2.5);
       else if (enemy.species === "mossbud") drawPet("healer", enemy.x, enemy.y, enemy.r * 2.5);
-      else drawSprite(enemy.type, enemy.x, enemy.y, enemy.type === "boss" ? 92 : enemy.r * 2.5);
+      else drawMonster(enemy);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
     }
@@ -921,15 +1003,19 @@
     }
     if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
     drawPanel(12, 12, WIDTH - 24, 114);
-    drawSprite("heart", 38, 44, 28);
-    ctx.fillStyle = "#513040"; ctx.fillRect(60, 30, 230, 29);
-    ctx.fillStyle = "#ef476f"; ctx.fillRect(60, 30, 230 * clamp(state.party.hp / state.party.maxHp, 0, 1), 29);
-    drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
-    drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
+    const healthRatio = clamp(state.party.hp / state.party.maxHp, 0, 1);
+    const vessel = assets.healthVessel, fill = assets.healthFill;
+    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 21, 51, 84);
+    if (fill?.naturalWidth && healthRatio > 0) {
+      const h = 40 * healthRatio;
+      ctx.drawImage(fill, 0, 40 - h, 22, h, 34, 33 + (40 - h) * 1.5, 33, h * 1.5);
+    }
+    drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 92, 43, 20, "#fff");
+    drawText(`STAGE ${state.stage.number}`, 340, 43, 22, "#fff");
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
-    drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
-    drawText(`Essence: Fangle ${state.save.fangEssence + state.runEssence} • Buttermant ${state.save.mossEssence + state.runMossEssence}`, 24, 115, 16, "#a9e9eb");
-    drawSprite("gold", 330, 91, 28); drawText(formatAmount(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
+    drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND", 92, 76, 18, "#ffe2b2");
+    drawSprite("gold", 350, 76, 24); drawText(formatAmount(state.save.gold + state.runGold), 372, 76, 20, "#ffe17d");
+    drawText(`Essence: Fangle ${state.save.fangEssence + state.runEssence} / Buttermant ${state.save.mossEssence + state.runMossEssence}`, 92, 108, 14, "#e8d4ad");
     if (autoTargetUnlocked()) {
       drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
     } else {
@@ -1055,14 +1141,15 @@
   window.render_game_to_text = () => JSON.stringify({
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animationFrame: Math.floor(state.animationTime * 8) % playerWalkFrames.length },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.species || enemy.type, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
+      coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, settled: coin.age >= 0.5 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
@@ -1086,6 +1173,7 @@
     balanceProjection, stageDpsEstimate
   };
 
+  document.fonts?.load('16px "NinjaPixel"').then(() => render());
   render();
   if (!window.__vt_pending) {
     let previous = performance.now();

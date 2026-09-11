@@ -279,3 +279,29 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Finished five-rank Follow-Up Bite: +20% trigger chance per rank on Fangle kill; one non-chaining bonus shot. Added matching five-rank Deep Bloom chance on low-health heals. Both start at 30 species essence and use normal price scaling. Mending Bite unlocks at Follow-Up Bite 1, heals 1–5 HP per landed follow-up, starts at 60 FE. Updated calculator Deep Bloom rolls and docs. Syntax checks only; no gameplay tests per user preference. Not deployed.
 
 - Bloom Guard: one purchase for 200 Buttermant essence, unlocked by Deep Bloom rank 5. Each Deep Bloom proc can grant a single shared shield blocking the entire next damaging hit on any party member. No stacking or expiry; a 2-second cooldown starts when granted. A fresh Deep Bloom proc is required to reapply it after the cooldown. Shield and cooldown reset each stage attempt. Blue rings show protection; calculator includes boss-hit absorption.
+
+## September 11 — EggBoy and Ninja Adventure monsters
+
+- EggBoy uses 16×16 cells: Walk first column, four vertical frames at 8 FPS; each player volley triggers all four horizontal Attack frames over 0.24s. Rendering keeps square proportions.
+- Bamboo/basic, Axolot/ranged and Beast/armored use four animated rows with spawn-edge columns north=0, south=1, east=2, west=3. Capture species and companions retain their existing art; Ninja Adventure Animals remain unused. Boss art is unchanged.
+- Updated browser cache version. Syntax check passed; existing skill browser harness captured gameplay with EggBoy and Bamboo, with no browser error log. Screenshot visually inspected. No balance or progression suite run.
+
+## September 11 — DemonCyclop early bosses
+
+- Stages 1, 2 and 4 use DemonCyclop and force north-edge spawns, retaining existing pursuit/combat stats. Stage 3 capture boss and other stages are unchanged.
+- Actual Walk.png is 300×50 (six horizontal 50×50 frames), looping at 8 FPS. Hit.png is 150×50 (three frames), playing for 0.3s on damage before returning to walk; subsequent hits restart it. Display size is 100×100.
+- Syntax check passed. Skill harness temporary browser preview verified forced north despite requested south, hit frames 1/2 and return to walk; screenshots visually inspected. Preview setup first needed stage unlock correction; final run completed without browser errors. Production test hooks were not expanded.
+
+## September 11 — coin drops and persistent open chest
+
+- Coin2 uses four horizontal 10×10 frames at 10 FPS. Enemy kills spawn a coin; chest opening releases 15 coins in a spreading upward arc over 0.5 seconds, then rests on scrolling ground. Gold remains credited immediately; drops are visual and cannot duplicate rewards.
+- LittleTreasureChest uses its closed/open 16×16 cells at 3× scale. At zero HP it stays open, scrolls with terrain, loses its health bar and is excluded from player bullet collision and auto-targeting.
+- Syntax and skill browser preview passed. Verified 15 chest coins + one enemy coin, duplicate chest damage does not pay twice, a projectile passes through the open chest, coins settle and remain with ground. Pop and settled screenshots inspected in output/coins-client.
+- Reviewed Ui/Theme/preview.png and asset inventory for upcoming UI discussion: complete Theme Wood controls, Wip panel themes, health receptacles/hearts, and fonts. No UI changes yet.
+
+## September 11 — wood UI and pixel font
+
+- Applied Theme Wood nine-slice panels, enabled/disabled buttons, focus frames, map nodes, headers, upgrade cards, and menu/combat controls. Dark wood interiors preserve text contrast and existing interaction bounds.
+- Loaded NormalFont.ttf as NinjaPixel in CSS and all canvas text; font-load completion repaints deterministic screens. Added word spacing and fitted narrow branch labels.
+- Replaced combat health bar with the rectangular BackgroundWood receptacle and bottom-up ProgressHealth fill, retaining numeric HP. Asset is vertical, displayed beside the HUD text.
+- Syntax and browser captures passed; visually inspected title, map, upgrades and combat. Menu click navigation works; no browser error logs in final captures. Existing balance and saves unchanged.

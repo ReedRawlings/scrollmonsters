@@ -1,7 +1,8 @@
+@font-face { font-family: "NinjaPixel"; src: url("assets/Ninja Adventure - Asset Pack/Ui/Font/NormalFont.ttf") format("truetype"); font-display: swap; }
 :root {
   color-scheme: dark;
-  font-family: ui-monospace, monospace;
-  background: #101b2b;
+  font-family: "NinjaPixel", monospace;
+  background: #241b16;
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
