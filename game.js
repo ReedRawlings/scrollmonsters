@@ -40,6 +40,7 @@
       name: stageNames[index],
       duration: 30,
       hpMultiplier: number === 1 ? 1 : 2,
+      bossHpMultiplier: number === 1 ? 1 : 0.8,
       // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
       hpScale: [1, 1.495, 2, 3, 3, 3, 4, 7, 7, 7][index],
@@ -55,7 +56,7 @@
     Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
   const upgradeDefs = [
-    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10).map(cost => Math.round(cost * 0.8)), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
@@ -155,7 +156,7 @@
     const weights = stageNumber === 1 ? [1, 0, 0] : stageNumber === 2 ? [0.78, 0, 0.22] : [0.55, 0.23, 0.22];
     const averageRegularHealth = health.reduce((total, value, index) => total + value * weights[index], 0);
     const bossMultiplier = stage.majorBoss ? 1.5 : 1;
-    const bossHealth = Math.round(28 * stage.bossHpScale * bossMultiplier);
+    const bossHealth = precise(Math.round(28 * stage.bossHpScale * bossMultiplier) * stage.bossHpMultiplier);
     const regularDemand = averageRegularHealth / stage.spawnRate;
     const bossDemand = bossHealth / balanceModel.bossDamageWindow;
     return stage.hpMultiplier * balanceModel.safetyFactor * Math.max(regularDemand, bossDemand);
@@ -177,11 +178,11 @@
     const partyDps = effectivePlayerDps + fangletDps;
     return { stage: stageNumber, basicDamage: Math.max(1, Math.round(stageConfigs[stageNumber - 1].damageScale)), armoredDamage: Math.max(1, Math.round(2 * stageConfigs[stageNumber - 1].damageScale)), bossDamage: Math.max(1, Math.round(5 * stageConfigs[stageNumber - 1].damageScale)), hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
       basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
-      bossHp: Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) };
+      bossHp: precise(Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) * stageConfigs[stageNumber - 1].bossHpMultiplier) };
   }
   const captureDefs = [
     { id: "captureStriker", name: "Fangle", branch: "STRIKER", capture: "striker", stage: 3, currency: "fangEssence", cost: 8, requires: [] },
-    { id: "captureHealer", name: "Buttermant", branch: "HEALER", capture: "healer", stage: 5, currency: "mossEssence", cost: 12, requires: [] },
+    { id: "captureHealer", name: "Buttermant", branch: "HEALER", capture: "healer", stage: 5, requiresStageClear: 5, currency: "mossEssence", cost: 12, requires: [] },
     { id: "captureAoe", name: "Tinmin", branch: "AOE", capture: "aoe", stage: 10, requires: [] }
   ];
   const petDisplayNames = { striker: "Fangle", healer: "Buttermant", aoe: "Tinmin" };
@@ -198,7 +199,7 @@
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
 
-  const defaultSave = () => ({ gold: 0, mossEssence: 0, mossDryKills: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false });
+  const defaultSave = () => ({ gold: 0, mossEssence: 0, mossDryKills: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
   function mergeHealthRanks(upgrades) {
     const result = { ...upgrades };
     if (result.vitality !== undefined || result.fortitude !== undefined) {
@@ -293,6 +294,15 @@
     state.enemies = [];
     state.obstacles = [];
     state.rockSpawnTimer = 0;
+    const firstStage4 = stageNumber === 4 && !state.save.stage4TreasureAttempted && !state.save.completed.includes(4);
+    const treasureEligible = firstStage4 || state.save.stage4TreasureAttempted || state.save.completed.includes(4);
+    state.treasureSpawnAt = firstStage4 || (treasureEligible && Math.random() < 0.001) ? 5 + Math.random() * 5 : null;
+    state.treasure = null;
+    state.treasureGold = 0;
+    if (stageNumber === 4 && !state.save.stage4TreasureAttempted) {
+      state.save.stage4TreasureAttempted = true;
+      writeSave();
+    }
     state.projectiles = [];
     state.drops = [];
     state.effects = [];
@@ -329,13 +339,13 @@
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
     const speciesRoll = Math.random();
     const canFang = !openingStage || state.stageTime >= 15;
-    const species = type === "boss" ? null : canFang && speciesRoll < fangDensity(state.stage.number) ? "fanglet" : speciesRoll >= fangDensity(state.stage.number) && speciesRoll < fangDensity(state.stage.number) + mossDensity(state.stage.number) ? "mossbud" : null;
+    const species = type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : canFang && speciesRoll < fangDensity(state.stage.number) ? "fanglet" : speciesRoll >= fangDensity(state.stage.number) && speciesRoll < fangDensity(state.stage.number) + mossDensity(state.stage.number) ? "mossbud" : null;
     const openingFanglet = openingStage && species === "fanglet";
-    const hp = (openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier;
+    const hp = precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
     const spawn = spawnPoint(base.radius, forcedEdge);
     state.enemies.push({
       type, species, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
-      hp, maxHp: hp, speed: base.speed * 1.4, damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
+      hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
@@ -347,8 +357,9 @@
   const fangYield = stage => 1 + Math.floor((stage - 1) / 3);
   const enemyVisible = enemy => enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
 
-  function nearestEnemy(fromX = state.party.x, fromY = state.party.y) {
-    return state.enemies.filter(enemyVisible).reduce((best, enemy) => {
+  function nearestEnemy(fromX = state.party.x, fromY = state.party.y, includeTreasure = false) {
+    const targets = includeTreasure && state.treasure ? [...state.enemies, state.treasure] : state.enemies;
+    return targets.filter(enemyVisible).reduce((best, enemy) => {
       const distance = Math.hypot(enemy.x - fromX, enemy.y - fromY);
       return !best || distance < best.distance ? { enemy, distance } : best;
     }, null)?.enemy || null;
@@ -369,7 +380,7 @@
   }
 
   function firePlayerVolley() {
-    const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy() : null;
+    const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy(state.party.x, state.party.y, true) : null;
     const targetX = target?.x ?? state.mouse.x;
     const targetY = target?.y ?? state.mouse.y;
     const count = playerProjectiles();
@@ -389,7 +400,7 @@
     state.enemies.splice(index, 1);
     if (reward) {
       awardGold(enemy.gold);
-      if (enemy.species === "fanglet") {
+      if (enemy.species === "fanglet" && enemy.type !== "boss") {
         state.save.fangDryKills += 1;
         if (Math.random() < 0.3 || state.save.fangDryKills >= 5) {
           state.runEssence += fangYield(state.stage.number);
@@ -404,7 +415,8 @@
         }
       }
       if (enemy.type === "boss" && [5, 8, 10].includes(state.stage.number)) state.runMossEssence += 2 * fangYield(state.stage.number);
-      if (enemy.type === "boss" && [3, 6, 9].includes(state.stage.number)) state.runEssence += 2 * fangYield(state.stage.number);
+      if (enemy.type === "boss" && state.stage.number === 3) state.runEssence += 15;
+      if (enemy.type === "boss" && [6, 9].includes(state.stage.number)) state.runEssence += 2 * fangYield(state.stage.number);
     }
   }
 
@@ -484,6 +496,31 @@
     setMode("result");
   }
 
+  // Chests ride the center lane; only destroying one grants its reward.
+  function updateTreasure(previousTime, currentTime) {
+    if (state.treasureSpawnAt === null || currentTime < state.treasureSpawnAt || state.treasureGold) return;
+    if (!state.treasure) state.treasure = { x: WIDTH / 2, y: HEIGHT + 20, r: 20, hp: 5, maxHp: 5 };
+    state.treasure.y -= 24 * travelMultiplier() * Math.max(0, currentTime - Math.max(previousTime, state.treasureSpawnAt));
+    // Reserve the whole lane, including rocks that entered before the chest.
+    state.obstacles = state.obstacles.filter(rock => Math.abs(rock.x - state.treasure.x) > rock.r + state.treasure.r + 12);
+    if (state.treasure.y + state.treasure.r < 126) {
+      state.treasure = null;
+      state.treasureSpawnAt = null;
+    }
+  }
+
+  function damageTreasure(amount) {
+    if (!state.treasure) return;
+    state.treasure.hp = precise(state.treasure.hp - amount);
+    if (state.treasure.hp <= 0) {
+      state.runGold = precise(state.runGold + 15);
+      state.treasureGold = 15;
+      state.treasure = null;
+      state.toast = "Treasure chest +15 gold";
+      state.toastTimer = 2;
+    }
+  }
+
   function updateCombat(dt) {
     if (state.mode !== "combat") return;
     state.stageTime += dt;
@@ -500,6 +537,7 @@
         state.rockSpawnTimer = 3.5 + Math.random();
       }
     }
+    updateTreasure(state.stageTime - dt, state.stageTime);
     state.spawnTimer -= dt;
     state.fireTimer -= dt;
     const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration;
@@ -552,6 +590,15 @@
       let hit = false;
       if (projectile.source === "player") {
         const dx = projectile.x - oldX, dy = projectile.y - oldY;
+        const chest = state.treasure;
+        if (chest && enemyVisible(chest)) {
+          const t = clamp(((chest.x - oldX) * dx + (chest.y - oldY) * dy) / Math.max(0.001, dx * dx + dy * dy), 0, 1);
+          if (Math.hypot(oldX + t * dx - chest.x, oldY + t * dy - chest.y) <= chest.r + projectile.r) {
+            damageTreasure(projectile.damage);
+            state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+            continue;
+          }
+        }
         const rock = state.obstacles.find(obstacle => {
           const t = clamp(((obstacle.x - oldX) * dx + (obstacle.y - oldY) * dy) / Math.max(0.001, dx * dx + dy * dy), 0, 1);
           return Math.hypot(oldX + t * dx - obstacle.x, oldY + t * dy - obstacle.y) <= obstacle.r + projectile.r;
@@ -771,14 +818,14 @@
     for (const item of positions) {
       const def = item.definition, current = rank(def.id);
       const captured = def.capture && hasRecruit(def.capture);
-      const available = def.capture ? (captured || !!def.currency) : upgradeUnlocked(def);
+      const available = def.capture ? (captured || (!!def.currency && captureStageUnlocked(def))) : upgradeUnlocked(def);
       const maxed = !def.capture && current >= def.max;
       const cost = maxed || def.capture ? 0 : def.costs[current];
       drawPanel(item.x, item.y, 232, 108, available ? "#253753f5" : "#303541f5");
       drawText(def.name, item.x + 10, item.y + 20, 17, available ? "#fff" : "#bac1cb");
       if (def.capture) {
         drawPet(def.capture, item.x + 205, item.y + 47, 30, captured ? 1 : 0.5);
-        drawText(captured ? "CAPTURED" : (def.currency ? `${def.cost} ${currencyName(def.currency)}` : `Clear stage ${def.stage}`), item.x + 10, item.y + 45, 15, captured ? "#8ce99a" : "#ffe17d");
+        drawText(captured ? "CAPTURED" : (!captureStageUnlocked(def) ? `Clear stage ${def.requiresStageClear}` : def.currency ? `${def.cost} ${currencyName(def.currency)}` : `Clear stage ${def.stage}`), item.x + 10, item.y + 45, 15, captured ? "#8ce99a" : "#ffe17d");
         drawText("Unlock monster talents", item.x + 10, item.y + 81, 14, "#d3dbe5");
       } else {
         drawText(`Rank ${current}/${def.max}`, item.x + 10, item.y + 44, 15, "#d3dbe5");
@@ -808,6 +855,18 @@
         ctx.fillStyle = "#371c27"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2, 5);
         ctx.fillStyle = "#f0c65a"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2 * Math.max(0, rock.hp / rock.maxHp), 5);
       }
+    }
+    if (state.treasure) {
+      const {x, y} = state.treasure;
+      ctx.fillStyle = "#3c241b"; ctx.fillRect(x - 22, y - 18, 44, 36);
+      ctx.fillStyle = "#b97532"; ctx.fillRect(x - 19, y - 15, 38, 30);
+      ctx.fillStyle = "#ffda65";
+      ctx.fillRect(x - 19, y - 3, 38, 5);
+      ctx.fillRect(x - 15, y - 15, 4, 30); ctx.fillRect(x + 11, y - 15, 4, 30);
+      ctx.fillRect(x - 4, y - 5, 8, 11);
+      drawText("15G", x, y - 32, 16, "#ffe17d", "center");
+      ctx.fillStyle = "#371c27"; ctx.fillRect(x - 20, y - 26, 40, 5);
+      ctx.fillStyle = "#ffe17d"; ctx.fillRect(x - 20, y - 26, 40 * state.treasure.hp / state.treasure.maxHp, 5);
     }
     drawPlayer(state.party.x, state.party.y, 54);
     for (const companion of state.companions) drawPet(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
@@ -844,6 +903,7 @@
     ctx.fillStyle = "#ef476f"; ctx.fillRect(60, 30, 230 * clamp(state.party.hp / state.party.maxHp, 0, 1), 29);
     drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp}`, 175, 45, 19, "#fff", "center");
     drawText(`STAGE ${state.stage.number}`, 323, 43, 22, "#fff");
+    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
     drawText(state.bossSpawned ? "BOSS BATTLE" : "SOUTHBOUND ↓", 30, 91, 20, "#a8d9ff");
     drawText(`Essence: Fangle ${state.save.fangEssence + state.runEssence} • Buttermant ${state.save.mossEssence + state.runMossEssence}`, 24, 115, 16, "#a9e9eb");
     drawSprite("gold", 330, 91, 28); drawText(formatAmount(state.save.gold + state.runGold), 354, 91, 22, "#ffe17d");
@@ -883,9 +943,15 @@
     return { x: (event.clientX - rect.left) * WIDTH / rect.width, y: (event.clientY - rect.top) * HEIGHT / rect.height };
   }
 
+  const captureStageUnlocked = definition => !definition.requiresStageClear || state.save.completed.includes(definition.requiresStageClear);
+
   function attemptUpgrade(definition) {
     const current = rank(definition.id);
     if (definition.capture) {
+      if (!hasRecruit(definition.capture) && !captureStageUnlocked(definition)) {
+        state.toast = `Clear stage ${definition.requiresStageClear} to unlock capture`;
+        state.toastTimer = 1.8; return;
+      }
       if (definition.currency && !hasRecruit(definition.capture)) {
         if (state.save[definition.currency] < definition.cost) {
           state.toast = `Need ${definition.cost - state.save[definition.currency]} more ${currencyName(definition.currency)}`;
@@ -974,6 +1040,7 @@
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
+      treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"][upgradeBranch],

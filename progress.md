@@ -255,3 +255,23 @@ Added calculator-only +5 party damage hypothetical node, then corrected it to co
 ## September 11 — Party Bond implemented
 
 Live Buttermant-branch node, one rank at 50G after capture, +5 to player and Fangle including Follow-Up Bite before crits. No healing/Tinmin bonus. Calculator uses actual definition without duplicating the node or bonus. Unit checks passed before user directed that tests are not needed; browser checks had already been launched. No further tests requested or run after that instruction.
+
+## September 11 — movement and boss HP tuning
+
+Increased non-boss movement by 20% (existing 1.4 multiplier now additionally ×1.2 only for regular enemies), preserving boss/projectile speed. Added stage bossHpMultiplier: 1 for stage 1, 0.8 afterward, applied to final HP without integer truncation; calculator and game estimates updated. Inspected contact/removal paths: enemies persist at contact and attack every 1.5s; only HP<=0 removes them. Visual report not reproduced. No tests run per user preference. Changes are local, not deployed.
+
+## September 11 — enforce Buttermant's stage-5 capture gate
+
+User corrected early capture assumption. Added explicit requiresStageClear:5 on Buttermant capture and enforced it in UI/purchase handler; calculator inherits real handler. Existing captured saves retained. Reran requested estimate: stage 4 averages 5.9 attempts across ten seeds (5–6), no healer or Party Bond available. Captures all follow stage-5 clear. No additional tests run; local change not deployed.
+
+## September 11 — feasible fresh-save campaign rerun
+
+Calculator now explicitly enforces every listed capture milestone (including Fangle stage 3) inside its isolated VM. Added feasibility assertions before each attempt for stage clears, recruits, purchased prerequisites, and no Buttermant/Party Bond before stage-5 completion. Reran 100 hybrid seeds with all spending, 90% regular kills, actual essence, single-shot bosses and current reduced HP. Every campaign finished; stage 4 mean 5.90 attempts (5–7), only player/Fangle; campaign total mean 34.43 attempts. Full per-stage summary is ignored output/feasible-campaign-estimate.md. No further live game changes in this rerun.
+
+- Updated hybrid calculator at user request: stage 4 takes two ranged hits (4 HP) before boss; all stages require a spawn-timed ideal-DPS clear of every regular enemy by the 30s boss arrival. Leftovers fail the attempt; only modeled kills award gold/essence (100% on full clears). Retained capture gates and all-affordable spending. Reran requested 100-seed estimation, no gameplay tests: stage 4 5.63 attempts, cumulative through stage 4 14.11; cumulative through stage 10 33.53. Ignored report output/feasible-campaign-estimate.md documents assumptions, including no projectile travel/overkill and no post-deadline survival on failed clears.
+
+- Changed stage-4 hybrid assumption from two to 3.5 ranged hits (7 HP pre-boss damage); retained full regular-clear requirement and spending policy. Reran 100-seed calculator: stage 4 5.77 average attempts; total through stage 10 33.51. No gameplay tests.
+
+- Implemented 20% player Damage +1 price reduction at every rank; stage-3 Fangle boss with exactly 15 essence; saved first-stage-4 chest introduction at 5–10s plus later 0.1% per-attempt rolls. Chest scrolls in via rock-free center lane and automatically awards flat 15G on reaching party. Calculator shares rewards. Syntax checks passed; gameplay tests skipped per user instruction. Changes remain local; no deployment performed.
+
+- Corrected treasure chest interaction: 5 HP, player-shot damage with swept collision, visible health bar, player auto-target support, and 15G awarded only on destruction. Passing the party does not award gold; missed chests scroll offscreen. Calculator reserves player damage time for chest destruction before awarding gold. Syntax checks only; no gameplay tests per user instruction.

@@ -262,3 +262,22 @@ The hybrid boss calculator now permanently models one shot per attack; the obsol
 ## Party Bond — September 11
 
 Party Bond is now a live, single-rank 50G node in Buttermant's upgrade branch. Capturing Buttermant unlocks the purchase. Buying it adds +5 flat damage to player shots and Fangle attacks, including Follow-Up Bite, before critical multipliers. It does not increase healing or Tinmin damage. The purchased rank persists with existing upgrade saves.
+
+## Faster regular enemies and reduced boss HP — September 11
+
+All non-boss enemies move 20% faster than their prior speeds, including wild creature variants. Boss movement and projectile speeds are unchanged. Boss final HP is multiplied by 0.8 in stages 2–10; stage 1 stays at 28 HP. Decimal boss HP is retained so the reduction is exactly 20%. New boss HP by stage: 28, 67.2, 75.2, 148.8, 204.8, 163.2, 206.4, 316.8, 356.8, 444.8. Both the in-game projections and separate boss calculator use the new multiplier.
+
+Contact behavior remains persistent melee: regular enemies stop at the nearest party member and deal damage every 1.5 seconds until killed. Contact itself does not remove the enemy; only zero HP triggers combat removal.
+
+## Buttermant stage gate correction — September 11
+
+New Buttermant captures require clearing stage 5 as well as paying 12 Buttermant essence. Previously the stage metadata was not enforced by the essence purchase handler, allowing early captures. The capture card and purchase handler now enforce the stage-5-clear requirement; existing owned creatures are retained. Party Bond still requires capture and costs 50G, so fresh progression cannot obtain it during stage 4 or before clearing stage 5.
+
+The corrected ten-seed hybrid estimate gives stage 4 a mean of 5.9 attempts (5–6), without Buttermant or Party Bond. All modeled captures happen after stage-5 clear; Party Bond purchases occur after stage 5 or during stage 6. Buying choices differ from the earlier invalid early-capture scenario.
+
+### Early progression rewards
+- Player Damage +1 prices are 80% of each previous rank price, rounded to whole gold (rank 1: 12G; rank 5: 40G). Other nodes retain their prices.
+- Stage 3 uses an enlarged Fangle boss with its existing boss stats. Each defeat grants exactly 15 Fangle essence instead of the previous boss essence award; no additional random Fangle drop is rolled for this boss.
+- The first stage-4 attempt schedules a 15G treasure chest 5–10 seconds into the run. It enters from the south, scrolls along the center lane, and has 5 HP and must be destroyed by player shots to award gold. Rocks are excluded from its lane while active. The reward is a flat 15G, banked with the run even on defeat after destruction.
+- The first-attempt flag is saved when stage 4 starts, so abandoning or losing early does not repeat the guarantee. Existing saves that already cleared stage 4 skip the guarantee. After that introduction, each stage attempt (including replays) rolls once at 0.1% for a chest; no chest upgrades yet.
+- The hybrid calculator shares chest scheduling/destruction and boss essence rewards with gameplay. Its ideal regular-clear and stage-4 7 HP pre-boss damage assumptions remain in effect.

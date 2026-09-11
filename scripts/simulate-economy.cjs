@@ -1,6 +1,6 @@
 // Seeded real-combat campaign simulation. Spend every affordable gold upgrade between attempts.
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
-const source=fs.readFileSync(path.join(__dirname,'../game.js'),'utf8').replace('  render();\n  if (!window.__vt_pending)','  window.audit={state,upgradeDefs,captureDefs,attemptUpgrade,upgradeUnlocked,updateCombat,nearestEnemy,playerDpsFor,stageConfigs,spawnEnemy,removeEnemy,finishStage};\n  render();\n  if (!window.__vt_pending)');
+const source=fs.readFileSync(path.join(__dirname,'../game.js'),'utf8').replace('  render();\n  if (!window.__vt_pending)','  window.audit={state,upgradeDefs,captureDefs,attemptUpgrade,upgradeUnlocked,updateCombat,nearestEnemy,playerDpsFor,stageConfigs,spawnEnemy,removeEnemy,finishStage,updateTreasure,damageTreasure};\n  render();\n  if (!window.__vt_pending)');
 const mode=process.env.SIM_MODE||"hybrid";
 const buttermantBonus=Number(process.env.BUTTERMANT_PARTY_BONUS ?? 5);
 if(!Number.isFinite(buttermantBonus)||buttermantBonus<0)throw Error('BUTTERMANT_PARTY_BONUS must be nonnegative');
@@ -18,6 +18,9 @@ function create(seed){
  const sandbox={Math:math,document:{getElementById:()=>({width:540,height:900,getContext:()=>ctx,addEventListener(){}}),addEventListener(){}},Image:class{},localStorage:{getItem:()=>null,setItem(){}},window:{__vt_pending:true}};
  vm.runInNewContext(source,sandbox);
  const g={...sandbox.window.audit,api:sandbox.window.__scollTest,random:()=>math.random(),events:[],seenUnlocks:new Set(),seenCaptures:new Set(),context:{}};
+ // Feasible campaign scenario: captures require clearing their listed milestone stage.
+ // This also enforces Fangle's stage-3 milestone in the calculator VM.
+ for(const capture of g.captureDefs)capture.requiresStageClear ??= capture.stage;
  // A zero-bonus baseline excludes the live node from simulated purchases.
  if(buttermantBonus===0)g.upgradeDefs=g.upgradeDefs.filter(d=>d.id!=='partyBond');
  const buy=g.attemptUpgrade;
@@ -65,11 +68,12 @@ function shop(g){
  return purchases;
 }
 // Expected focused boss damage, discrete boss volleys and healer cooldowns.
-function bossFight(g,stage) {
+function bossFight(g,stage,preBossDamage=0) {
  const cfg=g.stageConfigs[stage-1],p=output(g),u=g.state.save.upgrades;
- const maxBossHp=Math.round(28*cfg.bossHpScale*(cfg.majorBoss?1.5:1))*cfg.hpMultiplier;
+ const maxBossHp=Number((Math.round(28*cfg.bossHpScale*(cfg.majorBoss?1.5:1))*cfg.hpMultiplier*cfg.bossHpMultiplier).toFixed(6));
  const hit=Math.max(1,Math.round(5*cfg.damageScale));
- let bossHp=maxBossHp,hp=p.hp*entryHp,time=0,previousTime=0,nextAttack=2.4;
+ let bossHp=maxBossHp,hp=Math.max(0,p.hp*entryHp-preBossDamage),time=0,previousTime=0,nextAttack=2.4;
+ if(hp<=0)return {won:false,seconds:0,hp,bossHp,hit,maxBossHp};
  const healInterval=4.6*(1-.15*r(u,'healSpeed'));let nextHeal=healInterval;
  // No approach delay, misses, rocks, leftover enemies, or overkill. Full focus on boss.
  for(let i=0;i<18000;i++) {
@@ -86,15 +90,35 @@ function bossFight(g,stage) {
 function hybridAttempt(g,stage){
  g.api.startStage(stage);const cfg=g.stageConfigs[stage-1],travel=1+.05*r(g.state.save.upgrades,'travelSpeed');
  let t=.35/travel;const regular=[];
- while(t<cfg.duration){g.state.stageTime=t;g.spawnEnemy(null,'south');regular.push(g.state.enemies.at(-1));t+=cfg.spawnRate/travel*(.82+g.random()*.35);}
- // Deterministic evenly distributed 90% sample for species drops; exact fractional gold below.
- let killed=0;for(let i=0;i<regular.length;i++)if(Math.floor((i+1)*.9)>Math.floor(i*.9)){g.removeEnemy(regular[i],true);killed++;}
- g.state.enemies=[];g.state.runGold=Math.round(regular.length*.9*(1+.1*r(g.state.save.upgrades,'magnet'))*1e6)/1e6;
- const fight=bossFight(g,stage);g.state.stageTime=cfg.duration+fight.seconds;
+ while(t<cfg.duration){g.state.stageTime=t;g.spawnEnemy(null,'south');regular.push({enemy:g.state.enemies.at(-1),spawnTime:t});t+=cfg.spawnRate/travel*(.82+g.random()*.35);}
+ // Ideal serial damage queue: damage cannot be spent before an enemy spawns.
+ // All regulars must die by boss arrival; leftover enemies make the attempt a failure.
+ // Expected single-target DPS ignores travel, misses, overkill and on-kill follow-ups.
+ const p=output(g);let clearTime=0,killed=0,totalRegularHp=0;
+ g.updateTreasure(0,cfg.duration);
+ const queue=[...regular];
+ // Reserve player firing time for the 5-HP chest once it enters the visible field.
+ if(g.state.treasure)queue.push({chest:true,spawnTime:g.state.treasureSpawnAt+116/(24*travel)});
+ queue.sort((a,b)=>a.spawnTime-b.spawnTime);
+ for(const {enemy,spawnTime,chest} of queue){
+  if(chest){
+   clearTime=Math.max(clearTime,spawnTime)+5/p.player;
+   if(clearTime<=cfg.duration)g.damageTreasure(5);
+   continue;
+  }
+  totalRegularHp+=enemy.hp;
+  clearTime=Math.max(clearTime,spawnTime)+enemy.hp/p.dps;
+  if(clearTime<=cfg.duration){g.removeEnemy(enemy,true);killed++;}
+ }
+ const regularCleared=killed===regular.length;
+ const preBossDamage=stage===4?3.5*Math.max(1,Math.round(cfg.damageScale)):0;
+ const bossEntryHp=Math.max(0,p.hp*entryHp-preBossDamage);
+ const fight=regularCleared?bossFight(g,stage,preBossDamage):{won:false,seconds:0,hp:bossEntryHp,reason:'Regular enemies remain at boss arrival'};
+ g.state.stageTime=cfg.duration+fight.seconds;
  if(fight.won){g.spawnEnemy('boss','south');g.removeEnemy(g.state.enemies.at(-1),true);g.state.bossDefeated=true;}
- const expectedGold=Math.round((regular.length*.9+(fight.won?1:0))*(1+.1*r(g.state.save.upgrades,'magnet'))*1e6)/1e6;
- assert(Math.abs(g.state.runGold-expectedGold)<1e-5,'90% regular gold / conditional boss reward mismatch');
- g.finishStage(fight.won);return {...fight,regularSpawns:regular.length,regularGoldKills:regular.length*.9,essenceKillSamples:killed};
+ const expectedGold=Math.round(((killed+(fight.won?1:0))*(1+.1*r(g.state.save.upgrades,'magnet'))+g.state.treasureGold)*1e6)/1e6;
+ assert(Math.abs(g.state.runGold-expectedGold)<1e-5,'Actual modeled regular kills / conditional boss reward mismatch');
+ g.finishStage(fight.won);return {...fight,treasureGold:g.state.treasureGold,preBossDamage,bossEntryHp,regularCleared,regularClearTime:clearTime,totalRegularHp,regularSpawns:regular.length,regularGoldKills:killed,essenceKillSamples:killed,remainingRegular:regular.length-killed};
 }
 // Focused boss model checks with current stage-1 stats, independent of campaign seeds.
 {
@@ -132,6 +156,9 @@ for(let seed=1;seed<=seeds;seed++){
   for(;attempts<80&&!won;){
    g.context={seed,stage,attempt:attempts,totalAttempts,earned,seconds:totalSeconds};
    const purchases=shop(g);spent+=purchases.reduce((n,p)=>n+p.cost,0);
+   for(const capture of g.captureDefs)if(g.state.save.recruits.includes(capture.capture))assert(g.state.save.completed.includes(capture.requiresStageClear),'Captured creature before milestone clear');
+   for(const d of g.upgradeDefs)if(r(g.state.save.upgrades,d.id)>0)assert(g.upgradeUnlocked(d),'Purchased rank without its prerequisites or recruit');
+   if(stage<=5){assert(!g.state.save.recruits.includes('healer'),'Buttermant cannot enter stages 1–5 before its first clear');assert(!r(g.state.save.upgrades,'partyBond'),'Party Bond unavailable before stage-5 clear');}
    const entering={...output(g),gold:g.state.save.gold,upgrades:{...g.state.save.upgrades},recruits:[...g.state.save.recruits]};
    let fight;
    if(mode==='hybrid') fight=hybridAttempt(g,stage);
@@ -159,14 +186,14 @@ for(let seed=1;seed<=seeds;seed++){
 const mean=(rows,f)=>rows.reduce((n,x)=>n+f(x),0)/rows.length, round=x=>+x.toFixed(2);
 console.log(`Calculator scenario: +${buttermantBonus} player/Fangle flat damage after Buttermant capture, before extra shots and crits; no healing bonus. Single-rank Party Bond costs 50G, requires capture, and competes with other affordable purchases.`);
 console.log(`MODEL ${mode}: ${seeds} seeds; accurate nearest-target aim; all affordable gold upgrades purchased after every attempt. Gold and essence purchases tracked; retries until clear (80-attempt cap).`);
-if(mode==='hybrid')console.log(`Assume 90% regular kills for exact gold, sampled species drops; boss starts at ${entryHp*100}% party HP. Boss uses expected focused DPS, discrete 2.4s hits, one shot per boss attack at every health level, and actual healer cooldowns. No regular-enemy damage, misses or rocks in boss calculation.`);
+if(mode==='hybrid')console.log(`Require all regulars cleared by 30s using a spawn-timed ideal DPS queue; award gold/essence only for modeled kills. Boss starts at ${entryHp*100}% party HP minus 3.5 ranged hits (7 HP) in stage 4 only. Boss uses expected focused DPS, discrete 2.4s hits, one shot per boss attack at every health level, and actual healer cooldowns. No other regular-enemy damage, misses or rocks modeled. Leftover regulars cause failure at boss arrival; their subsequent attacks are not simulated.`);
 console.log('Purchase heuristic: marginal log DPS + 0.65 log(HP + 10 seconds healing) + 0.4 log(economy), per gold; small rock-breaker preference. Not an optimal policy or human playtest. No reserved budget.');
 const rows=Array.from({length:10},(_,i)=>i+1).map(stage=>{
  const rs=records.filter(x=>x.stage===stage);if(!rs.length)return {stage,clears:0};const cfg=create(1).stageConfigs[stage-1];
- return {stage,clears:rs.filter(x=>x.won).length,attempts:round(mean(rs,x=>x.attempts)),playerDPS:round(mean(rs,x=>x.winning.player)),fangleDPS:round(mean(rs,x=>x.winning.fang)),partyDPS:round(mean(rs,x=>x.winning.dps)),HP:round(mean(rs,x=>x.winning.hp)),goldPerAttempt:round(mean(rs,x=>x.stageGold/x.attempts)),totalGoldSpent:round(mean(rs,x=>x.spent)),leftover:round(mean(rs,x=>x.unspent)),basicHP:Math.round(cfg.hpScale)*cfg.hpMultiplier,bossHP:Math.round(28*cfg.bossHpScale*(cfg.majorBoss?1.5:1))*cfg.hpMultiplier};
+ return {stage,clears:rs.filter(x=>x.won).length,attempts:round(mean(rs,x=>x.attempts)),playerDPS:round(mean(rs,x=>x.winning.player)),fangleDPS:round(mean(rs,x=>x.winning.fang)),partyDPS:round(mean(rs,x=>x.winning.dps)),HP:round(mean(rs,x=>x.winning.hp)),goldPerAttempt:round(mean(rs,x=>x.stageGold/x.attempts)),totalGoldSpent:round(mean(rs,x=>x.spent)),leftover:round(mean(rs,x=>x.unspent)),basicHP:Math.round(cfg.hpScale)*cfg.hpMultiplier,bossHP:Number((Math.round(28*cfg.bossHpScale*(cfg.majorBoss?1.5:1))*cfg.hpMultiplier*cfg.bossHpMultiplier).toFixed(6))};
 });
 console.table(selectedStage?rows.filter(row=>row.stage===selectedStage):rows);
-fs.mkdirSync(path.join(__dirname,'../output'),{recursive:true});fs.writeFileSync(path.join(__dirname,`../output/economy-${mode}${reportSuffix}.json`),JSON.stringify({mode,buttermantBonus,partyBondCost:50,entryHp,seeds,rows,records,failures,unlockEvents},null,2));
+fs.mkdirSync(path.join(__dirname,'../output'),{recursive:true});fs.writeFileSync(path.join(__dirname,`../output/economy-${mode}${reportSuffix}.json`),JSON.stringify({mode,buttermantBonus,partyBondCost:50,entryHp,regularClearRequired:true,stage4RangedHits:3.5,seeds,rows,records,failures,unlockEvents},null,2));
 console.log('DPS shown is ideal output of the loadout that cleared (or last attempted) each stage; full mode uses actual combat; hybrid mode isolates boss survival. Tinmin is acquired after stage 10. Raw ledger/loadouts: output/economy-<mode>.json');
 
 for(let seed=1;seed<=seeds;seed++){
@@ -181,6 +208,6 @@ const unlockRows=milestones.map(m=>{
  const available=unlockEvents.filter(e=>e.id===m.id&&e.kind==='available');
  return {id:m.id,name:m.name,observed:events.length,seeds,availableStages:available.length?`${Math.min(...available.map(e=>e.stage))}–${Math.max(...available.map(e=>e.stage))}`:'capture condition',firstPurchaseStages:events.length?`${Math.min(...events.map(e=>e.stage))}–${Math.max(...events.map(e=>e.stage))}`:'not purchased',meanEarnedGold:events.length?round(mean(events,e=>e.earned)):null,meanAttempts:events.length?round(mean(events,e=>e.totalAttempts)):null,meanCombatMinutes:events.length?round(mean(events,e=>e.seconds/60)):null};
 });
-fs.writeFileSync(path.join(__dirname,`../output/unlock-timing-${mode}${reportSuffix}.json`),JSON.stringify({mode,buttermantBonus,partyBondCost:50,seeds,assumptions:'90% regular kills and independent boss model in hybrid; purchase strategy unchanged. Times exclude menus. Earned gold is cumulative, not the price.',unlocks:unlockRows},null,2));
+fs.writeFileSync(path.join(__dirname,`../output/unlock-timing-${mode}${reportSuffix}.json`),JSON.stringify({mode,buttermantBonus,partyBondCost:50,seeds,assumptions:'Spawn-timed ideal DPS must clear all regulars before boss; stage 4 takes 3.5 ranged hits before boss; rewards for modeled kills only; purchase strategy unchanged. Times exclude menus. Earned gold is cumulative, not the price.',unlocks:unlockRows},null,2));
 console.log('UNLOCK TIMING: first purchases/captures; earned gold includes spending on all earlier upgrades. Stage ranges reflect purchase choices, not hard gates.');
 console.table(unlockRows);
