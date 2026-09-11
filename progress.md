@@ -319,3 +319,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Regular monsters and capture pets now render at exactly 16×16 game pixels, independent of enemy radius, role, and menu context. DemonCyclop retains its separate boss size. Combat radii unchanged.
 - New minimize_F-Sheet.png is 192×80: creature rows begin at y=0/32/64, with fully transparent spacer rows at y=16/48. Four animation steps use columns step*3 + facing offset. South=0, north=1, east=2; west mirrors east. Wild spawn edges reverse facing; party pets face south.
 - Browser preview caught and corrected spacer-row indexing. Final screenshot shows all three pets; four-facing preview inspected. Syntax check and browser captures passed. Existing save IDs/display names preserved.
+
+## September 11 — restore node dimensions and integer creature scaling
+
+- Corrected interpretation: restored original 232×108 two-column upgrade cards and spacing, retaining condensed name/rank/price header and wrapped description below. Click bounds restored with cards.
+- All regular monsters and tameable creature frames use consistent 3× integer scaling (16×16 source to 48×48 display), including pets, wild captures and menu appearances. Boss art retains its own scale.
+- Syntax and browser checks passed. Restored node and party screenshots visually inspected in output/wood-client/upgrades.png and output/creature-scale-client/shot-0.png.

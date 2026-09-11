@@ -214,8 +214,8 @@
     let definitions = treeDefs.filter(definition => definition.branch === branch);
     if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
-    const height = Math.min(62, 510 / definitions.length - 4);
-    return definitions.map((definition, index) => ({ definition, x: 24, y: 212 + index * (height + 4), height }));
+    const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
+    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136), height: 108 }));
   };
   const treeRequirements = definition => definition.recruit && definition.requires.length === 0
     ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
@@ -763,7 +763,7 @@
       return;
     }
     const sheet = monsterSheets[enemy.type];
-    const size = enemy.type === "boss" ? 92 : 16;
+    const size = enemy.type === "boss" ? 92 : 48;
     if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
       drawSprite(enemy.type, enemy.x, enemy.y, size);
     }
@@ -779,7 +779,7 @@
     ctx.globalAlpha = alpha;
     ctx.translate(Math.round(x), Math.round(y));
     if (facing === "west") ctx.scale(-1, 1);
-    ctx.drawImage(image, column * 16, row * 32, 16, 16, -8, -8, 16, 16);
+    ctx.drawImage(image, column * 16, row * 32, 16, 16, -24, -24, 48, 48);
     ctx.restore();
   }
 
@@ -926,19 +926,27 @@
       const available = def.capture ? (captured || (!!def.currency && captureStageUnlocked(def))) : upgradeUnlocked(def);
       const maxed = !def.capture && current >= def.max;
       const cost = maxed || def.capture ? 0 : def.costs[current];
-      drawPanel(item.x, item.y, 492, item.height, available ? "#253753f5" : "#303541f5");
-      drawText(def.name, item.x + 14, item.y + 18, 17, available ? "#fff" : "#eee0ca");
-      drawText(`${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`, item.x + 375, item.y + 18, 16, "#fff", "right");
+      drawPanel(item.x, item.y, 232, item.height, available ? "#253753f5" : "#303541f5");
+      ctx.font = '14px "NinjaPixel", monospace';
+      const nameSize = Math.min(14, 14 * 123 / Math.max(1, ctx.measureText(def.name).width));
+      drawText(def.name, item.x + 10, item.y + 23, nameSize, available ? "#fff" : "#eee0ca");
+      drawText(`${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`, item.x + 178, item.y + 23, 12, "#fff", "right");
       const price = def.capture ? (captured ? 0 : def.cost || 0) : maxed ? 0 : cost;
-      drawText(String(price), item.x + 477, item.y + 18, 16, "#fff", "right");
+      drawText(String(price), item.x + 222, item.y + 23, 12, "#fff", "right");
       const effect = def.capture
         ? captured ? "Unlock monster talents" : `Clear stage ${def.requiresStageClear || def.stage} to capture${def.currency ? ` / ${currencyName(def.currency)}` : ""}`
         : !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
       const description = effect + (!def.capture && def.currency ? ` / ${currencyName(def.currency)}` : "");
       ctx.font = '14px "NinjaPixel", monospace';
-      const textSize = Math.min(14, 14 * 464 / Math.max(1, ctx.measureText(description).width));
-      drawText(description, item.x + 14, item.y + item.height - 15, textSize, "#fff");
-      uiTargets.push({ x: item.x, y: item.y, width: 492, height: item.height, action: () => attemptUpgrade(def) });
+      const lines = [""];
+      for (const word of description.split(" ")) {
+        const last = lines.length - 1;
+        const next = lines[last] ? `${lines[last]} ${word}` : word;
+        if (ctx.measureText(next).width > 208 && lines[last]) lines.push(word);
+        else lines[last] = next;
+      }
+      lines.slice(0, 3).forEach((line, index) => drawText(line, item.x + 12, item.y + 51 + index * 18, 14, "#fff"));
+      uiTargets.push({ x: item.x, y: item.y, width: 232, height: item.height, action: () => attemptUpgrade(def) });
     }
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 742, 17, "#ffde83", "center");
     drawButton("BACK TO MAP", 100, 804, 340, 68, true, () => setMode("map"));
