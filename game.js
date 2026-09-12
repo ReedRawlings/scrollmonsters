@@ -1284,19 +1284,22 @@
     drawPanel(12, 12, WIDTH - 24, 96);
     const healthRatio = clamp(state.party.hp / state.party.maxHp, 0, 1);
     const vessel = assets.healthVessel, fill = assets.healthFill;
-    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 20, 34, 56);
+    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 32, 34, 56);
     if (fill?.naturalWidth && healthRatio > 0) {
       // Fixed artwork; only the integer-pixel reveal changes with actual HP.
       const height = Math.round(40 * healthRatio);
       ctx.save();
-      ctx.beginPath(); ctx.rect(31, 68 - height, 22, height); ctx.clip();
-      ctx.drawImage(fill, 31, 28, 22, 40);
+      ctx.beginPath(); ctx.rect(31, 80 - height, 22, height); ctx.clip();
+      ctx.drawImage(fill, 31, 40, 22, 40);
       ctx.restore();
     }
     drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 75, 36, 20, "#fff");
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
-    drawSprite("gold", 330, 36, 24);
-    drawText(formatAmount(state.save.gold + state.runGold), 446, 36, 20, "#ffe17d", "right");
+    const goldText = formatAmount(state.save.gold + state.runGold);
+    ctx.font = '20px "NinjaPixel", monospace';
+    const goldIconX = 446 - ctx.measureText(goldText).width - 18;
+    drawSheetFrame("coinDrop", goldIconX, 36, Math.floor(state.animationTime * 10) % 4, 4, 24);
+    drawText(goldText, 446, 36, 20, "#ffe17d", "right");
     const essenceIcons = assets.petRoster;
     if (essenceIcons?.naturalWidth) {
       // Static south-facing frames keep the resource counters easy to scan.

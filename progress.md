@@ -399,3 +399,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Replaced the essence labels with static 32px Fangle/Buttermant portraits and numeric totals. Centered the 48px book toggle at banner y=60 and moved its touch bounds with it.
 - Touch on/off, saved setting, Space shortcut, locked behavior and bottom aiming checks passed; final HUD screenshot inspected. Production uses Vercel linked to main at scrollmonsters.vercel.app.
+
+## September 11 — spinning HUD coin and centered health vessel
+
+- Replaced static header gold with the four-frame Coin2 animation at 10 fps, positioned directly beside the measured gold total.
+- Moved the 56px health vessel and its fill/clipping down 12px so its center matches the banner and book toggle at y=60.
+- Syntax, general gameplay, HUD touch/keyboard checks and skill gameplay capture passed. Final HUD and gameplay screenshots visually inspected.
