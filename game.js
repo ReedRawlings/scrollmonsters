@@ -17,6 +17,22 @@
     gold: "gold.svg", heart: "heart.svg", heal: "heal.svg", crosshair: "crosshair.svg", autoTarget: "auto-target.svg",
     lock: "lock.svg", nodeComplete: "node-complete.svg", nodeOpen: "node-open.svg", playerShot: "projectile-player.svg",
     enemyShot: "projectile-enemy.svg", impact: "impact.svg", grass: "grass-tile.svg", path: "path-tile.svg",
+    autoAttackBook: "assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/Spell/BookRock.png",
+    autoAttackBookDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/Spell/BookRockDisabled.png",
+    particleRain: "assets/Ninja Adventure - Asset Pack/FX/Particle/Rain.png",
+    particleSplash: "assets/Ninja Adventure - Asset Pack/FX/Particle/RainOnFloor.png",
+    particleLeaf: "assets/Ninja Adventure - Asset Pack/FX/Particle/Leaf.png",
+    particleRock: "assets/Ninja Adventure - Asset Pack/FX/Particle/Rock.png",
+    particleWood: "assets/Ninja Adventure - Asset Pack/FX/Particle/Wood.png",
+    abandonedProps: "assets/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetVillageAbandoned.png",
+    sceneryDesert: "assets/scenery/04-desert-path.png",
+    sceneryStone: "assets/scenery/05-stone-path.png",
+    particleVase: "assets/Ninja Adventure - Asset Pack/FX/Particle/Vase.png",
+    propTiles: "assets/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetElement.png",
+    sceneryMeadow: "assets/scenery/01-open-meadow.png",
+    sceneryForest: "assets/scenery/02-forest-corridor.png",
+    sceneryRocky: "assets/scenery/03-rocky-trail.png",
+    natureTiles: "assets/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetNature.png",
     earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
     groundTrap: "assets/SoggySocks Combat FX/PNG/ground_trap_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
@@ -41,6 +57,14 @@
     petButtermant: "assets/Sprites/Pets/buttermant.png",
     petTinmin: "assets/Sprites/Pets/tinmin.png"
   };
+  const destructibleVariants = [
+    { id: "clay-vase", sheet: "propTiles", x: 4, y: 1, material: "vase" },
+    { id: "round-vase", sheet: "propTiles", x: 5, y: 1, material: "vase" },
+    { id: "wood-crate", sheet: "propTiles", x: 0, y: 0, material: "wood" },
+    { id: "moss-vase", sheet: "abandonedProps", x: 5, y: 4, material: "vase" },
+    { id: "old-vase", sheet: "abandonedProps", x: 12, y: 11, material: "vase" },
+    { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
+  ];
   const assets = {};
   Object.entries(assetPaths).forEach(([key, file]) => {
     const image = new Image();
@@ -286,6 +310,7 @@
     mode: "title", save: loadSave(), mouse: { x: WIDTH / 2, y: HEIGHT * 0.8 }, selectedStage: 1, stage: null,
     party: { x: WIDTH / 2, y: HEIGHT / 2, hp: 10, maxHp: 10 }, stageTime: 0, spawnTimer: 0, fireTimer: 0,
     obstacles: [], scroll: 0, runGold: 0, bossSpawned: false, bossDefeated: false, enemies: [], projectiles: [], drops: [], effects: [],
+    particles: [], vases: [], ambientTimer: 0, vaseTimer: 1.5, particleSeed: 1,
     companions: [], result: null, toast: "", toastTimer: 0, animationTime: 0
   };
 
@@ -378,6 +403,14 @@
     state.projectiles = [];
     state.drops = [];
     state.effects = [];
+    state.particles = [];
+    state.vases = [];
+    state.ambientTimer = 0;
+    state.vaseTimer = 1.5;
+    state.propsSpawned = 0;
+    state.leafSpawnBand = 0;
+    state.particleSeed = stageNumber * 7919;
+    if (weatherType() === "leaves") for (let i = 0; i < 6; i++) spawnLeaf(true);
     state.result = null;
     setupCompanions();
     setMode("combat");
@@ -630,12 +663,115 @@
     }
   }
 
+  // Separate random stream: cosmetic weather cannot change combat rolls.
+  function particleRandom() {
+    state.particleSeed = (Math.imul(state.particleSeed, 1664525) + 1013904223) >>> 0;
+    return state.particleSeed / 4294967296;
+  }
+
+  function weatherType() {
+    return ["leaves", "rain", "clear", "clear", "clear"][(state.stage.number - 1) % 5];
+  }
+
+  function addParticle(particle) {
+    if (state.particles.length < 96) state.particles.push(particle);
+  }
+
+  function breakFragments(kind, x, y, large = false) {
+    const count = large ? 10 : 6;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + particleRandom() * 0.4;
+      const speed = 35 + particleRandom() * (large ? 110 : 70);
+      const life = 0.55 + particleRandom() * 0.3;
+      addParticle({ kind, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 80,
+        age: 0, life, maxLife: life, frame: Math.floor(particleRandom() * (kind === "rock" ? 5 : 6)) });
+    }
+  }
+
+  function spawnLeaf(initial = false) {
+    const band = state.leafSpawnBand++;
+    const x = 24 + (band % 3) * 164 + particleRandom() * 150;
+    const y = 120 + (band % 2) * 220 + particleRandom() * 170;
+    addParticle({ kind: "leaf", x, y, vx: 4 + particleRandom() * 8, vy: 18 + particleRandom() * 8,
+      phase: particleRandom() * Math.PI * 2, age: initial ? 0.3 : 0, life: 6, maxLife: 6 });
+  }
+
+  function updateParticles(dt, cameraStep) {
+    const splashes = [];
+    for (const p of state.particles) {
+      p.age += dt; p.life -= dt;
+      if (p.kind === "rain") {
+        p.x += p.vx * dt; p.y += p.vy * dt; p.groundY -= cameraStep;
+        if (p.y >= p.groundY && p.life > 0) {
+          p.life = 0;
+          splashes.push({ kind: "splash", x: p.x, y: p.groundY, age: 0, life: 0.3, maxLife: 0.3 });
+        }
+      } else if (p.kind === "leaf") {
+        p.x += (p.vx + Math.sin(p.age * 2.8 + p.phase) * 18) * dt;
+        p.y += p.vy * dt - cameraStep * 0.3;
+      } else if (p.kind === "splash") p.y -= cameraStep;
+      else { p.vy += 240 * dt; p.x += p.vx * dt; p.y += p.vy * dt - cameraStep; }
+    }
+    state.particles = state.particles.filter(p => p.life > 0 && p.x > -40 && p.x < WIDTH + 40 && p.y < HEIGHT + 40);
+    splashes.forEach(addParticle);
+    state.ambientTimer -= dt;
+    const weather = weatherType();
+    if (state.ambientTimer <= 0) {
+      if (weather === "rain") {
+        const groundY = 145 + particleRandom() * 650;
+        addParticle({ kind: "rain", x: 20 + particleRandom() * (WIDTH - 40), y: groundY - 280,
+          groundY, vx: -45, vy: 430, age: 0, life: 1.2, maxLife: 1.2, frame: Math.floor(particleRandom() * 3) });
+        state.ambientTimer = 0.07;
+      } else if (weather === "leaves") {
+        spawnLeaf();
+        state.ambientTimer = 0.9;
+      } else state.ambientTimer = 1;
+    }
+  }
+
+  function updateVases(dt, cameraStep) {
+    for (const vase of state.vases) vase.y -= cameraStep;
+    state.vases = state.vases.filter(vase => vase.y + vase.r >= 126);
+    state.vaseTimer -= dt * travelMultiplier();
+    if (state.vaseTimer <= 0 && !state.bossSpawned && state.propsSpawned < 2) {
+      // Two sparse opportunities per level, with the first already in view.
+      const y = state.propsSpawned === 0 ? 760 : HEIGHT + 16;
+      const lanes = particleRandom() < 0.5 ? [155, 385, 120, 420] : [385, 155, 420, 120];
+      const x = lanes.find(x => ![...state.obstacles, ...state.vases].some(prop => Math.hypot(prop.x - x, prop.y - y) < prop.r + 48));
+      if (x === undefined) { state.vaseTimer = 0.2; return; }
+      const variant = Math.floor(particleRandom() * destructibleVariants.length);
+      state.vases.push({ x, y, r: 12, hp: 1, kind: "vase", variant });
+      state.propsSpawned++;
+      state.vaseTimer = 10;
+    }
+  }
+
+  function drawParticles(ground) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 112, WIDTH, HEIGHT - 208); ctx.clip();
+    for (const p of state.particles) {
+      if ((p.kind === "splash") !== ground) continue;
+      const specs = { rain: ["particleRain", 8, 8], splash: ["particleSplash", 8, 8],
+        leaf: ["particleLeaf", 12, 7], rock: ["particleRock", 16, 16], vase: ["particleVase", 14, 14], wood: ["particleWood", 16, 16] };
+      const [key, w, h] = specs[p.kind], image = assets[key];
+      if (!image?.complete || !image.naturalWidth) continue;
+      const frame = p.kind === "splash" ? Math.min(2, Math.floor(p.age * 10))
+        : p.kind === "leaf" ? Math.floor(p.age * 7 + p.phase) % 6 : p.frame;
+      const ambient = p.kind === "rain" || p.kind === "leaf";
+      ctx.globalAlpha = (p.kind === "rain" ? 0.45 : p.kind === "splash" ? 0.4 : 0.9)
+        * Math.min(1, p.life / 0.25, ambient ? p.age / 0.2 : 1);
+      ctx.drawImage(image, frame * w, 0, w, h, Math.round(p.x - w), Math.round(p.y - h), w * 2, h * 2);
+    }
+    ctx.restore();
+  }
+
   function updateCombat(dt) {
     if (state.mode !== "combat") return;
     state.stageTime += dt;
     const previousScroll = state.scroll;
     state.scroll += 24 * travelMultiplier() * dt;
     const cameraStep = state.scroll - previousScroll;
+    updateParticles(dt, cameraStep);
+    updateVases(dt, cameraStep);
     for (const coin of state.drops) {
       coin.age += dt;
       coin.y -= cameraStep;
@@ -653,8 +789,10 @@
     if (state.stage.number >= 4) {
       state.rockSpawnTimer -= dt * travelMultiplier();
       if (state.rockSpawnTimer <= 0) {
-        const radius = 24 + Math.random() * 8;
-        state.obstacles.push({ x: Math.random() < 0.5 ? 85 + Math.random() * 125 : 330 + Math.random() * 125, y: HEIGHT + radius, r: radius, hp: 15, maxHp: 15 });
+        const size = Math.random() < 0.5 ? "small" : "medium";
+        const radius = size === "small" ? 13 : 27;
+        const health = size === "small" ? 8 : 15;
+        state.obstacles.push({ x: Math.random() < 0.5 ? 85 + Math.random() * 125 : 330 + Math.random() * 125, y: HEIGHT + radius, r: radius, size, hp: health, maxHp: health });
         state.rockSpawnTimer = 3.5 + Math.random();
       }
     }
@@ -720,14 +858,22 @@
             continue;
           }
         }
-        const rock = state.obstacles.find(obstacle => {
+        const rock = [...state.obstacles, ...state.vases].find(obstacle => {
           const t = clamp(((obstacle.x - oldX) * dx + (obstacle.y - oldY) * dy) / Math.max(0.001, dx * dx + dy * dy), 0, 1);
           return Math.hypot(oldX + t * dx - obstacle.x, oldY + t * dy - obstacle.y) <= obstacle.r + projectile.r;
         });
         if (rock) {
-          if (rank("rockBreaker")) {
+          if (rock.kind === "vase" || rank("rockBreaker")) {
             rock.hp -= projectile.damage;
-            if (rock.hp <= 0) state.obstacles.splice(state.obstacles.indexOf(rock), 1);
+            if (rock.hp <= 0) {
+              const collection = rock.kind === "vase" ? state.vases : state.obstacles;
+              collection.splice(collection.indexOf(rock), 1);
+              breakFragments(rock.kind === "vase" ? destructibleVariants[rock.variant ?? 0].material : "rock", rock.x, rock.y, rock.size === "medium");
+              if (rock.kind === "vase" && Math.random() < 0.25) {
+                state.runGold = precise(state.runGold + 1);
+                spawnCoins(rock.x, rock.y, 1);
+              }
+            }
           }
           state.effects.push({ type: "impact", x: projectile.x, y: projectile.y, life: 0.15, maxLife: 0.15, radius: 12 });
           state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
@@ -887,6 +1033,21 @@
     drawText(label, x + width / 2, y + height / 2, size, active ? "#2b2218" : "#ded1b8", "center");
   }
 
+  function sceneryKey() {
+    return ["sceneryMeadow", "sceneryForest", "sceneryRocky", "sceneryDesert", "sceneryStone"][(state.stage.number - 1) % 5];
+  }
+
+  function drawTrackScenery() {
+    const image = assets[sceneryKey()];
+    if (!image?.complete || !image.naturalWidth) { drawBackground(); drawRoad(); return; }
+    const scale = 2, height = image.naturalHeight * scale;
+    const offset = Math.floor(state.scroll) % height;
+    const x = Math.floor((WIDTH - image.naturalWidth * scale) / 2);
+    for (let y = -offset; y < HEIGHT; y += height) {
+      ctx.drawImage(image, x, y, image.naturalWidth * scale, height);
+    }
+  }
+
   function drawBackground() {
     ctx.fillStyle = "#70b55f";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -1039,12 +1200,26 @@
   }
 
   function drawCombat() {
-    drawBackground(); drawRoad();
+    drawTrackScenery();
+    drawParticles(true);
+    for (const vase of state.vases) {
+      if (vase.y < 126 || vase.y > HEIGHT - 96) continue;
+      const variant = destructibleVariants[vase.variant ?? 0], image = assets[variant.sheet];
+      if (image?.complete && image.naturalWidth) {
+        ctx.drawImage(image, variant.x * 16, variant.y * 16, 16, 16, Math.round(vase.x - 16), Math.round(vase.y - 16), 32, 32);
+      }
+    }
     for (const rock of state.obstacles) {
       if (rock.y < 126 - rock.r || rock.y > HEIGHT - 96 + rock.r) continue;
-      ctx.fillStyle = "#514c43"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r + 9, rock.r * 2, rock.r * 2 - 4);
-      ctx.fillStyle = "#858a8b"; ctx.fillRect(rock.x - rock.r + 4, rock.y - rock.r, rock.r * 2 - 8, rock.r * 2 - 5);
-      ctx.fillStyle = "#b9bdb3"; ctx.fillRect(rock.x - rock.r + 8, rock.y - rock.r + 4, rock.r, 6);
+      const small = rock.size === "small", size = small ? 32 : 64;
+      const image = assets.natureTiles;
+      if (image?.complete && image.naturalWidth) {
+        // Transparent atlas margins excluded from the circular shot collider.
+        ctx.drawImage(image, small ? 272 : 240, small ? 208 : 160, small ? 16 : 32, small ? 16 : 32,
+          Math.round(rock.x - size / 2), Math.round(rock.y - size / 2), size, size);
+      } else {
+        ctx.fillStyle = "#b58a64"; ctx.beginPath(); ctx.arc(rock.x, rock.y, rock.r, 0, Math.PI * 2); ctx.fill();
+      }
       if (rank("rockBreaker")) {
         ctx.fillStyle = "#371c27"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2, 5);
         ctx.fillStyle = "#f0c65a"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2 * Math.max(0, rock.hp / rock.maxHp), 5);
@@ -1104,6 +1279,7 @@
         if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2, alpha);
       } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2, alpha);
     }
+    drawParticles(false);
     if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
     drawPanel(12, 12, WIDTH - 24, 96);
     const healthRatio = clamp(state.party.hp / state.party.maxHp, 0, 1);
@@ -1119,15 +1295,20 @@
     }
     drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 75, 36, 20, "#fff");
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
-    drawSprite("gold", 350, 36, 24); drawText(formatAmount(state.save.gold + state.runGold), 372, 36, 20, "#ffe17d");
-    drawText(`Fangle essence: ${state.save.fangEssence + state.runEssence}`, 75, 62, 16, "#fff");
-    drawText(`Buttermant essence: ${state.save.mossEssence + state.runMossEssence}`, 75, 86, 16, "#fff");
-    if (autoTargetUnlocked()) {
-      drawButton(state.save.autoTargetEnabled ? "AUTO ON • TAP TO AIM" : "AIM • TAP FOR AUTO", 60, HEIGHT - 82, WIDTH - 120, 64, true, toggleAutoTarget);
-    } else {
-      drawPanel(60, HEIGHT - 78, WIDTH - 120, 60);
-      drawText("TOUCH + DRAG TO AIM", WIDTH / 2, HEIGHT - 48, 19, "#fff", "center");
+    drawSprite("gold", 330, 36, 24);
+    drawText(formatAmount(state.save.gold + state.runGold), 446, 36, 20, "#ffe17d", "right");
+    const essenceIcons = assets.petRoster;
+    if (essenceIcons?.naturalWidth) {
+      // Static south-facing frames keep the resource counters easy to scan.
+      ctx.drawImage(essenceIcons, 0, 0, 16, 16, 76, 58, 32, 32);
+      ctx.drawImage(essenceIcons, 0, 32, 16, 16, 252, 58, 32, 32);
     }
+    drawText(formatAmount(state.save.fangEssence + state.runEssence), 118, 74, 20, "#fff");
+    drawText(formatAmount(state.save.mossEssence + state.runMossEssence), 294, 74, 20, "#fff");
+    const autoOn = autoTargetUnlocked() && state.save.autoTargetEnabled;
+    drawSprite(autoOn ? "autoAttackBook" : "autoAttackBookDisabled", 484, 60, 48);
+    if (autoTargetUnlocked()) uiTargets.push({ x: 460, y: 36, width: 48, height: 48, action: toggleAutoTarget });
+
   }
 
   function drawResult() {
@@ -1256,15 +1437,19 @@
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
-      direction: "north-to-south", movementMode: "centered-parallax", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
+      direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.species || enemy.type, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
+      weather: weatherType(),
+      particles: { total: state.particles.length, counts: state.particles.reduce((counts, p) => { counts[p.kind] = (counts[p.kind] || 0) + 1; return counts; }, {}) },
+      destructiblesSpawned: state.propsSpawned,
+      vases: state.vases.map(vase => ({ x: Math.round(vase.x), y: Math.round(vase.y), hp: vase.hp, radius: vase.r, variant: destructibleVariants[vase.variant ?? 0].id, coinDropChance: 0.25 })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
       coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"][upgradeBranch],
     captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),

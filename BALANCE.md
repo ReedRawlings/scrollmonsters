@@ -299,3 +299,15 @@ The corrected ten-seed hybrid estimate gives stage 4 a mean of 5.9 attempts (5â€
 - Existing saved rank-1 purchases remain rank 1 (now a 20% trigger chance). The hybrid boss calculator rolls Deep Bloom chance at each eligible heal; Follow-Up Bite and Mending Bite remain excluded from isolated boss math because no regular-enemy kills are modeled during the boss fight.
 
 - Bloom Guard: one purchase for 200 Buttermant essence, unlocked by Deep Bloom rank 5. Each Deep Bloom proc can grant a single shared shield blocking the entire next damaging hit on any party member. No stacking or expiry; a 2-second cooldown starts when granted. A fresh Deep Bloom proc is required to reapply it after the cooldown. Shield and cooldown reset each stage attempt. Blue rings show protection; calculator includes boss-hit absorption.
+
+### Brown obstacle sizes (September 11)
+
+From stage 4, obstacles choose equally between small brown rocks (8 HP, 32px sprite, 13px collision radius) and medium brown rocks (15 HP, 64px sprite, 27px collision radius). Rock Breaker is still required to damage either. At 2 damage per shot these take 4 and 8 hits; health does not scale with player damage. Spawn cadence and lanes are unchanged. This is provisional size-based tuning, verified for hit counts but not a new campaign balance simulation.
+
+### Decorative pottery and particle effects (September 11)
+
+Occasional vases have 1 HP and break from player shots without Rock Breaker. They yield no currency, consume the hitting shot, and scroll with terrain. A first vase enters after 1.5 seconds; subsequent spawn attempts are 14â€“18 seconds apart (scaled by travel speed), outside the central treasure lane. New vase spawns stop during the boss phase. Rain, splashes, leaves, and debris are visual only.
+
+### Updated breakable-prop distribution and loot (September 11)
+
+Supersedes the no-reward pottery settings above. Each level schedules two props: the first appears at y=760 after 1.5 seconds, and the second enters from below ten travel-adjusted seconds later. Occupied spawn positions retry; no additional spawns during the boss. Six equally selected vase/crate variants each have 1 HP. Destruction has an independent 25% chance of exactly 1 gold, credited once with an animated coin pickup. Expected reward is 0.5 gold per level if both are destroyed; no Magnet multiplier applies to these one-coin rewards.

@@ -363,3 +363,39 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Node headers again show title, current/maximum rank, and G-prefixed gold or E-prefixed essence cost. Header columns are measured to avoid overlap within existing 232×108 cards; descriptions and connections retained.
 - Syntax and browser screenshot checks passed.
 - Prior damage audit: scripts/check-fangle-damage.cjs passes 44 actual-hit comparisons across ranks, Party Bond and criticals, plus follow-up damage and animation timing. Controlled 10-second rank-5 output was player 138 vs Fangle 60 due to cadence. No damage rebalance made during the audit.
+
+## September 11 — approved low-density tile scenery and brown rocks
+
+- Integrated the original meadow, forest, and rocky strip designs as combat backgrounds, cycling by stage. All background elements scroll at the same speed; nearest-neighbor 2× tiles retain crisp pixels. Props wrap across the repeated strip boundary.
+- Added a reproducible scenery build script using the original preview generator. Denser pass-02 concepts remain review files only.
+- Replaced placeholder obstacle blocks with small (32px, radius 13, 8 HP) and medium (64px, radius 27, 15 HP) brown nature sprites. Existing stage-4 spawn gate, lanes, treasure clearance, and Rock Breaker requirement retained.
+- Browser tests verified both spawned sizes, immunity without Rock Breaker, and destruction at 4/8 two-damage hits. Inspected all three scenery screenshots and the corrected loop join; no browser page errors. General gameplay checks pass after repairing their pre-existing missing measureText mock.
+- Skill browser harness hung with forced SwiftShader flags on this Mac; a local copy with only those flags removed runs successfully. Original preview art and pass-02 remain available for comparison.
+
+## September 11 — environment particles and breakable pottery
+
+- Added asset-pack Rain/RainOnFloor, Leaf, Rock and Vase particles with atlas-specific frame sizes. Meadow stages have sparse drifting leaves; forest stages have light rain and linked impact splashes; rocky stages remain clear.
+- Rain splashes scroll with the ground. Leaves flutter; debris bursts move outward under gravity and fade. Particle drawing clips to gameplay below the HUD; a separate deterministic random stream keeps cosmetics out of combat random rolls. Particle count is capped at 96 (long-run rain test peaked at 12).
+- Small/medium rock destruction creates six/ten brown fragments. Added sparse 32px pots using TilesetElement (64,16,16,16), 1 HP, no reward or Rock Breaker requirement, every 14–18 seconds after the initial entry. Pots scroll/cull and clear on restart.
+- Browser validation passed rain-to-splash lifecycle, both rock bursts, vase shot destruction without Rock Breaker, fragment expiry, prop scrolling/culling, stage reset, and particle budget. No console/page errors. Inspected stills and animation sequences in output/particles; effects-preview.gif compares all four effects.
+- General gameplay and 44 player/Fangle damage parity checks passed. The working skill client (without this Mac's hanging forced SwiftShader flags) passed normal menu-to-combat gameplay; screenshot inspected.
+
+## September 11 — broader leaves, varied loot props, sand and rock-ground paths
+
+- Clarified asset scope: both new terrain palettes come from TilesetFloor.png (sand at top, grey/brown rock ground at row 14). No TilesetDesert building/palm art is used. Two new low-density strips use the same 16px tiles, 2× game scale, lane dimensions and repeat wrapping. Five scenery palettes cycle through stages 1–10.
+- Leaves start distributed across the width and upper/middle bands, then replenish every 0.9 seconds with six-second lifetimes.
+- Six destructible variants: two vases and a crate from TilesetElement, two mossy vases and a discarded crate from TilesetVillageAbandoned. All retain 1 HP. Crates emit Wood particles, pottery emits Vase particles.
+- Each stage schedules two sparse props, first visible at 1.5 seconds, second entering later. Spawn conflicts retry using alternate lanes. Each destroyed prop independently rolls Math.random() < 0.25 for exactly one gold and one animated coin; collection animation does not double-credit it.
+- Browser checks passed all ten stages spawning two props and 24 loot threshold/variant cases, including <0.25 vs >=0.25, material fragments, and pickup completion. Leaf positions span upper and middle screen regions. In-game new paths, six prop variants and wider leaves visually inspected; no browser errors. Skill gameplay harness and general checks passed.
+- Updated path outputs: map-previews/pass-03; in-game screenshots: output/biomes-props.
+
+## September 11 — consolidated combat header and book toggle
+
+- Combined Fangle and Buttermant essence on one header line, with measured text fitting. Gold sits to the left of the new 48px BookRock icon.
+- Removed the bottom aim/auto-target banner. Header icon uses BookRock when unlocked automatic targeting is enabled and BookRockDisabled when off/locked; tap toggles the existing saved auto-target setting. Space shortcut and the upgrade gate remain.
+- Browser checks passed touch toggling in both directions, persistence, keyboard shortcut, locked behavior, and aiming in the cleared bottom area. Enabled/disabled screenshots and normal skill-harness gameplay screenshot visually inspected; no page errors. General gameplay checks pass.
+
+## September 11 — essence portrait counters and production release
+
+- Replaced the essence labels with static 32px Fangle/Buttermant portraits and numeric totals. Centered the 48px book toggle at banner y=60 and moved its touch bounds with it.
+- Touch on/off, saved setting, Space shortcut, locked behavior and bottom aiming checks passed; final HUD screenshot inspected. Production uses Vercel linked to main at scrollmonsters.vercel.app.

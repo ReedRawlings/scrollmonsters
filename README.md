@@ -12,7 +12,7 @@ python3 -m http.server 5173 --bind 0.0.0.0
 
 Open http://localhost:5173 on the Mac. For a phone, connect to the same Wi-Fi and open `http://<Mac-Wi-Fi-IP>:5173`. Find the Mac’s Wi-Fi IP with `ipconfig getifaddr en0` (or in macOS Wi-Fi settings). Keep the Mac awake and the server running. Saves are stored separately in each browser and site address.
 
-Touch and drag to aim, or move the mouse. Firing and travel are automatic. After buying Hunter’s Eye in the Shared upgrade branch, tap the bottom combat button or press Space to toggle auto-targeting. Portrait orientation gives the largest playfield.
+Touch and drag to aim, or move the mouse. Firing and travel are automatic. After buying Hunter’s Eye in the Shared upgrade branch, tap the book icon in the top banner or press Space to toggle auto-targeting. Portrait orientation gives the largest playfield.
 
 ## Checks
 

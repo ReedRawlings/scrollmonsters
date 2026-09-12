@@ -1,0 +1,23 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('fs');
+(async()=>{const browser=await chromium.launch({headless:true});try{
+ const page=await browser.newPage({viewport:{width:560,height:940},hasTouch:true}),errors=[];
+ page.on('pageerror',e=>errors.push(String(e)));await page.addInitScript(()=>window.__vt_pending=true);
+ await page.goto('http://localhost:5173');await page.waitForTimeout(500);
+ fs.mkdirSync('output/combat-hud',{recursive:true});
+ const tap=async(x,y)=>{const b=await page.locator('canvas').boundingBox();await page.touchscreen.tap(b.x+x*b.width/540,b.y+y*b.height/900);};
+ const read=()=>page.evaluate(()=>JSON.parse(window.render_game_to_text()));
+ await page.evaluate(()=>{window.__scollTest.setSave({gold:1234,fangEssence:12,mossEssence:34,upgrades:{autoTarget:1}});window.__scollTest.startStage(1);});
+ await page.locator('canvas').screenshot({path:'output/combat-hud/off.png'});
+ assert.equal((await read()).combat.aim.mode,'cursor');
+ await tap(484,60);assert.equal((await read()).combat.aim.mode,'auto-nearest');
+ assert.equal(await page.evaluate(()=>window.__scollTest.getSave().autoTargetEnabled),true);
+ await page.locator('canvas').screenshot({path:'output/combat-hud/on.png'});
+ await tap(484,60);assert.equal((await read()).combat.aim.mode,'cursor');
+ await page.keyboard.press('Space');assert.equal((await read()).combat.aim.mode,'auto-nearest');
+ await page.keyboard.press('Space');assert.equal((await read()).combat.aim.mode,'cursor');
+ await tap(270,850);const after=await read();assert.equal(after.combat.aim.mode,'cursor');assert.equal(after.combat.aim.y,850);
+ await page.evaluate(()=>{window.__scollTest.setSave({});window.__scollTest.startStage(1);});
+ await tap(484,60);assert.equal((await read()).combat.aim.mode,'cursor');
+ await page.locator('canvas').screenshot({path:'output/combat-hud/locked.png'});
+ assert.deepEqual(errors,[]);console.log('PASS: touch toggle on/off, saved setting, Space shortcut, locked state, and bottom-area aiming; no page errors');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
