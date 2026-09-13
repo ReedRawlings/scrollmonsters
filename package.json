@@ -1,0 +1,8 @@
+{
+  "name": "scrollmonsters",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-music.cjs",
+    "dev": "python3 scripts/serve.py"
+  }
+}

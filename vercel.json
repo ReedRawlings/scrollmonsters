@@ -1,0 +1,10 @@
+{
+  "buildCommand": "node scripts/build-music.cjs",
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/assets/music/playlist.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}

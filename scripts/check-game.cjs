@@ -85,16 +85,15 @@ api.setSave({}); api.startStage(1); state.spawnTimer = 999; state.fireTimer = 99
 spawnEnemy('basic', 'south'); damageEnemy(state.enemies[0], state.enemies[0].hp); assert.equal(state.runGold, 1, 'Kill gold is picked up immediately');
 assert(state.effects.some(effect => effect.type === 'earthImpact'), 'Player hits create the animated earth impact');
 state.party.hp = 0; updateCombat(1 / 60); assert.equal(state.result.won, false); assert.equal(state.save.gold, 1);
-api.setSave({ gold: 1000, fangEssence: 100, mossEssence: 100, unlockedStage: 10 });
+api.setSave({ gold: 1000, essence: { feral: 100, bloom: 100, arcane: 100 }, completed: [5, 10], unlockedStage: 10 });
 for (const capture of captureDefs) {
   const upgrade = upgradeDefs.find(def => def.recruit === capture.capture);
   attemptUpgrade(upgrade); assert.equal(state.save.upgrades[upgrade.id], undefined);
-  api.startStage(capture.stage); api.clearCombat();
-  if (capture.currency) { assert(!state.save.recruits.includes(capture.capture)); attemptUpgrade(capture); }
-  assert(state.save.recruits.includes(capture.capture));
+  api.recruitById(capture.capture);
+  assert(state.save.ownedCreatures.includes(capture.capture));
   attemptUpgrade(upgrade); assert.equal(state.save.upgrades[upgrade.id], 1);
-  api.startStage(capture.stage); api.clearCombat();
-  assert.equal(state.save.recruits.filter(type => type === capture.capture).length, 1);
+  api.recruitById(capture.capture);
+  assert.equal(state.save.ownedCreatures.filter(type => type === capture.capture).length, 1);
 }
-assert.equal(state.save.recruits.length, 3);
-console.log('PASS: ascending costs, DPS projection, four-edge spawns, automatic gold, boss gates, traversal, defeat banking, captures and replay deduplication');
+assert.equal(state.save.ownedCreatures.length, 3);
+console.log('PASS: ascending costs, DPS projection, four-edge spawns, automatic gold, boss gates, traversal, defeat banking, Bestiary recruitment and deduplication');

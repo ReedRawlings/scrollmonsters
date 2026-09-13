@@ -311,3 +311,15 @@ Occasional vases have 1 HP and break from player shots without Rock Breaker. The
 ### Updated breakable-prop distribution and loot (September 11)
 
 Supersedes the no-reward pottery settings above. Each level schedules two props: the first appears at y=760 after 1.5 seconds, and the second enters from below ten travel-adjusted seconds later. Occupied spawn positions retry; no additional spawns during the boss. Six equally selected vase/crate variants each have 1 HP. Destruction has an independent 25% chance of exactly 1 gold, credited once with an animated coin pickup. Expected reward is 0.5 gold per level if both are destroyed; no Magnet multiplier applies to these one-coin rewards.
+
+## Affinity essence economy — September 12
+
+- Affinities: Feral (Fanglet/Fangle), Bloom (Mossbud/Buttermant), and Arcane (Tinmin).
+- Regular tagged monsters retain a 30% essence roll with a guaranteed drop on the fifth consecutive dry kill of that affinity. Bundle size remains 1/2/3/4 in stages 1–3/4–6/7–9/10.
+- Fanglet stage densities: 20/25/55/25/15/40/20/25/40/20%.
+- Mossbud stage densities: 8/10/10/25/50/15/35/25/12/30%.
+- Tinmin stage densities: 4/5/5/10/8/15/15/25/25/35%.
+- Fangle costs 8 Feral essence with no clear gate. Buttermant costs 12 Bloom after stage 5. Tinmin costs 20 Arcane after stage 10.
+- Milestone bosses guarantee 15 Feral on stage 3, 15 Bloom on stage 5, and 20 Arcane on stage 10. Existing secondary boss bonuses remain 2 bundles of Feral on stages 6/9 and Bloom on stage 8.
+- Follow-Up Bite and Mending Bite now spend Feral essence. Deep Bloom and Bloom Guard spend Bloom essence. Their rank prices and effects are unchanged.
+- All values are provisional pending playtesting of the new multi-affinity stage distribution.

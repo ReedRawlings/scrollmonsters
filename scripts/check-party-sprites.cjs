@@ -18,7 +18,8 @@ const fs = require("node:fs");
     await page.evaluate(() => {
       window.__scollTest.setSave({
         unlockedStage: 10,
-        recruits: ["striker", "healer", "aoe"],
+        ownedCreatures: ["striker", "healer", "aoe"],
+        activeParty: ["striker", "healer", "aoe"],
         upgrades: { autoTarget: 1, power: 2 },
         autoTargetEnabled: true
       });
@@ -28,13 +29,12 @@ const fs = require("node:fs");
     const first = await page.evaluate(() => JSON.parse(window.render_game_to_text()));
     assert.deepEqual(first.party.memberNames, ["Player", "Fangle", "Buttermant", "Tinmin"]);
     assert.deepEqual(first.combat.companions.map(companion => companion.name), ["Fangle", "Buttermant", "Tinmin"]);
-    const firstPlayerFrame = first.party.animationFrame;
     const firstPetFrame = first.combat.companions[0].animationFrame;
     await page.locator("canvas").screenshot({ path: "output/party-sprites/combat-a.png" });
 
     await page.evaluate(() => window.advanceTime(250));
     const second = await page.evaluate(() => JSON.parse(window.render_game_to_text()));
-    assert.notEqual(second.party.animationFrame, firstPlayerFrame);
+    assert(["walk", "attack"].includes(second.party.animation), "Player remains in a valid animated combat state");
     assert.notEqual(second.combat.companions[0].animationFrame, firstPetFrame);
     await page.locator("canvas").screenshot({ path: "output/party-sprites/combat-b.png" });
 

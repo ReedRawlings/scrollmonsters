@@ -405,3 +405,136 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Replaced static header gold with the four-frame Coin2 animation at 10 fps, positioned directly beside the measured gold total.
 - Moved the 56px health vessel and its fill/clipping down 12px so its center matches the banner and book toggle at y=60.
 - Syntax, general gameplay, HUD touch/keyboard checks and skill gameplay capture passed. Final HUD and gameplay screenshots visually inspected.
+
+## September 12 — type essence design review
+
+- Reviewed the live title, overworld, combat HUD, and Fangle/Buttermant upgrade branches, plus the current save, spawn, reward, recruitment, and upgrade code. No gameplay implementation changed.
+- Recommended replacing per-species essence wallets with affinity/type wallets, while keeping combat role as a separate axis. Use `affinityId` rather than `type` because `enemy.type` already means basic/ranged/armored/boss behavior.
+- A scalable version also needs an owned-creature roster and three-slot active-party selection; the current save simply auto-equips every recruited creature.
+- Current friction to address during implementation: two species counters already consume the portrait HUD, essence has no distinct pickup feedback, Fangle's card says stage 3 is required although the handler does not enforce it, the results screen omits the run's Moss essence gain, and the essence regression harness is stale (`measureText` mock failure).
+- General gameplay regression passed and browser review produced no console warnings/errors. Existing `.DS_Store` worktree changes were left untouched.
+- TODO: choose the affinity names/current-creature mappings and decide whether affinity essence is recruitment-only or also pays for creature talents before implementing the save migration and UI.
+
+## September 12 — affinity essence and Bestiary implementation
+
+- Replaced individual species wallets with Feral, Bloom and Arcane affinity essence. Fanglets/Mossbuds/Tinmins drop their affinity through independent 30% rolls and fifth-dry-kill pity counters; all three affinities appear at varied densities in every stage.
+- Added a Bestiary beside Upgrades on the overworld and moved the full-width Play button below them. Removed the overworld drop-density line to make room.
+- Bestiary handles recruitment, three active creature slots, reserves, wallet display, stage gates and costs. Fangle is ungated at 8 Feral essence; Buttermant requires stage 5 plus 12 Bloom; Tinmin requires stage 10 plus 20 Arcane. New recruits auto-fill open slots.
+- Stage 3 remains a Fangle boss and awards 15 Feral essence. Stage 5 awards 15 Bloom and stage 10 awards 20 Arcane. Clearing a stage no longer auto-recruits a creature.
+- Fangle essence talents now spend Feral essence; Buttermant essence talents spend Bloom essence. Party Bond's combat bonus now requires Buttermant to be in the active party, while ownership still unlocks its talent branch.
+- Started a fresh `scollmonsters-save-v2` schema with nested essence/pity wallets plus separate owned and active party lists; v1 is intentionally deleted instead of migrated.
+- Added temporary colored letter tokens for affinities pending supplied icon art. Updated map, upgrades, combat HUD, results and text-state output.
+- Added focused checks for browser recruitment/party/persistence/combat composition and species drops/pity/boss rewards/affinity-funded talents. Both pass. Browser screenshots of map, Bestiary, creature talents and combat were visually inspected; no browser warnings/errors.
+- The stock skill client was attempted but hung under its forced SwiftShader flags on this Mac; the established flag-free local copy ran. Its screenshot was blank, so visual QA used the in-app browser and the focused Playwright captures instead.
+- TODO: replace temporary affinity tokens when the user supplies the final icons; tune multi-affinity densities and Tinmin's provisional 20-essence cost after playtesting.
+
+## September 12 — dedicated game music folder
+
+- Moved the seven active combat tracks and menu track into assets/music and updated the playback base path. Added assets/music/README.md listing current uses and how to add tracks. Unused pack music, sounds and jingles retain their original locations.
+- Verified all eight destination files exist and are nonempty; game syntax check passed.
+
+## September 12 — folder-driven music rotation
+
+- Added music scanner generating assets/music/playlist.js. Combat discovers supported audio files at the music folder root; menu-only music moved into menu/. Filenames are URL-encoded for playback. Empty playlists stop playback cleanly.
+- Vercel build configuration rebuilds playlist on deployment. npm run dev starts a localhost-only Python preview server that rescans on playlist requests; other static servers need npm run build after changing music. Updated music and main READMEs.
+- Scanner tests passed additions/removals, menu exclusion, case-insensitive extensions and empty folder. Current scan finds 11 combat tracks and one menu track. Browser gameplay smoke test passed and screenshot inspected. The legacy check-game script encounters a stage-number error in the current working tree; no unrelated stage changes made here.
+
+## September 12 — Bestiary UI concept pass
+
+- Added an isolated interactive Bestiary preview with three switchable visual directions: Woodland, Regalia and Hybrid. The live game UI is unchanged pending selection.
+- All concepts use the actual creature sprites, the current Coin2 strip for gold/Feral/Bloom/Arcane counters, active/reserve/locked roster states and the existing Accept4 selection sound.
+- Woodland keeps the existing Ninja Adventure wood language; Regalia applies the Dragon Regalia panels, buttons, party frames and selector; Hybrid keeps wood structural panels and reserves Dragon Regalia assets for selection/state emphasis.
+- The preview supports both the currently present 40x10 four-column Coin2 strip and a future four-row animated sheet. No `coin2-sheet.png` file was present; the modified asset found in the workspace is `Items/Treasure/Coin2.png`.
+- Native 540x900 screenshots for all three directions were visually inspected. Browser state confirmed all currency, party and roster states, concept switching worked, and the corrected final capture produced no console/page errors.
+
+## September 12 — revised Hybrid Bestiary hierarchy
+
+- Removed the Woodland/Regalia/Hybrid review controls from the visible mockup; they were concept-preview navigation only and are not intended for the game UI.
+- Replaced the separate essence banner and gold header counter with Feral, Bloom and Arcane essence counters directly in the Bestiary header. The preview now uses the supplied 40x40 `Coin2-Sheet.png`; its four rows animate gold/Feral/Bloom/Arcane across four columns.
+- Removed the creature-side selection cursor and the padlock overlay. Locked creatures are communicated with a greyed card/portrait and the existing LOCKED button text.
+- Shifted the party, affinity filters and roster upward to use the reclaimed space. The 540x900 Hybrid capture was visually inspected; all three new essence icons render with distinct colors and there were no console/page errors.
+
+## September 12 — compact Bestiary header and roster
+
+- Simplified active-party slots to a centered creature sprite only; removed the repeated creature name and combat-role text from the slot.
+- Removed the header subtitle and affinity names, leaving a vertically centered BESTIARY title plus icon-and-count essence counters.
+- Reduced roster-card spacing from 28 pixels to 10 pixels and shifted the party, filters and list upward to match the shorter header.
+- The native 540x900 Hybrid capture was visually inspected. Text state still matches the visible party/currency/lock states, and the run produced no console/page errors.
+
+## September 12 — Theme Mix and Bonus Bestiary concepts
+
+- Replaced all removed Dragon Regalia dependencies in the isolated Bestiary preview with the new `assets/ui/theme_mix` and `assets/ui/bonus` kit plus its MediumPixel font.
+- Added three URL-selectable review variations with no in-screen concept controls: Theme Mix uses light exterior shells and blue/gray state panels; Bonus Frame uses the neutral Bonus surfaces and frames throughout; Field Fusion uses Theme Mix shells and controls with Bonus-framed roster cards.
+- Preserved the approved compact layout: centered active-party sprites, tight 10-pixel roster spacing, icon-and-count essence header, no Bestiary gold, no redundant lock icon and no review selector inside the UI.
+- Captured and visually inspected all three at 540x900. Each text-state report matches the visible essence, party and roster states; none produced a console/page error file.
+- TODO: select one of Theme Mix, Bonus Frame or Field Fusion before replacing the live Bestiary components.
+
+## September 12 — wood-only Bestiary direction selected
+
+- User rejected the Dragon Regalia and new Theme Mix/Bonus directions and selected the original Theme Wood visual language.
+- Collapsed the isolated Bestiary preview to one wood-only implementation and removed all Dragon Regalia and `assets/ui` dependencies from its HTML/JavaScript.
+- Retained the approved compact structure: vertically centered title, icon-and-count essence header, centered party sprites, tight roster spacing, no gold and no redundant lock icon.
+- The final wood-only 540x900 screenshot was visually inspected. Text state matches the visible currency/party/roster states, and the run produced no console/page errors.
+- TODO: apply this approved wood-only layout and the Coin2 essence sheet to the live Bestiary and shared headers when implementation is requested.
+
+## September 12 — corrected crisp wood-only concepts
+
+- Rebuilt the Bestiary preview after identifying that the prior pass incorrectly stretched `button_checked.png` (a checkbox-style control) as a wide button and rendered several sprites/icons at non-integer scales.
+- The new pass uses only Theme Wood assets in their intended roles: `tab_*` for filters, `button_*` for action buttons, `inventory_cell` for party slots, and the background/panel/interior/focus nine-patches for surfaces and selection.
+- Added three URL-selectable wood-only directions with no in-screen review controls: Classic Wood uses orange panels and a focus outline; Framed Wood uses the alternate muted panel frame with orange active states; Wood Board places the whole screen inside a dark inset wood board.
+
+## September 12 — Warm Wood selected and south-facing creatures
+
+- User selected Warm Wood as the Bestiary direction.
+- Switched the Bestiary party and roster portraits to the production directional creature atlas. Every creature now uses the atlas's south-facing walking frames, matching the game's southbound presentation.
+- JavaScript syntax and the local browser preview check passed. The final 540x900 Warm Wood capture was visually inspected with all three creatures facing south and no browser errors.
+- Creature sprites now render only at exact 3x/4x scale and essence icons at exact 2x/3x scale. Pixel-font sizes and coordinates were normalized to the same grid, with shadow removed from colored and dark text.
+- Captured and visually inspected Classic and Framed at the normal settle interval and Wood Board with an extended settle interval. Final screenshots and text state are complete; none produced a console/page error file.
+
+## September 12 — corrected Wood nine-slice construction
+
+- Removed the layered focus/background treatment from creature cards and the full-screen board treatment. Every header, party area and creature card now uses exactly one Theme Wood nine-slice.
+- Corrected the source slice boundaries: 16x16 panels/cells preserve 7-pixel sides around a 2-pixel center seam; 16x12 tabs preserve 7-pixel ends and 5-pixel top/bottom around a 2-pixel seam; 16x8 buttons preserve 7-pixel ends and 3-pixel top/bottom.
+- Only those center seams are expanded with nearest-neighbor pixel duplication. Corners and tab/button ends remain fixed at 2x, so the control silhouettes are not distorted and no tiled source grid appears.
+- Simplified the three wood-only options to Warm, Muted and Light; they differ only by their single panel family. All use the actual selected/unselected tab assets and normal/hover/disabled button assets.
+- Switched the preview to the dedicated 64x16 Fangle, Buttermant and Tinmin strips and preload all used font sizes/glyphs before a forced two-pass render, eliminating partial capture artifacts.
+- Final 540x900 captures for all three were visually inspected and contain complete sprites/text with no page/console error files.
+
+## September 12 — mobile icon-tree UI prototype
+
+- Added upgrade-prototype.html using existing skill icons, disabled variants, wood buttons and focus borders. Existing main upgrade screen remains the default.
+- Connected nodes arranged by prerequisite depth; tap selects, shows current/next effects and locked requirements, and highlights prerequisite lines. Rank badges persist; explicit Upgrade button is the only purchase action. Five branch tabs retain current economy and unlock logic.
+- Prototype uses an independent save key and starts with 500 demo gold and 100 of each essence. No production deployment.
+- Mobile browser checks passed node inspection without spending, explicit purchase, and all five branches. Inspected mobile screenshots and skill harness capture under output/upgrade-prototype.
+
+## September 12 — compact prototype details and header navigation
+
+- Moved prototype Map navigation into the upper-left header. Detail panel now sizes to its actual description text with a compact purchase button instead of reserving 198px.
+- Mobile checks passed selection, explicit purchasing, branch rendering, and header navigation. Mobile and skill-harness screenshots inspected. Main upgrade screen remains unchanged.
+
+## September 12 — Warm Wood Bestiary integration
+
+- Began integrating the approved Warm Wood Bestiary into the live game. The new screen uses one correctly sliced wood panel per surface, native tab/button assets, centered south-facing party sprites, compact roster spacing, greyed locked cards without padlocks, and no Bestiary gold counter.
+- Added the supplied Coin2-Sheet currency art to the live asset set. Feral, Bloom and Arcane now use their own icon rows in the Bestiary and shared currency displays instead of temporary colored letter tokens.
+- Completed the live interaction wiring: open creatures recruit or toggle between active party and reserves, locked creatures remain disabled, all three active slots show only centered sprites, and the existing three-member limit/persistence behavior is preserved.
+- Corrected the shared wood button slicing to preserve the 7px horizontal and 3px vertical ends, and fixed `drawPet` to respect requested integer display sizes. Bestiary creatures animate through the production atlas's south-facing walk columns.
+- Affinity drop/talent checks and the focused browser recruitment/party/persistence/combat flow pass. The required game harness reached the live Bestiary, produced matching text state, and the final 540x900 fresh-save and populated screenshots were visually inspected with no browser errors.
+
+## September 13 — UI style guide and future-model handoff
+
+- Added `UI_STYLE_GUIDE.md` and linked it from the main README. It defines the approved Warm Wood direction, component asset roles, exact nine-slice borders, palette, type-currency atlas rows, typography, spacing, Bestiary states, south-facing creature atlas math, interaction language, and a new-menu QA checklist.
+- Included an explicit future-model handoff covering rejected asset families, previous stretching/layering mistakes, redundant-state UI to avoid, asset-inspection requirements, browser screenshot verification, font/image load timing, and the Mac SwiftShader test-client workaround.
+- Added a shared immutable `UI_THEME` in `game.js` for colors, panel/button/tab slice geometry, and currency rows. The live drawing helpers and Bestiary now consume those constants so later menus can reuse the same implementation instead of copying magic values.
+- Syntax and whitespace checks pass. The focused Bestiary browser flow still passes recruitment, stage locks, party changes, persistence, and combat composition. The required game-harness capture was visually inspected at 540x900 and matches the approved screen with no browser errors.
+
+## September 13 — production release preparation
+
+- Prepared the affinity essence, Bestiary, Warm Wood UI, shared style guide, supplied currency icons, and folder-driven music changes for the production branch. Rejected UI packs and isolated concept/prototype pages remain outside the release.
+- Updated the stale general regression check from removed capture-stage/recruits fields to explicit Bestiary recruitment with `ownedCreatures`, and updated the party-sprite browser check to seed `ownedCreatures` plus `activeParty`. Its player assertion now allows the real attack animation to override the walk frame while still proving companion frame advancement.
+- `npm run build`, `node --check game.js`, `check-game.cjs`, `check-affinity-drops.cjs`, `check-party-sprites.cjs`, and `check-bestiary.cjs` pass. The required final Bestiary game-harness state and 540x900 screenshot were inspected with no browser errors.
+
+## September 13 — upgrade prototype aligned with UI_STYLE_GUIDE
+
+- Read the guide and inspected the Warm Wood Bestiary helpers. Prototype now reuses UI_THEME, Bestiary background, approved buttons, shared tab nine-slices, and gold/affinity atlas rows. Extracted drawMenuTab so both pages share tab rendering.
+- Preserved connected icon nodes and compact inspect/purchase panel. Corrected 24px skill icons from fractional 64px rendering to exact 72px (3×), rounded tree coordinates, removed redundant padlocks, and adopted muted disabled wood detail panels with unshadowed locked text.
+- Mobile tests passed node selection without spending, explicit purchase, branches and Map navigation. Bestiary regression passed recruitment gates, party selection, persistence and combat roster. Skill harness and Bestiary screenshots visually inspected; no browser errors. Prototype remains separate and local.

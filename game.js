@@ -8,8 +8,27 @@
   const HEIGHT = canvas.height;
   let uiTargets = [];
   let upgradeBranch = 0;
-  const SAVE_KEY = "scollmonsters-save-v1";
+  let selectedUpgrade = null;
+  let bestiaryAffinity = "feral";
+  const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
+  const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
   const FIXED_STEP = 1 / 60;
+  // Shared menu styling. Keep these values aligned with UI_STYLE_GUIDE.md.
+  const UI_THEME = Object.freeze({
+    colors: Object.freeze({
+      field: "#5c9855", path: "#b8895a", speck: "#5b684466",
+      title: "#fff0b0", text: "#fff5d7", muted: "#e2ccb0",
+      dark: "#30221a", locked: "#463c32", accent: "#ffd36b",
+      feral: "#ef5266", bloom: "#4ac56b", arcane: "#5ed5f2"
+    }),
+    slices: Object.freeze({
+      panel: Object.freeze({ x: 7, y: 7, scale: 2 }),
+      button: Object.freeze({ x: 7, y: 3, scale: 2 }),
+      tab: Object.freeze({ x: 7, y: 5, scale: 2 }),
+      focus: Object.freeze({ x: 3, y: 3, scale: 2 })
+    }),
+    currencyRows: Object.freeze({ gold: 0, feral: 1, bloom: 2, arcane: 3 })
+  });
 
   const assetPaths = {
     player: "player.svg", striker: "creature-striker.svg", healer: "creature-healer.svg", aoe: "creature-aoe.svg",
@@ -42,7 +61,11 @@
     monsterRanged: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Axolot/SpriteSheet.png",
     woodPanel: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel.png",
     woodDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel_disabled.png",
+    woodInventoryCell: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/inventory_cell.png",
+    woodTabSelected: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/tab_selected.png",
+    woodTabUnselected: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/tab_unselected.png",
     woodButton: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/button_normal.png",
+    woodButtonHover: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/button_hover.png",
     woodButtonDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/button_disabled.png",
     woodFocus: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_focus.png",
     healthVessel: "assets/Ninja Adventure - Asset Pack/Ui/Receptacle/Receptacle Rectangle/BackgroundWood.png",
@@ -52,6 +75,7 @@
     demonWalk: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Walk.png",
     demonHit: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Hit.png",
     monsterArmored: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Beast/Beast.png",
+    currencySheet: "assets/Ninja Adventure - Asset Pack/Items/Treasure/Coin2-Sheet.png",
     petRoster: "assets/Sprites/Pets/minimize_F-Sheet.png",
     petFangle: "assets/Sprites/Pets/Fangle.png",
     petButtermant: "assets/Sprites/Pets/buttermant.png",
@@ -65,6 +89,19 @@
     { id: "old-vase", sheet: "abandonedProps", x: 12, y: 11, material: "vase" },
     { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
   ];
+  const nodeIconPaths = {
+    power: "Spell/BookRock", speed: "Items & Weapon/Boot", multishot: "Spell/BookFire",
+    health: "Spell/Heal", rockBreaker: "Job & Action/Mine", tripleSpark: "Spell/BookThunder",
+    magnet: "Job & Action/Harvest", autoTarget: "Spell/BookLight", travelSpeed: "Items & Weapon/Boot",
+    strikerPower: "Job & Action/Punch", strikerSpeed: "Items & Weapon/Boot", strikerDouble: "Spell/BookFire",
+    strikerTriple: "Spell/BookThunder", strikerFollowup: "Spell/BookDeath", strikerFollowupHeal: "Spell/Heal",
+    healPower: "Spell/Heal", healSpeed: "Items & Weapon/Boot", partyBond: "Spell/BookPlant",
+    deepBloom: "Spell/BookPlant", bloomShield: "Items & Weapon/Armor", aoePower: "Spell/BookThunder", aoeRadius: "Spell/BookWind"
+  };
+  for (const [id, path] of Object.entries(nodeIconPaths)) {
+    assetPaths[`node_${id}`] = `assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/${path}.png`;
+    assetPaths[`node_${id}_off`] = `assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/${path}Disabled.png`;
+  }
   const assets = {};
   Object.entries(assetPaths).forEach(([key, file]) => {
     const image = new Image();
@@ -73,8 +110,9 @@
     assets[key] = image;
   });
 
-  const roundTracks = ["37 - Dark Forest.ogg", "10 - Dark Castle.ogg", "17 - Fight.ogg", "23 - Road.ogg", "24 - Final Area.ogg", "28 - Tension.ogg", "21 - Dungeon.ogg"];
-  const menuTrack = "1 - Adventure Begin.ogg";
+  const roundTracks = window.GAME_MUSIC?.combat || [];
+  const menuTracks = window.GAME_MUSIC?.menu || [];
+  const menuTrack = menuTracks[0] || null;
   const music = typeof Audio === "undefined" ? null : new Audio();
   const soundEffects = typeof Audio === "undefined" ? {} : {
     select: new Audio("assets/Ninja Adventure - Asset Pack/Audio/Sounds/Menu/Accept4.wav"),
@@ -89,10 +127,11 @@
   }
   function setMusic(track) {
     if (!music) return;
+    if (!track) { music.pause(); music.removeAttribute("src"); currentTrack = null; return; }
     if (track !== currentTrack) {
       music.pause();
       currentTrack = track;
-      music.src = `assets/Ninja Adventure - Asset Pack/Audio/Musics/${track}`;
+      music.src = `assets/music/${track.split("/").map(encodeURIComponent).join("/")}`;
     }
     playAudio(music);
   }
@@ -133,6 +172,25 @@
     };
   });
 
+  const affinityDefs = Object.freeze({
+    feral: { id: "feral", name: "Feral", short: "FE", color: UI_THEME.colors.feral },
+    bloom: { id: "bloom", name: "Bloom", short: "BE", color: UI_THEME.colors.bloom },
+    arcane: { id: "arcane", name: "Arcane", short: "AE", color: UI_THEME.colors.arcane }
+  });
+  const affinityOrder = Object.keys(affinityDefs);
+  const speciesDefs = Object.freeze({
+    fanglet: { id: "fanglet", name: "Fanglet", affinityId: "feral", petType: "striker", density: [0.20, 0.25, 0.55, 0.25, 0.15, 0.40, 0.20, 0.25, 0.40, 0.20] },
+    mossbud: { id: "mossbud", name: "Mossbud", affinityId: "bloom", petType: "healer", density: [0.08, 0.10, 0.10, 0.25, 0.50, 0.15, 0.35, 0.25, 0.12, 0.30] },
+    tinmin: { id: "tinmin", name: "Tinmin", affinityId: "arcane", petType: "aoe", density: [0.04, 0.05, 0.05, 0.10, 0.08, 0.15, 0.15, 0.25, 0.25, 0.35] }
+  });
+  const creatureDefs = Object.freeze([
+    { id: "striker", name: "Fangle", affinityId: "feral", role: "Striker", captureCost: 8, requiresStageClear: null, description: "Ground traps target wounded monsters." },
+    { id: "healer", name: "Buttermant", affinityId: "bloom", role: "Healer", captureCost: 12, requiresStageClear: 5, description: "Restores the party's shared health." },
+    { id: "aoe", name: "Tinmin", affinityId: "arcane", role: "Area", captureCost: 20, requiresStageClear: 10, description: "Blasts clustered monsters." }
+  ]);
+  const creatureById = id => creatureDefs.find(creature => creature.id === id);
+  const petDisplayNames = Object.fromEntries(creatureDefs.map(creature => [creature.id, creature.name]));
+
   // Every ability compounds from its own starting price; rank 1 uses exponent zero.
   const abilityRankCosts = (baseCost, ranks) =>
     Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
@@ -158,11 +216,11 @@
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
     { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
-    { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "mossEssence", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
-    { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "mossEssence", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
+    { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "bloom", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
+    { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "bloom", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
-    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "fangEssence", effect: rank => `${20 * (rank + 1)}% extra bite on Fangle kill`, requires: [], recruit: "striker" },
-    { id: "strikerFollowupHeal", name: "Mending Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "fangEssence", effect: rank => `Follow-Up Bite heals for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "striker" },
+    { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", effect: rank => `${20 * (rank + 1)}% extra bite on Fangle kill`, requires: [], recruit: "striker" },
+    { id: "strikerFollowupHeal", name: "Mending Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", effect: rank => `Follow-Up Bite heals for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "striker" },
   );
 
   for (const [owner, branch, recruit] of [["player", "PLAYER", null], ["striker", "STRIKER", "striker"], ["healer", "HEALER", "healer"], ["aoe", "AOE", "aoe"]]) {
@@ -264,17 +322,19 @@
       basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
       bossHp: precise(Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) * stageConfigs[stageNumber - 1].bossHpMultiplier) };
   }
-  const captureDefs = [
-    { id: "captureStriker", name: "Fangle", branch: "STRIKER", capture: "striker", stage: 3, currency: "fangEssence", cost: 8, requires: [] },
-    { id: "captureHealer", name: "Buttermant", branch: "HEALER", capture: "healer", stage: 5, requiresStageClear: 5, currency: "mossEssence", cost: 12, requires: [] },
-    { id: "captureAoe", name: "Tinmin", branch: "AOE", capture: "aoe", stage: 10, requires: [] }
-  ];
-  const petDisplayNames = { striker: "Fangle", healer: "Buttermant", aoe: "Tinmin" };
+  const captureDefs = creatureDefs.map(creature => ({
+    id: `capture${creature.id[0].toUpperCase()}${creature.id.slice(1)}`,
+    name: creature.name,
+    capture: creature.id,
+    requiresStageClear: creature.requiresStageClear,
+    currency: creature.affinityId,
+    cost: creature.captureCost
+  }));
   const monsterSheets = { basic: "monsterBasic", ranged: "monsterRanged", armored: "monsterArmored" };
   // Columns name spawn sections, not the monster's current movement heading.
   const monsterColumns = { north: 0, south: 1, east: 2, west: 3 };
   const playerAttackDuration = 0.24;
-  const treeDefs = [...upgradeDefs, ...captureDefs];
+  const treeDefs = [...upgradeDefs];
   const treePositions = () => {
     const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
@@ -283,10 +343,10 @@
     const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
     return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136), height: 108 }));
   };
-  const treeRequirements = definition => definition.recruit && definition.requires.length === 0
-    ? [captureDefs.find(capture => capture.capture === definition.recruit).id] : definition.requires;
+  const treeRequirements = definition => definition.requires;
 
-  const defaultSave = () => ({ gold: 0, mossEssence: 0, mossDryKills: 0, fangEssence: 0, fangDryKills: 0, completed: [], unlockedStage: 1, recruits: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
+  const emptyAffinityMap = () => Object.fromEntries(affinityOrder.map(id => [id, 0]));
+  const defaultSave = () => ({ saveVersion: 2, gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
   function mergeHealthRanks(upgrades) {
     const result = { ...upgrades };
     if (result.vitality !== undefined || result.fortitude !== undefined) {
@@ -298,9 +358,18 @@
   }
   function loadSave() {
     try {
+      localStorage.removeItem(LEGACY_SAVE_KEY);
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
-      const legacyUpgrades = parsed.damageRank ? { power: parsed.damageRank } : {};
-      return { ...defaultSave(), ...parsed, upgrades: mergeHealthRanks({ ...legacyUpgrades, ...(parsed.upgrades || {}) }) };
+      const fresh = defaultSave();
+      return {
+        ...fresh,
+        ...parsed,
+        essence: { ...fresh.essence, ...(parsed.essence || {}) },
+        essencePity: { ...fresh.essencePity, ...(parsed.essencePity || {}) },
+        ownedCreatures: [...new Set(parsed.ownedCreatures || [])].filter(id => creatureById(id)),
+        activeParty: [...new Set(parsed.activeParty || [])].filter(id => creatureById(id) && (parsed.ownedCreatures || []).includes(id)).slice(0, 3),
+        upgrades: mergeHealthRanks(parsed.upgrades || {})
+      };
     } catch {
       return defaultSave();
     }
@@ -315,11 +384,12 @@
   };
 
   const rank = id => state.save.upgrades[id] || 0;
-  const hasRecruit = id => state.save.recruits.includes(id);
+  const hasRecruit = id => state.save.ownedCreatures.includes(id);
+  const isActiveCreature = id => state.save.activeParty.includes(id);
   const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
-  const partyDamageBonus = () => hasRecruit("healer") && rank("partyBond") > 0 ? 5 : 0;
+  const partyDamageBonus = () => isActiveCreature("healer") && rank("partyBond") > 0 ? 5 : 0;
   const playerDamage = () => 1 + rank("power") + partyDamageBonus();
   const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
@@ -333,13 +403,13 @@
 
   function setMode(mode) {
     state.mode = mode;
-    setMusic(mode === "combat" ? roundTracks[Math.floor(Math.random() * roundTracks.length)] : menuTrack);
+    setMusic(mode === "combat" ? (roundTracks.length ? roundTracks[Math.floor(Math.random() * roundTracks.length)] : null) : menuTrack);
     state.toast = "";
     render();
   }
 
   function setupCompanions() {
-    state.companions = state.save.recruits.map((type, index) => ({ type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
+    state.companions = state.save.activeParty.map((type, index) => ({ type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
   }
 
   const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 20 }, ...state.companions.map(companion => ({ ...companion, r: 18 }))];
@@ -384,8 +454,7 @@
     state.playerAttackStartedAt = -Infinity;
     state.scroll = 0;
     state.runGold = 0;
-    state.runEssence = 0;
-    state.runMossEssence = 0;
+    state.runEssence = emptyAffinityMap();
     state.bossSpawned = false;
     state.bossDefeated = false;
     state.enemies = [];
@@ -443,24 +512,35 @@
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
     const speciesRoll = Math.random();
-    const canFang = !openingStage || state.stageTime >= 15;
-    const species = type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : canFang && speciesRoll < fangDensity(state.stage.number) ? "fanglet" : speciesRoll >= fangDensity(state.stage.number) && speciesRoll < fangDensity(state.stage.number) + mossDensity(state.stage.number) ? "mossbud" : null;
+    const species = type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : rollSpecies(state.stage.number, speciesRoll, openingStage && state.stageTime < 15);
     const openingFanglet = openingStage && species === "fanglet";
     const hp = precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
     const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
     const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
     state.enemies.push({
-      type, species, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
+      type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
   }
 
-  const fangDensity = stage => [0.2, 0.3, 0.7, 0.35, 0.25, 0.65, 0.3, 0.4, 0.75, 0.35][stage - 1];
-  const mossDensity = stage => [0, 0, 0.1, 0.35, 0.6, 0.15, 0.5, 0.4, 0.15, 0.5][stage - 1];
-  const currencyName = currency => currency === "mossEssence" ? "Buttermant essence" : currency === "fangEssence" ? "Fangle essence" : "gold";
-  const fangYield = stage => 1 + Math.floor((stage - 1) / 3);
+  function rollSpecies(stage, roll, suppressFanglet = false) {
+    let threshold = 0;
+    for (const species of Object.values(speciesDefs)) {
+      threshold += species.density[stage - 1];
+      if (roll < threshold) return suppressFanglet && species.id === "fanglet" ? null : species.id;
+    }
+    return null;
+  }
+  const speciesDensity = (speciesId, stage) => speciesDefs[speciesId].density[stage - 1];
+  const currencyName = currency => currency === "gold" ? "gold" : `${affinityDefs[currency].name} essence`;
+  const currencyAmount = currency => currency === "gold" ? state.save.gold : state.save.essence[currency];
+  const spendCurrency = (currency, amount) => {
+    if (currency === "gold") state.save.gold = precise(state.save.gold - amount);
+    else state.save.essence[currency] -= amount;
+  };
+  const essenceYield = stage => 1 + Math.floor((stage - 1) / 3);
   const enemyVisible = enemy => enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
 
   function nearestEnemy(fromX = state.party.x, fromY = state.party.y, includeTreasure = false) {
@@ -509,6 +589,10 @@
     state.runGold = precise(state.runGold + value * (1 + rank("magnet") * 0.1));
   }
 
+  function awardEssence(affinityId, amount) {
+    state.runEssence[affinityId] += amount;
+  }
+
   function removeEnemy(enemy, reward = false) {
     const index = state.enemies.indexOf(enemy);
     if (index < 0) return;
@@ -516,23 +600,25 @@
     if (reward) {
       awardGold(enemy.gold);
       spawnCoins(enemy.x, enemy.y, enemy.gold);
-      if (enemy.species === "fanglet" && enemy.type !== "boss") {
-        state.save.fangDryKills += 1;
-        if (Math.random() < 0.3 || state.save.fangDryKills >= 5) {
-          state.runEssence += fangYield(state.stage.number);
-          state.save.fangDryKills = 0;
+      if (enemy.species && enemy.type !== "boss") {
+        const affinityId = speciesDefs[enemy.species].affinityId;
+        state.save.essencePity[affinityId] += 1;
+        if (Math.random() < 0.3 || state.save.essencePity[affinityId] >= 5) {
+          awardEssence(affinityId, essenceYield(state.stage.number));
+          state.save.essencePity[affinityId] = 0;
         }
       }
-      if (enemy.species === "mossbud") {
-        state.save.mossDryKills += 1;
-        if (Math.random() < 0.3 || state.save.mossDryKills >= 5) {
-          state.runMossEssence += fangYield(state.stage.number);
-          state.save.mossDryKills = 0;
-        }
+      const bossRewards = {
+        3: { feral: 15 },
+        5: { bloom: 15 },
+        6: { feral: 2 * essenceYield(6) },
+        8: { bloom: 2 * essenceYield(8) },
+        9: { feral: 2 * essenceYield(9) },
+        10: { arcane: 20 }
+      }[state.stage.number];
+      if (enemy.type === "boss" && bossRewards) {
+        for (const [affinityId, amount] of Object.entries(bossRewards)) awardEssence(affinityId, amount);
       }
-      if (enemy.type === "boss" && [5, 8, 10].includes(state.stage.number)) state.runMossEssence += 2 * fangYield(state.stage.number);
-      if (enemy.type === "boss" && state.stage.number === 3) state.runEssence += 15;
-      if (enemy.type === "boss" && [6, 9].includes(state.stage.number)) state.runEssence += 2 * fangYield(state.stage.number);
     }
   }
 
@@ -619,19 +705,13 @@
     const firstClear = won && !state.save.completed.includes(state.stage.number);
     let newRecruit = null;
     state.save.gold = precise(state.save.gold + state.runGold);
-    state.save.fangEssence += state.runEssence;
-    state.save.mossEssence += state.runMossEssence;
+    for (const affinityId of affinityOrder) state.save.essence[affinityId] += state.runEssence[affinityId];
     if (won) {
       if (firstClear) state.save.completed.push(state.stage.number);
       state.save.unlockedStage = Math.max(state.save.unlockedStage, Math.min(10, state.stage.number + 1));
-      const recruitAt = { 10: "aoe" }[state.stage.number];
-      if (recruitAt && !hasRecruit(recruitAt)) {
-        state.save.recruits.push(recruitAt);
-        newRecruit = recruitAt;
-      }
     }
     writeSave();
-    state.result = { won, gold: state.runGold, essence: state.runEssence, mossEssence: state.runMossEssence, firstClear, newRecruit, stage: state.stage.number };
+    state.result = { won, gold: state.runGold, essence: { ...state.runEssence }, firstClear, newRecruit, stage: state.stage.number };
     setMode("result");
   }
 
@@ -987,33 +1067,36 @@
     ctx.globalAlpha = alpha;
     ctx.translate(Math.round(x), Math.round(y));
     if (facing === "west") ctx.scale(-1, 1);
-    ctx.drawImage(image, column * 16, row * 32, 16, 16, -24, -24, 48, 48);
+    ctx.drawImage(image, column * 16, row * 32, 16, 16, -size / 2, -size / 2, size, size);
     ctx.restore();
   }
 
   const captureFacing = edge => ({ north: "south", south: "north", east: "west", west: "east" }[edge] || "south");
 
-  function drawText(value, x, y, size = 18, color = "#fff", align = "left") {
+  function drawText(value, x, y, size = 18, color = "#fff", align = "left", shadow = true) {
     ctx.font = `${size}px "NinjaPixel", monospace`;
     ctx.wordSpacing = "2px";
     ctx.textAlign = align;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#172335";
-    if (color !== "#2b2218") ctx.fillText(value, x + 2, y + 2);
+    if (shadow && color !== "#2b2218") ctx.fillText(value, x + 2, y + 2);
     ctx.fillStyle = color;
     ctx.fillText(value, x, y);
   }
 
   // Stretch only the centers and edges, preserving the pixel-art corners.
-  function drawWood(name, x, y, width, height, border = 7, scale = 2) {
+  function drawWood(name, x, y, width, height, borderX = UI_THEME.slices.panel.x, scale = UI_THEME.slices.panel.scale, borderY = borderX) {
     const image = assets[name];
     if (!image?.complete || !image.naturalWidth) return;
     const sw = image.naturalWidth, sh = image.naturalHeight;
-    const edge = Math.min(border * scale, width / 2, height / 2);
-    const sx = [0, border, sw - border], sy = [0, border, sh - border];
-    const srcW = [border, sw - border * 2, border], srcH = [border, sh - border * 2, border];
-    const dx = [x, x + edge, x + width - edge], dy = [y, y + edge, y + height - edge];
-    const dw = [edge, width - edge * 2, edge], dh = [edge, height - edge * 2, edge];
+    const sourceBorderX = Math.min(borderX, Math.floor(sw / 2));
+    const sourceBorderY = Math.min(borderY, Math.floor(sh / 2));
+    const targetBorderX = Math.min(sourceBorderX * scale, width / 2);
+    const targetBorderY = Math.min(sourceBorderY * scale, height / 2);
+    const sx = [0, sourceBorderX, sw - sourceBorderX], sy = [0, sourceBorderY, sh - sourceBorderY];
+    const srcW = [sourceBorderX, sw - sourceBorderX * 2, sourceBorderX], srcH = [sourceBorderY, sh - sourceBorderY * 2, sourceBorderY];
+    const dx = [x, x + targetBorderX, x + width - targetBorderX], dy = [y, y + targetBorderY, y + height - targetBorderY];
+    const dw = [targetBorderX, width - targetBorderX * 2, targetBorderX], dh = [targetBorderY, height - targetBorderY * 2, targetBorderY];
     for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
       ctx.drawImage(image, sx[col], sy[row], srcW[col], srcH[row], dx[col], dy[row], dw[col], dh[row]);
     }
@@ -1025,8 +1108,9 @@
   }
 
   function drawButton(label, x, y, width, height, active = true, action = null) {
+    const slice = UI_THEME.slices.button;
     if (active && action) uiTargets.push({ x, y, width, height, action });
-    drawWood(active ? "woodButton" : "woodButtonDisabled", x, y, width, height, 2);
+    drawWood(active ? "woodButton" : "woodButtonDisabled", x, y, width, height, slice.x, slice.scale, slice.y);
     // Long creature names must fit the narrow branch tabs.
     ctx.font = '16px "NinjaPixel", monospace';
     const size = Math.min(16, 16 * (width - 16) / Math.max(1, ctx.measureText(label).width));
@@ -1066,12 +1150,44 @@
     }
   }
 
+  function drawBestiaryBackground() {
+    ctx.fillStyle = UI_THEME.colors.field;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = UI_THEME.colors.path;
+    ctx.fillRect(57, 0, 426, HEIGHT);
+    ctx.fillStyle = UI_THEME.colors.speck;
+    for (let y = 0; y < HEIGHT; y += 24) for (let x = 0; x < WIDTH; x += 24) {
+      if ((x / 24 + y / 24) % 3 === 0) ctx.fillRect(x + 3, y + 6, 3, 3);
+    }
+  }
+
+  function drawCurrencyIcon(currencyId, x, y, size = 30, alpha = 1) {
+    const image = assets.currencySheet;
+    if (!image?.complete || !image.naturalWidth) return;
+    const row = UI_THEME.currencyRows[currencyId];
+    if (row === undefined) return;
+    const frame = Math.floor(state.animationTime * 10) % 4;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(image, frame * 10, row * 10, 10, 10, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+    ctx.restore();
+  }
+
   function drawHeader(title, subtitle = "") {
     drawPanel(0, 0, WIDTH, 104);
     drawText(title, 24, 35, 26, "#ffe17d");
-    if (subtitle) drawText(subtitle, 24, 77, 17, "#b9cee5");
-    drawSprite("gold", 420, 35, 28);
+    if (subtitle) affinityOrder.forEach((affinityId, index) => {
+      const x = 75 + index * 165;
+      drawCurrencyIcon(affinityId, x, 76, 24);
+      drawText(formatAmount(state.save.essence[affinityId]), x + 19, 76, 17, affinityDefs[affinityId].color, "left", false);
+    });
+    drawCurrencyIcon("gold", 420, 35, 28);
     drawText(formatAmount(state.save.gold), 441, 35, 20, "#ffe17d");
+  }
+
+  const affinityWalletText = () => affinityOrder.map(id => `${affinityDefs[id].short} ${formatAmount(state.save.essence[id])}`).join("  •  ");
+  function drawAffinityToken(affinityId, x, y, radius = 15) {
+    drawCurrencyIcon(affinityId, x, y, radius * 2);
   }
 
   function drawTitle() {
@@ -1088,6 +1204,7 @@
     drawButton("RESET PROGRESS", 130, 768, 280, 52, true, () => {
       if (!window.confirm("Reset all progress in this browser? Gold, essence, creatures, upgrades and cleared stages will be erased. This cannot be undone.")) return;
       localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(LEGACY_SAVE_KEY);
       window.location.reload();
     });
   }
@@ -1100,7 +1217,7 @@
 
   function drawMap() {
     drawBackground();
-    drawHeader("OVERWORLD", `Fangle: ${state.save.fangEssence} • Buttermant: ${state.save.mossEssence} essence`);
+    drawHeader("OVERWORLD", affinityWalletText());
     ctx.strokeStyle = "#705239"; ctx.lineWidth = 16; ctx.lineCap = "round"; ctx.beginPath();
     for (let number = 1; number <= 10; number++) {
       const point = mapNodePosition(number);
@@ -1117,11 +1234,114 @@
       if ([3, 5, 10].includes(number)) drawPet(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
       if (open) uiTargets.push({ x: point.x - 44, y: point.y - 44, width: 88, height: 88, action: () => { state.selectedStage = number; } });
     }
-    drawText(`Fang ${Math.round(fangDensity(state.selectedStage) * 100)}% • Moss ${Math.round(mossDensity(state.selectedStage) * 100)}% • ${fangYield(state.selectedStage)} essence/drop`, WIDTH / 2, 715, 18, "#a9e9eb", "center");
-    drawPanel(24, 744, 492, 132);
-    drawText(`Stage ${state.selectedStage} — ${stageConfigs[state.selectedStage - 1].name}`, WIDTH / 2, 770, 20, "#fff", "center");
-    drawButton("PLAY", 40, 798, 220, 62, true, () => startStage(state.selectedStage));
-    drawButton("UPGRADES", 280, 798, 220, 62, true, () => setMode("upgrades"));
+    drawPanel(24, 704, 492, 184);
+    drawText(`Stage ${state.selectedStage} — ${stageConfigs[state.selectedStage - 1].name}`, WIDTH / 2, 730, 20, "#fff", "center");
+    drawButton("BESTIARY", 40, 754, 220, 52, true, () => setMode("bestiary"));
+    drawButton("UPGRADES", 280, 754, 220, 52, true, () => setMode("upgrades"));
+    drawButton("PLAY", 40, 820, 460, 52, true, () => startStage(state.selectedStage));
+  }
+
+  const creatureGateUnlocked = creature => !creature.requiresStageClear || state.save.completed.includes(creature.requiresStageClear);
+  function recruitCreature(creature) {
+    if (hasRecruit(creature.id)) return toggleCreatureInParty(creature.id);
+    if (!creatureGateUnlocked(creature)) {
+      state.toast = `Clear stage ${creature.requiresStageClear} to unlock ${creature.name}`;
+      state.toastTimer = 2; return;
+    }
+    if (state.save.essence[creature.affinityId] < creature.captureCost) {
+      state.toast = `Need ${creature.captureCost - state.save.essence[creature.affinityId]} more ${currencyName(creature.affinityId)}`;
+      state.toastTimer = 2; return;
+    }
+    state.save.essence[creature.affinityId] -= creature.captureCost;
+    state.save.ownedCreatures.push(creature.id);
+    if (state.save.activeParty.length < 3) state.save.activeParty.push(creature.id);
+    playSound("success");
+    state.toast = `${creature.name} recruited${isActiveCreature(creature.id) ? " and added to the party" : ""}!`;
+    state.toastTimer = 2;
+    writeSave();
+  }
+
+  function toggleCreatureInParty(creatureId) {
+    const creature = creatureById(creatureId);
+    if (!hasRecruit(creatureId)) return;
+    if (isActiveCreature(creatureId)) {
+      state.save.activeParty = state.save.activeParty.filter(id => id !== creatureId);
+      state.toast = `${creature.name} moved to reserves`;
+    } else if (state.save.activeParty.length >= 3) {
+      state.toast = "Party full — move a creature to reserves first";
+      state.toastTimer = 2; return;
+    } else {
+      state.save.activeParty.push(creatureId);
+      state.toast = `${creature.name} joined the active party`;
+    }
+    state.toastTimer = 2;
+    writeSave();
+  }
+
+  function drawBestiaryButton(label, x, y, width, height, visualState = "normal", action = null) {
+    const slice = UI_THEME.slices.button;
+    if (action) uiTargets.push({ x, y, width, height, action });
+    const image = visualState === "selected" ? "woodButtonHover" : visualState === "locked" ? "woodButtonDisabled" : "woodButton";
+    drawWood(image, x, y, width, height, slice.x, slice.scale, slice.y);
+    ctx.font = '15px "NinjaPixel", monospace';
+    const size = Math.floor(Math.min(15, 15 * (width - 16) / Math.max(1, ctx.measureText(label).width)));
+    drawText(label, x + width / 2, y + height / 2, size, visualState === "locked" ? UI_THEME.colors.locked : UI_THEME.colors.dark, "center", false);
+  }
+
+  function drawMenuTab(label, x, y, width, height, selected, action) {
+    const slice = UI_THEME.slices.tab;
+    uiTargets.push({ x, y, width, height, action });
+    drawWood(selected ? "woodTabSelected" : "woodTabUnselected", x, y, width, height, slice.x, slice.scale, slice.y);
+    ctx.font = '15px "NinjaPixel", monospace';
+    const size = Math.max(10, Math.floor(Math.min(15, 15 * (width - 16) / Math.max(1, ctx.measureText(label).width))));
+    drawText(label, Math.round(x + width / 2), Math.round(y + height / 2), size,
+      selected ? UI_THEME.colors.dark : UI_THEME.colors.text, "center", false);
+  }
+
+  function drawBestiaryTab(affinityId, x, selected) {
+    drawMenuTab(affinityDefs[affinityId].name.toUpperCase(), x, 237, 162, 42, selected, () => { bestiaryAffinity = affinityId; });
+  }
+
+  function drawBestiary() {
+    drawBestiaryBackground();
+    drawWood("woodPanel", 15, 15, 510, 72);
+    drawText("BESTIARY", 33, 51, 30, UI_THEME.colors.title);
+    affinityOrder.forEach((affinityId, index) => {
+      const x = 273 + index * 87;
+      drawCurrencyIcon(affinityId, x, 51, 30);
+      drawText(formatAmount(state.save.essence[affinityId]), x + 21, 51, 18, affinityDefs[affinityId].color, "left", false);
+    });
+
+    drawWood("woodPanel", 18, 99, 504, 126);
+    drawText("ACTIVE PARTY", 36, 120, 18, UI_THEME.colors.accent, "left", false);
+    for (let slot = 0; slot < 3; slot += 1) {
+      const x = 36 + slot * 160, creatureId = state.save.activeParty[slot];
+      drawWood("woodInventoryCell", x, 141, 136, 70);
+      if (creatureId) drawPet(creatureId, x + 68, 176, 48);
+      else drawText("EMPTY", x + 68, 176, 15, UI_THEME.colors.muted, "center");
+    }
+
+    affinityOrder.forEach((affinityId, index) => drawBestiaryTab(affinityId, 18 + index * 171, affinityId === bestiaryAffinity));
+
+    creatureDefs.forEach((creature, index) => {
+      const y = 291 + index * 129;
+      const owned = hasRecruit(creature.id), active = isActiveCreature(creature.id), gateOpen = creatureGateUnlocked(creature);
+      const cardAction = gateOpen ? () => recruitCreature(creature) : null;
+      drawWood(gateOpen ? "woodPanel" : "woodDisabled", 18, y, 504, 120);
+      if (cardAction) uiTargets.push({ x: 18, y, width: 504, height: 120, action: cardAction });
+      drawPet(creature.id, 72, y + 60, 64, gateOpen ? 1 : 0.35);
+      drawText(creature.name, 111, y + 27, 21, gateOpen ? UI_THEME.colors.text : UI_THEME.colors.locked, "left", gateOpen);
+      drawCurrencyIcon(creature.affinityId, 120, y + 60, 20, gateOpen ? 1 : 0.35);
+      drawText(`${affinityDefs[creature.affinityId].name} • ${creature.role}`, 138, y + 60, 15, gateOpen ? affinityDefs[creature.affinityId].color : UI_THEME.colors.locked, "left", false);
+      const detail = gateOpen ? creature.description : `Clear stage ${creature.requiresStageClear} to unlock recruitment.`;
+      drawText(detail, 111, y + 90, 15, gateOpen ? UI_THEME.colors.muted : UI_THEME.colors.locked, "left", gateOpen);
+      const label = !gateOpen ? "LOCKED" : owned ? (active ? "ACTIVE" : "ADD TO PARTY") : `RECRUIT ${creature.captureCost}`;
+      drawBestiaryButton(label, 354, y + 12, 150, 36, !gateOpen ? "locked" : active ? "selected" : "normal", cardAction);
+    });
+
+    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 758, 15, UI_THEME.colors.title, "center");
+    drawText("Choose up to three creatures for your active party", WIDTH / 2, 792, 15, UI_THEME.colors.muted, "center");
+    drawBestiaryButton("BACK TO MAP", 99, 819, 342, 42, "normal", () => setMode("map"));
   }
 
   function rankRequirementText(definition) {
@@ -1133,8 +1353,85 @@
     return (!definition.recruit || hasRecruit(definition.recruit)) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
+  function iconTreePositions() {
+    const definitions = treePositions().map(item => item.definition);
+    const depth = def => Math.max(0, ...def.requires.map(id => {
+      const parent = definitions.find(item => item.id === id);
+      return parent ? depth(parent) + 1 : 0;
+    }));
+    const levels = definitions.map(depth), maxDepth = Math.max(0, ...levels);
+    return definitions.map((definition, index) => {
+      const level = levels[index], peers = definitions.filter((_, i) => levels[i] === level);
+      return { definition, x: Math.round(48 + (peers.indexOf(definition) + 0.5) * 444 / peers.length),
+        y: Math.round(258 + level * Math.min(94, 278 / Math.max(1, maxDepth))) };
+    });
+  }
+
+  function drawIconUpgrades() {
+    const colors = UI_THEME.colors;
+    drawBestiaryBackground();
+    drawPanel(0, 0, WIDTH, 104);
+    drawBestiaryButton("< MAP", 16, 16, 120, 48, "normal", () => setMode("map"));
+    drawText("UPGRADES", 154, 39, 30, colors.title);
+    drawCurrencyIcon("gold", 418, 39, 30);
+    drawText(formatAmount(state.save.gold), 506, 39, 18, colors.accent, "right", false);
+    affinityOrder.forEach((id, index) => {
+      const x = 62 + index * 166;
+      drawCurrencyIcon(id, x, 82, 20);
+      drawText(formatAmount(state.save.essence[id]), x + 22, 82, 18, colors[id], "left", false);
+    });
+    ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"].forEach((name, index) => {
+      const x = 14 + index * 104;
+      drawMenuTab(name, x, 124, 96, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; });
+    });
+    drawText("TAP A NODE TO INSPECT", 270, 207, 15, colors.dark, "center", false);
+    const positions = iconTreePositions();
+    if (!positions.some(item => item.definition.id === selectedUpgrade)) selectedUpgrade = positions[0]?.definition.id;
+    for (const item of positions) for (const id of item.definition.requires) {
+      const parent = positions.find(p => p.definition.id === id); if (!parent) continue;
+      const ready = rank(id) >= (item.definition.requiredRanks?.[id] || 1);
+      ctx.strokeStyle = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.dark : colors.locked;
+      ctx.lineWidth = item.definition.id === selectedUpgrade ? 4 : 2;
+      ctx.beginPath(); ctx.moveTo(parent.x, parent.y + 28); ctx.lineTo(item.x, item.y - 28); ctx.stroke();
+    }
+    for (const { definition: def, x, y } of positions) {
+      const available = upgradeUnlocked(def), current = rank(def.id), maxed = current >= def.max;
+      const icon = nodeIconPaths[def.id] ? def.id : def.id.endsWith("CritChance") ? "autoTarget" : "tripleSpark";
+      drawSprite(`node_${icon}${available ? "" : "_off"}`, x, y, 72, available ? 1 : 0.65);
+      if (selectedUpgrade === def.id) drawWood("woodFocus", x - 40, y - 40, 80, 80, UI_THEME.slices.focus.x, UI_THEME.slices.focus.scale);
+      ctx.fillStyle = colors.dark; ctx.fillRect(x - 26, y + 22, 52, 20);
+      drawText(`${current}/${def.max}`, x, y + 32, 14, maxed ? colors.accent : colors.text, "center", false);
+      uiTargets.push({ x: x - 38, y: y - 38, width: 76, height: 80, action: () => { selectedUpgrade = def.id; } });
+    }
+    const def = positions.find(item => item.definition.id === selectedUpgrade)?.definition;
+    if (def) {
+      const current = rank(def.id), maxed = current >= def.max, unlocked = upgradeUnlocked(def);
+      const cost = def.costs[current] || 0, balance = def.currency ? state.save.essence[def.currency] : state.save.gold;
+      let description = maxed ? `MAXED: ${def.effect(current - 1)}` : `NOW: ${current ? def.effect(current - 1) : "Not learned"}. NEXT: ${def.effect(current)}`;
+      if (!unlocked) {
+        const requirements = def.requires.map(id => `${upgradeDefs.find(d => d.id === id)?.name || id} ${def.requiredRanks?.[id] || 1}`);
+        if (def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
+        description = `LOCKED: ${requirements.join("; ")}. ${description}`;
+      }
+      ctx.font = '15px "NinjaPixel", monospace';
+      const lines = [""];
+      for (const word of description.split(" ")) {
+        const i = lines.length - 1, next = lines[i] ? `${lines[i]} ${word}` : word;
+        if (ctx.measureText(next).width > 456 && lines[i]) lines.push(word); else lines[i] = next;
+      }
+      const buttonY = 642 + lines.length * 20;
+      drawWood(unlocked ? "woodPanel" : "woodDisabled", 20, 596, 500, buttonY + 54 - 596);
+      drawText(def.name, 38, 620, 21, unlocked ? colors.text : colors.locked, "left", unlocked); drawText(`${current}/${def.max}`, 498, 620, 18, unlocked ? colors.accent : colors.locked, "right", false);
+      lines.forEach((line, i) => drawText(line, 38, 646 + i * 20, 15, unlocked ? colors.muted : colors.locked, "left", unlocked));
+      const label = maxed ? "MAXED" : !unlocked ? "LOCKED" : `${balance >= cost ? "UPGRADE" : "NEED"} ${cost} ${def.currency ? affinityDefs[def.currency].short : "G"}`;
+      drawBestiaryButton(label, 38, buttonY, 464, 42, !maxed && unlocked && balance >= cost ? "normal" : "locked",
+        !maxed && unlocked && balance >= cost ? () => attemptUpgrade(def) : null);
+    }
+  }
+
   function drawUpgrades() {
-    drawBackground(); drawHeader("UPGRADES", `Fangle: ${state.save.fangEssence} • Buttermant: ${state.save.mossEssence} essence`);
+    if (window.UPGRADE_TREE_PROTOTYPE) return drawIconUpgrades();
+    drawBackground(); drawHeader("UPGRADES", affinityWalletText());
     const branches = ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"];
     branches.forEach((name, index) => {
       const x = 14 + index * 104;
@@ -1162,14 +1459,13 @@
     }
     for (const item of positions) {
       const def = item.definition, current = rank(def.id);
-      const captured = def.capture && hasRecruit(def.capture);
-      const available = def.capture ? (captured || (!!def.currency && captureStageUnlocked(def))) : upgradeUnlocked(def);
-      const maxed = !def.capture && current >= def.max;
-      const cost = maxed || def.capture ? 0 : def.costs[current];
+      const available = upgradeUnlocked(def);
+      const maxed = current >= def.max;
+      const cost = maxed ? 0 : def.costs[current];
       drawPanel(item.x, item.y, 232, item.height, available ? "#253753f5" : "#303541f5");
-      const price = def.capture ? (captured ? 0 : def.cost || 0) : maxed ? 0 : cost;
-      const rankLabel = `${def.capture ? Number(captured) : current}/${def.capture ? 1 : def.max}`;
-      const costLabel = `${def.currency ? "E" : "G"}${price}`;
+      const price = maxed ? 0 : cost;
+      const rankLabel = `${current}/${def.max}`;
+      const costLabel = `${def.currency ? affinityDefs[def.currency].short : "G"}${price}`;
       ctx.font = '14px "NinjaPixel", monospace';
       const costWidth = ctx.measureText(costLabel).width;
       const rankWidth = ctx.measureText(rankLabel).width;
@@ -1180,10 +1476,8 @@
       drawText(def.name, item.x + 10, item.y + 23, nameSize, available ? "#fff" : "#eee0ca");
       drawText(rankLabel, rankRight, item.y + 23, 14, "#fff", "right");
       drawText(costLabel, item.x + 222, item.y + 23, 14, "#fff", "right");
-      const effect = def.capture
-        ? captured ? "Unlock monster talents" : `Clear stage ${def.requiresStageClear || def.stage} to capture${def.currency ? ` / ${currencyName(def.currency)}` : ""}`
-        : def.id === "power" ? `${playerDamage() + (maxed ? 0 : 1)} damage` : def.id === "health" ? `${maxPartyHealth() + (maxed ? 0 : 5)} HP` : !available && def.id === "partyBond" ? "Capture Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
-      const description = effect + (!def.capture && def.currency ? ` / ${currencyName(def.currency)}` : "");
+      const effect = def.id === "power" ? `${playerDamage() + (maxed ? 0 : 1)} damage` : def.id === "health" ? `${maxPartyHealth() + (maxed ? 0 : 5)} HP` : !available && def.id === "partyBond" ? "Recruit Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
+      const description = effect + (def.currency ? ` / ${currencyName(def.currency)}` : "");
       ctx.font = '17px "NinjaPixel", monospace';
       const lines = [""];
       for (const word of description.split(" ")) {
@@ -1251,8 +1545,7 @@
       }
     }
     for (const enemy of state.enemies) {
-      if (enemy.species === "fanglet") drawPet("striker", enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
-      else if (enemy.species === "mossbud") drawPet("healer", enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
+      if (enemy.species) drawPet(speciesDefs[enemy.species].petType, enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
       else drawMonster(enemy);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
@@ -1298,16 +1591,13 @@
     const goldText = formatAmount(state.save.gold + state.runGold);
     ctx.font = '20px "NinjaPixel", monospace';
     const goldIconX = 446 - ctx.measureText(goldText).width - 18;
-    drawSheetFrame("coinDrop", goldIconX, 36, Math.floor(state.animationTime * 10) % 4, 4, 24);
+    drawCurrencyIcon("gold", goldIconX, 36, 24);
     drawText(goldText, 446, 36, 20, "#ffe17d", "right");
-    const essenceIcons = assets.petRoster;
-    if (essenceIcons?.naturalWidth) {
-      // Static south-facing frames keep the resource counters easy to scan.
-      ctx.drawImage(essenceIcons, 0, 0, 16, 16, 76, 58, 32, 32);
-      ctx.drawImage(essenceIcons, 0, 32, 16, 16, 252, 58, 32, 32);
-    }
-    drawText(formatAmount(state.save.fangEssence + state.runEssence), 118, 74, 20, "#fff");
-    drawText(formatAmount(state.save.mossEssence + state.runMossEssence), 294, 74, 20, "#fff");
+    affinityOrder.forEach((affinityId, index) => {
+      const x = 82 + index * 116;
+      drawAffinityToken(affinityId, x, 74, 12);
+      drawText(formatAmount(state.save.essence[affinityId] + state.runEssence[affinityId]), x + 20, 74, 18, "#fff");
+    });
     const autoOn = autoTargetUnlocked() && state.save.autoTargetEnabled;
     drawSprite(autoOn ? "autoAttackBook" : "autoAttackBookDisabled", 484, 60, 48);
     if (autoTargetUnlocked()) uiTargets.push({ x: 460, y: 36, width: 48, height: 48, action: toggleAutoTarget });
@@ -1317,16 +1607,14 @@
   function drawResult() {
     drawBackground(); drawRoad(); drawPanel(24, 130, 492, 650);
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
-    drawText(`Fangle essence: +${state.result.essence} (${state.save.fangEssence} total)`, WIDTH / 2, 330, 20, "#a9e9eb", "center");
     drawText(`Total gold: ${formatAmount(state.save.gold)}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
-    drawText(`Buttermant essence: ${state.save.mossEssence}`, WIDTH / 2, 365, 20, "#a9e9eb", "center");
-    if (state.result.newRecruit) {
-      drawPet(state.result.newRecruit, WIDTH / 2, 402, 90);
-      drawText(`${petDisplayNames[state.result.newRecruit].toUpperCase()} CAPTURED!`, WIDTH / 2, 482, 25, "#a8d9ff", "center");
-      drawText("A new upgrade branch is open.", WIDTH / 2, 522, 20, "#fff", "center");
-    } else {
-      drawText(state.result.won ? (state.result.stage < 10 ? `Stage ${state.result.stage + 1} is now available.` : "All ten stages cleared!") : "Buy +1 damage / +5 HP, then retry.", WIDTH / 2, 425, 22, "#fff", "center");
-    }
+    affinityOrder.forEach((affinityId, index) => {
+      const affinity = affinityDefs[affinityId], y = 325 + index * 38;
+      drawAffinityToken(affinityId, 128, y, 12);
+      drawText(`${affinity.name} essence: +${state.result.essence[affinityId]} (${state.save.essence[affinityId]} total)`, 150, y, 18, affinity.color);
+    });
+    const gateOpened = state.result.won && creatureDefs.some(creature => creature.requiresStageClear === state.result.stage);
+    drawText(gateOpened ? "A new creature is available in the Bestiary." : state.result.won ? (state.result.stage < 10 ? `Stage ${state.result.stage + 1} is now available.` : "All ten stages cleared!") : "Buy upgrades or adjust your party, then retry.", WIDTH / 2, 478, 20, "#fff", "center");
     drawButton("RETURN TO MAP", 80, 590, 380, 70, true, () => setMode("map"));
     drawButton("RETRY STAGE", 80, 685, 380, 64, true, () => startStage(state.result.stage));
   }
@@ -1334,7 +1622,7 @@
   function render() {
     uiTargets = [];
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
+    if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "bestiary") drawBestiary(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
   }
 
   function canvasPoint(event) {
@@ -1342,39 +1630,20 @@
     return { x: (event.clientX - rect.left) * WIDTH / rect.width, y: (event.clientY - rect.top) * HEIGHT / rect.height };
   }
 
-  const captureStageUnlocked = definition => !definition.requiresStageClear || state.save.completed.includes(definition.requiresStageClear);
-
   function attemptUpgrade(definition) {
     const current = rank(definition.id);
-    if (definition.capture) {
-      if (!hasRecruit(definition.capture) && !captureStageUnlocked(definition)) {
-        state.toast = `Clear stage ${definition.requiresStageClear} to unlock capture`;
-        state.toastTimer = 1.8; return;
-      }
-      if (definition.currency && !hasRecruit(definition.capture)) {
-        if (state.save[definition.currency] < definition.cost) {
-          state.toast = `Need ${definition.cost - state.save[definition.currency]} more ${currencyName(definition.currency)}`;
-        } else {
-          state.save[definition.currency] -= definition.cost;
-          state.save.recruits.push(definition.capture);
-          playSound("success");
-          writeSave();
-          state.toast = `${definition.name} captured! Talents unlocked`;
-        }
-        state.toastTimer = 1.8; return;
-      }
-      state.toast = hasRecruit(definition.capture) ? `${definition.name} captured — branch unlocked` : `Clear stage ${definition.stage} to capture ${definition.name}`;
-      state.toastTimer = 1.8; return;
-    }
     if (!upgradeUnlocked(definition)) {
-      state.toast = definition.id === "partyBond" ? "Capture Buttermant first" : definition.requiredRanks ? rankRequirementText(definition) : definition.recruit ? `Recruit the ${definition.branch.toLowerCase()} first` : "Purchase the prerequisite first";
+      if (definition.id === "partyBond") state.toast = "Recruit Buttermant first";
+      else if (definition.requiredRanks) state.toast = rankRequirementText(definition);
+      else if (definition.recruit) state.toast = `Recruit ${petDisplayNames[definition.recruit]} first`;
+      else state.toast = "Purchase the prerequisite first";
       state.toastTimer = 1.8; return;
     }
     if (current >= definition.max) return;
     const cost = definition.costs[current];
     const currency = definition.currency || "gold";
-    if (state.save[currency] < cost) { state.toast = `Need ${formatAmount(cost - state.save[currency])} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
-    state.save[currency] = precise(state.save[currency] - cost);
+    if (currencyAmount(currency) < cost) { state.toast = `Need ${formatAmount(cost - currencyAmount(currency))} more ${currencyName(currency)}`; state.toastTimer = 1.8; return; }
+    spendCurrency(currency, cost);
     state.save.upgrades[definition.id] = current + 1;
     playSound("success");
     state.toast = "";
@@ -1438,11 +1707,11 @@
     audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music && !music.paused },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.recruits], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.recruits.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.species || enemy.type, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.species || enemy.type, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
       weather: weatherType(),
       particles: { total: state.particles.length, counts: state.particles.reduce((counts, p) => { counts[p.kind] = (counts[p.kind] || 0) + 1; return counts; }, {}) },
@@ -1452,11 +1721,12 @@
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
       coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
-      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: state.save.fangEssence + state.runEssence, totalMossEssence: state.save.mossEssence + state.runMossEssence, goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
+      obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: Object.fromEntries(affinityOrder.map(id => [id, state.save.essence[id] + state.runEssence[id]])), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
     upgradeBranch: ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"][upgradeBranch],
-    captureNodes: captureDefs.map(definition => ({ monster: definition.name, stage: definition.currency ? null : definition.stage, essenceCost: definition.cost || 0, captured: hasRecruit(definition.capture) })),
-    mossbudEssence: state.save.mossEssence, fangletEssence: state.save.fangEssence, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
+    bestiaryAffinity,
+    bestiary: creatureDefs.map(creature => ({ id: creature.id, name: creature.name, affinityId: creature.affinityId, role: creature.role, cost: creature.captureCost, requiresStageClear: creature.requiresStageClear, gateUnlocked: creatureGateUnlocked(creature), owned: hasRecruit(creature.id), active: isActiveCreature(creature.id) })),
+    essence: state.save.essence, essencePity: state.save.essencePity, ownedCreatures: state.save.ownedCreatures, activeParty: state.save.activeParty, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
   });
 
   window.advanceTime = ms => {
@@ -1467,10 +1737,17 @@
 
   window.__scollTest = {
     getSave: () => JSON.parse(JSON.stringify(state.save)),
-    setSave: save => { state.save = { ...defaultSave(), ...save, upgrades: mergeHealthRanks(save.upgrades || {}) }; writeSave(); render(); },
+    setSave: save => {
+      const fresh = defaultSave();
+      state.save = { ...fresh, ...save, essence: { ...fresh.essence, ...(save.essence || {}) }, essencePity: { ...fresh.essencePity, ...(save.essencePity || {}) }, ownedCreatures: [...new Set(save.ownedCreatures || [])], activeParty: [...new Set(save.activeParty || [])].slice(0, 3), upgrades: mergeHealthRanks(save.upgrades || {}) };
+      writeSave(); render();
+    },
     startStage,
+    setMode,
+    recruitById: id => recruitCreature(creatureById(id)),
+    toggleCreatureInParty,
     clearCombat: () => { if (state.mode === "combat") { [...state.enemies].forEach(enemy => { if (state.mode === "combat") damageEnemy(enemy, enemy.hp); }); state.stageTime = state.stage.duration; state.bossSpawned = true; state.bossDefeated = true; update(FIXED_STEP); render(); } },
-    resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); state.selectedStage = 1; setMode("title"); },
+    resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); localStorage.removeItem(LEGACY_SAVE_KEY); state.selectedStage = 1; setMode("title"); },
     balanceProjection, stageDpsEstimate
   };
 

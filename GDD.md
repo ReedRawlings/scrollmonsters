@@ -275,6 +275,18 @@ New Buttermant captures require clearing stage 5 as well as paying 12 Buttermant
 
 The corrected ten-seed hybrid estimate gives stage 4 a mean of 5.9 attempts (5–6), without Buttermant or Party Bond. All modeled captures happen after stage-5 clear; Party Bond purchases occur after stage 5 or during stage 6. Buying choices differ from the earlier invalid early-capture scenario.
 
+## Affinity essence and Bestiary — September 12
+
+Species-specific wallets are replaced by three affinity currencies: Feral, Bloom, and Arcane essence. Affinity is separate from combat role, so future creatures of the same affinity can fill different party jobs. Fanglets drop Feral essence, Mossbuds drop Bloom essence, and wild Tinmins drop Arcane essence. Each affinity has its own persistent fifth-kill pity counter; the existing 30% drop roll and stage-based bundle size remain provisional.
+
+The overworld now links to a Bestiary beside Upgrades, with the full-width Play button beneath them. The old selected-stage essence-density line is removed. The Bestiary owns recruitment and party selection, displays all three wallets, and supports a permanent player plus up to three active creatures. Recruited creatures automatically fill an empty party slot and can be moved between the active party and reserves.
+
+Fangle costs 8 Feral essence and has no stage gate. Buttermant costs 12 Bloom essence after clearing stage 5. Tinmin costs 20 Arcane essence after clearing stage 10. The stage-3 Fangle boss still grants 15 Feral essence; the stage-5 boss grants 15 Bloom essence and the stage-10 boss grants 20 Arcane essence. Clearing a gate does not recruit the creature automatically.
+
+Creature-specific talents continue to use their creature's affinity essence: Fangle's signature talents spend Feral essence and Buttermant's spend Bloom essence. Gold continues to fund general stats and most creature upgrades. Affinities do not yet add damage strengths, weaknesses, or other combat multipliers.
+
+This is a deliberate fresh progression reset. Saves use the new `scollmonsters-save-v2` key with `essence`, `essencePity`, `ownedCreatures`, and `activeParty`; the old v1 save is deleted rather than migrated. Gold, Feral, Bloom, and Arcane use the four rows of the supplied `Coin2-Sheet.png` atlas throughout the live UI.
+
 ### Early progression rewards
 - Player Damage +1 prices are 80% of each previous rank price, rounded to whole gold (rank 1: 12G; rank 5: 40G). Other nodes retain their prices.
 - Stage 3 uses an enlarged Fangle boss with its existing boss stats. Each defeat grants exactly 15 Fangle essence instead of the previous boss essence award; no additional random Fangle drop is rolled for this boss.
