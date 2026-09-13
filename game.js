@@ -1399,7 +1399,7 @@
     });
   }
 
-  function drawIconUpgrades() {
+  function drawUpgrades() {
     const colors = UI_THEME.colors;
     drawBestiaryBackground();
     drawPanel(0, 0, WIDTH, 104);
@@ -1461,70 +1461,6 @@
       drawBestiaryButton(label, 38, buttonY, 464, 42, !maxed && unlocked && balance >= cost ? "normal" : "locked",
         !maxed && unlocked && balance >= cost ? () => attemptUpgrade(def) : null);
     }
-  }
-
-  function drawUpgrades() {
-    if (window.UPGRADE_TREE_PROTOTYPE) return drawIconUpgrades();
-    drawBackground(); drawHeader("UPGRADES", affinityWalletText());
-    const branches = ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"];
-    branches.forEach((name, index) => {
-      const x = 14 + index * 104;
-      drawButton(name, x, 128, 96, 66, true, () => { upgradeBranch = index; });
-      if (index === upgradeBranch) drawWood("woodFocus", x - 3, 125, 102, 72, 3);
-    });
-    const positions = treePositions();
-    // Draw prerequisite paths first so cards and text stay unobstructed.
-    for (const item of positions) for (const id of treeRequirements(item.definition)) {
-      const parent = positions.find(candidate => candidate.definition.id === id);
-      if (!parent) continue;
-      const ready = parent.definition.capture ? hasRecruit(parent.definition.capture) : rank(id) >= (item.definition.requiredRanks?.[id] || 1);
-      ctx.strokeStyle = ready ? "#ffd873" : "#483326"; ctx.lineWidth = 3;
-      ctx.beginPath();
-      if (parent.x === item.x) {
-        ctx.moveTo(parent.x + 116, parent.y + parent.height);
-        ctx.lineTo(item.x + 116, item.y);
-      } else {
-        const fromX = parent.x < item.x ? parent.x + 232 : parent.x;
-        const toX = parent.x < item.x ? item.x : item.x + 232;
-        ctx.moveTo(fromX, parent.y + 54); ctx.lineTo(270, parent.y + 54);
-        ctx.lineTo(270, item.y + 54); ctx.lineTo(toX, item.y + 54);
-      }
-      ctx.stroke();
-    }
-    for (const item of positions) {
-      const def = item.definition, current = rank(def.id);
-      const available = upgradeUnlocked(def);
-      const maxed = current >= def.max;
-      const cost = maxed ? 0 : def.costs[current];
-      drawPanel(item.x, item.y, 232, item.height, available ? "#253753f5" : "#303541f5");
-      const price = maxed ? 0 : cost;
-      const rankLabel = `${current}/${def.max}`;
-      const costLabel = `${def.currency ? affinityDefs[def.currency].short : "G"}${price}`;
-      ctx.font = '14px "NinjaPixel", monospace';
-      const costWidth = ctx.measureText(costLabel).width;
-      const rankWidth = ctx.measureText(rankLabel).width;
-      const rankRight = item.x + 222 - costWidth - 8;
-      const nameWidth = rankRight - rankWidth - 8 - (item.x + 10);
-      ctx.font = '18px "NinjaPixel", monospace';
-      const nameSize = Math.min(18, 18 * nameWidth / Math.max(1, ctx.measureText(def.name).width));
-      drawText(def.name, item.x + 10, item.y + 23, nameSize, available ? "#fff" : "#eee0ca");
-      drawText(rankLabel, rankRight, item.y + 23, 14, "#fff", "right");
-      drawText(costLabel, item.x + 222, item.y + 23, 14, "#fff", "right");
-      const effect = def.id === "power" ? `${playerDamage() + (maxed ? 0 : 1)} damage` : def.id === "health" ? `${maxPartyHealth() + (maxed ? 0 : 5)} HP` : !available && def.id === "partyBond" ? "Recruit Buttermant first" : !available && def.requiredRanks ? rankRequirementText(def) : def.effect(Math.min(current, def.max - 1));
-      const description = effect + (def.currency ? ` / ${currencyName(def.currency)}` : "");
-      ctx.font = '17px "NinjaPixel", monospace';
-      const lines = [""];
-      for (const word of description.split(" ")) {
-        const last = lines.length - 1;
-        const next = lines[last] ? `${lines[last]} ${word}` : word;
-        if (ctx.measureText(next).width > 208 && lines[last]) lines.push(word);
-        else lines[last] = next;
-      }
-      lines.slice(0, 3).forEach((line, index) => drawText(line, item.x + 12, item.y + 49 + index * 21, 17, "#fff"));
-      uiTargets.push({ x: item.x, y: item.y, width: 232, height: item.height, action: () => attemptUpgrade(def) });
-    }
-    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 742, 17, "#ffde83", "center");
-    drawButton("BACK TO MAP", 100, 804, 340, 68, true, () => setMode("map"));
   }
 
   function drawCombat() {

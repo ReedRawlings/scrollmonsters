@@ -576,3 +576,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Replaced the overworld's full-screen field/path backdrop with the supplied Theme Wood/nine_path_bg.png using nine-slice rendering at 2× border scale. Map terrain and other menus remain as before.
 - Syntax check passed; inspected the explored-map browser capture.
+
+## September 13 — promote connected upgrade nodes
+
+- Main game now opens the approved connected-icon upgrade UI. Removed the old card renderer; prototype demo save remains isolated on its own page.
+- Verified main-entry mobile node inspection without spending, explicit purchase, all five branches, Map return, and starting combat. Build and syntax pass; inspected browser and skill-harness screenshots.
+- Updated the main script cache version for release.
