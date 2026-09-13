@@ -323,3 +323,7 @@ Supersedes the no-reward pottery settings above. Each level schedules two props:
 - Milestone bosses guarantee 15 Feral on stage 3, 15 Bloom on stage 5, and 20 Arcane on stage 10. Existing secondary boss bonuses remain 2 bundles of Feral on stages 6/9 and Bloom on stage 8.
 - Follow-Up Bite and Mending Bite now spend Feral essence. Deep Bloom and Bloom Guard spend Bloom essence. Their rank prices and effects are unchanged.
 - All values are provisional pending playtesting of the new multi-affinity stage distribution.
+
+## September 13 — faster early upgrades and combat sprites
+
+Health +5 and Fangle Focus now share Damage +1 prices at every rank: 10/14/18/25/33/45/61/82/110/149G. Existing ranks are preserved. Wild capturable creatures render at 48px in stage combat, matching ordinary monsters. Battle coin drops animate the four frames in the first row of Coin2-Sheet.png.

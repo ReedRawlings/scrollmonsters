@@ -543,3 +543,36 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Rank-zero prototype nodes show only NEXT. Purchased non-maxed nodes retain NOW/NEXT; maxed and locked requirements retain their existing behavior.
 - Syntax and prototype mobile purchase/navigation checks passed; rank-zero screenshot inspected.
+
+## September 13 — combat sizing, coin animation, upgrade pricing
+
+- Wild capturable creatures now render at 48px only in combat.
+- Coin drops use Coin2-Sheet.png row 1 (four 10px frames).
+- Health +5 and Fangle Focus share the exact ten-rank Damage +1 price array.
+- Verified: node syntax check and existing check-game.cjs pass. Browser check confirms all ten prices match, captures all three wild creatures beside an ordinary monster and a coin drop, and reports no page errors. Visually inspected combat and skill-client map screenshots; combat sizes and the first-row coin frame are correct.
+- No outstanding implementation TODOs for this request; campaign pacing remains a playtest tuning task.
+
+- Follow-up: Damage +1, Health +5, and Fangle Focus now start at 10G and retain 1.35 growth (rounded each rank): 10/14/18/25/33/45/61/82/110/149G. Bosses currently award 1 base gold each.
+
+## September 13 — compact PUNY overworld
+
+- Rebuilt the overworld with supplied PUNY_WORLD_v1 terrain, trees, water, and settlement sprites. Reproducible generator: scripts/build-overworld.py; output assets/scenery/overworld.png rendered at 2×.
+- Top half holds the ten-stage winding route with unreached terrain hidden and unreached nodes unavailable; the entire landscape reveals at stage 10. Third quarter shows selected-stage species icons/rates, enemy types, and boss HP/timing. Bottom quarter holds Bestiary, Upgrades, and Play.
+- Mobile browser checks pass hidden-stage blocking, stage selection, both menu links, and launching selected-stage combat, with no page errors. Syntax and diff checks pass. Inspected fresh and fully revealed screenshots plus skill harness screenshot/state.
+- Available locally on port 5174; no deployment requested. No outstanding implementation TODOs.
+
+## September 13 — explored map preview and enemy stats
+
+- Added ?overworld=explored preview, opening directly onto all ten visible stages without changing saved unlock progress.
+- Removed stage title/status, enemy-type prose, and opening-rate note. Species now show HP/DMG (ranges for variable enemy types), with ordinary monster and boss stats below using combat scaling and early Fanglet overrides.
+- Syntax and mobile overworld navigation checks pass; explored harness screenshot visually inspected.
+
+## September 13 — menu top spacing
+
+- Reduced overworld action panel top padding from 52px to 18px; moved both button rows up 34px and shortened the panel to preserve bottom padding.
+- Syntax check passed and browser screenshot visually inspected.
+
+## September 13 — overworld background surface
+
+- Replaced the overworld's full-screen field/path backdrop with the supplied Theme Wood/nine_path_bg.png using nine-slice rendering at 2× border scale. Map terrain and other menus remain as before.
+- Syntax check passed; inspected the explored-map browser capture.

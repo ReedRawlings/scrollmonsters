@@ -44,6 +44,7 @@
     particleRock: "assets/Ninja Adventure - Asset Pack/FX/Particle/Rock.png",
     particleWood: "assets/Ninja Adventure - Asset Pack/FX/Particle/Wood.png",
     abandonedProps: "assets/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetVillageAbandoned.png",
+    overworldMap: "assets/scenery/overworld.png",
     sceneryDesert: "assets/scenery/04-desert-path.png",
     sceneryStone: "assets/scenery/05-stone-path.png",
     particleVase: "assets/Ninja Adventure - Asset Pack/FX/Particle/Vase.png",
@@ -59,6 +60,7 @@
     playerAttack: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Attack.png",
     monsterBasic: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bamboo/SpriteSheet.png",
     monsterRanged: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Axolot/SpriteSheet.png",
+    woodBackground: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_bg.png",
     woodPanel: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel.png",
     woodDisabled: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel_disabled.png",
     woodInventoryCell: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/inventory_cell.png",
@@ -70,7 +72,7 @@
     woodFocus: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_focus.png",
     healthVessel: "assets/Ninja Adventure - Asset Pack/Ui/Receptacle/Receptacle Rectangle/BackgroundWood.png",
     healthFill: "assets/Ninja Adventure - Asset Pack/Ui/Receptacle/Receptacle Rectangle/ProgressHealth.png",
-    coinDrop: "assets/Ninja Adventure - Asset Pack/Items/Treasure/Coin2.png",
+    coinDrop: "assets/Ninja Adventure - Asset Pack/Items/Treasure/Coin2-Sheet.png",
     treasureChest: "assets/Ninja Adventure - Asset Pack/Items/Treasure/LittleTreasureChest.png",
     demonWalk: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Walk.png",
     demonHit: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Hit.png",
@@ -195,14 +197,16 @@
   const abilityRankCosts = (baseCost, ranks) =>
     Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
+  const damageRankCosts = abilityRankCosts(10, 10);
+
   const upgradeDefs = [
-    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10).map(cost => Math.round(cost * 0.8)), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
+    { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
-    { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: abilityRankCosts(15, 10), effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
+    { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
     { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
+    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Fangle Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
     { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
@@ -1210,35 +1214,63 @@
   }
 
   function mapNodePosition(stageNumber) {
-    const row = Math.floor((stageNumber - 1) / 2);
-    const column = row % 2 === 0 ? (stageNumber - 1) % 2 : 1 - (stageNumber - 1) % 2;
-    return { x: 155 + column * 230, y: 185 + row * 120 };
+    const column = stageNumber <= 5 ? stageNumber - 1 : 10 - stageNumber;
+    return { x: 64 + column * 104, y: stageNumber <= 5 ? 350 : 190 };
   }
 
   function drawMap() {
-    drawBackground();
+    const colors = UI_THEME.colors;
+    ctx.fillStyle = UI_THEME.colors.dark;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
     drawHeader("OVERWORLD", affinityWalletText());
-    ctx.strokeStyle = "#705239"; ctx.lineWidth = 16; ctx.lineCap = "round"; ctx.beginPath();
-    for (let number = 1; number <= 10; number++) {
-      const point = mapNodePosition(number);
-      if (number === 1) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
+    const reached = new URLSearchParams(location.search).get("overworld") === "explored" ? 10 : Math.min(10, state.save.unlockedStage);
+    state.selectedStage = Math.min(state.selectedStage, reached);
+    // Unreached terrain is not drawn; only the cleared route and current frontier are revealed.
+    ctx.save();ctx.beginPath();ctx.rect(14,116,512,320);ctx.clip();
+    ctx.fillStyle = colors.dark;ctx.fillRect(14,116,512,320);
+    ctx.save();ctx.beginPath();
+    if (reached === 10) ctx.rect(14,116,512,320);
+    else for(let n=1;n<=reached;n++) { const p=mapNodePosition(n);ctx.moveTo(p.x+82,p.y);ctx.arc(p.x,p.y,82,0,Math.PI*2); }
+    ctx.clip();
+    const map = assets.overworldMap;
+    if(map?.complete && map.naturalWidth)ctx.drawImage(map,14,116,512,320);
+    ctx.restore();
+    for(let n=1;n<=reached;n++) {
+      const p=mapNodePosition(n),selected=n===state.selectedStage,complete=state.save.completed.includes(n);
+      ctx.fillStyle=selected?colors.accent:complete?colors.field:colors.dark;
+      ctx.fillRect(p.x-16,p.y-9,32,30);
+      drawText(String(n),p.x,p.y+6,18,selected?colors.dark:colors.text,"center",false);
+      if(selected) {ctx.strokeStyle=colors.text;ctx.lineWidth=2;ctx.strokeRect(p.x-20,p.y-13,40,38);}
+      uiTargets.push({x:p.x-26,y:p.y-26,width:52,height:52,action:()=>{state.selectedStage=n;}});
     }
-    ctx.stroke();
-    for (let number = 1; number <= 10; number++) {
-      const point = mapNodePosition(number);
-      const complete = state.save.completed.includes(number), open = number <= state.save.unlockedStage;
-      drawWood(open ? "woodButton" : "woodButtonDisabled", point.x - 36, point.y - 36, 72, 72, 2);
-      if (number === state.selectedStage) drawWood("woodFocus", point.x - 42, point.y - 42, 84, 84, 3);
-      if (complete) drawText("*", point.x + 24, point.y - 24, 16, "#fff3b0", "center");
-      drawText(String(number), point.x, point.y, 24, "#fff", "center");
-      if ([3, 5, 10].includes(number)) drawPet(number === 3 ? "striker" : number === 5 ? "healer" : "aoe", point.x - 64, point.y, 36, open ? 1 : 0.5);
-      if (open) uiTargets.push({ x: point.x - 44, y: point.y - 44, width: 88, height: 88, action: () => { state.selectedStage = number; } });
-    }
-    drawPanel(24, 704, 492, 184);
-    drawText(`Stage ${state.selectedStage} — ${stageConfigs[state.selectedStage - 1].name}`, WIDTH / 2, 730, 20, "#fff", "center");
-    drawButton("BESTIARY", 40, 754, 220, 52, true, () => setMode("bestiary"));
-    drawButton("UPGRADES", 280, 754, 220, 52, true, () => setMode("upgrades"));
-    drawButton("PLAY", 40, 820, 460, 52, true, () => startStage(state.selectedStage));
+    if(reached<10)drawText("UNEXPLORED",270,139,15,colors.muted,"center");
+    ctx.restore();
+    const stage = stageConfigs[state.selectedStage-1];
+    drawWood("woodPanel",18,450,504,218);
+    const enemyTypes = stage.number === 1 ? [[1,1]] : stage.number === 2 ? [[1,1],[3,2]] : [[1,1],[2,1],[3,2]];
+    const range = values => { const lo=Math.min(...values), hi=Math.max(...values); return lo===hi ? String(lo) : `${lo}-${hi}`; };
+    const hpRange = range(enemyTypes.map(([hp])=>precise(Math.round(hp*stage.hpScale)*stage.hpMultiplier)));
+    const damageRange = range(enemyTypes.map(([,damage])=>Math.max(1,Math.round(damage*stage.damageScale))));
+    Object.values(speciesDefs).forEach((species,index)=>{
+      const x=100+index*170;
+      drawPet(species.petType,x-32,489,48);
+      drawCurrencyIcon(species.affinityId,x+16,483,20);
+      drawText(`${Math.round(species.density[stage.number-1]*100)}%`,x+33,485,15,colors[species.affinityId],"left",false);
+      drawText(species.name,x,522,15,colors.text,"center");
+      const openingFanglet = stage.number <= 2 && species.petType === "striker";
+      drawText(`HP ${openingFanglet ? 2*stage.hpMultiplier : hpRange}`,x,547,15,colors.text,"center");
+      drawText(`DMG ${openingFanglet ? 2 : damageRange}`,x,571,15,colors.text,"center");
+    });
+    const bossName=stage.number===3?"Fanglet":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
+    const bossHp=precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
+    drawText(`${bossName}: HP ${bossHp} / DMG ${Math.max(1,Math.round(5*stage.damageScale))}`,36,638,15,colors.text);
+    drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
+    drawWood("woodPanel",18,686,504,162);
+
+    drawBestiaryButton("BESTIARY",34,704,228,50,"normal",()=>setMode("bestiary"));
+    drawBestiaryButton("UPGRADES",278,704,228,50,"normal",()=>setMode("upgrades"));
+    drawBestiaryButton(`PLAY STAGE ${stage.number}`,34,772,472,58,"normal",()=>startStage(stage.number));
   }
 
   const creatureGateUnlocked = creature => !creature.requiresStageClear || state.save.completed.includes(creature.requiresStageClear);
@@ -1536,7 +1568,7 @@
       const groundY = coin.y + coin.offsetY * progress;
       ctx.fillStyle = "#59452355";
       ctx.beginPath(); ctx.ellipse(x, groundY + 7, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
-      drawSheetFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 20);
+      drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 0, 4, 20);
     }
     drawPlayer(state.party.x, state.party.y, 54);
     for (const companion of state.companions) drawPet(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
@@ -1547,7 +1579,7 @@
       }
     }
     for (const enemy of state.enemies) {
-      if (enemy.species) drawPet(speciesDefs[enemy.species].petType, enemy.x, enemy.y, 16, 1, captureFacing(enemy.edge));
+      if (enemy.species) drawPet(speciesDefs[enemy.species].petType, enemy.x, enemy.y, 48, 1, captureFacing(enemy.edge));
       else drawMonster(enemy);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
@@ -1752,6 +1784,8 @@
     resetSave: () => { state.save = defaultSave(); localStorage.removeItem(SAVE_KEY); localStorage.removeItem(LEGACY_SAVE_KEY); state.selectedStage = 1; setMode("title"); },
     balanceProjection, stageDpsEstimate
   };
+
+  if (new URLSearchParams(location.search).get("overworld") === "explored") setMode("map");
 
   document.fonts?.load('16px "NinjaPixel"').then(() => render());
   render();
