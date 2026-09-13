@@ -538,3 +538,8 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Read the guide and inspected the Warm Wood Bestiary helpers. Prototype now reuses UI_THEME, Bestiary background, approved buttons, shared tab nine-slices, and gold/affinity atlas rows. Extracted drawMenuTab so both pages share tab rendering.
 - Preserved connected icon nodes and compact inspect/purchase panel. Corrected 24px skill icons from fractional 64px rendering to exact 72px (3×), rounded tree coordinates, removed redundant padlocks, and adopted muted disabled wood detail panels with unshadowed locked text.
 - Mobile tests passed node selection without spending, explicit purchase, branches and Map navigation. Bestiary regression passed recruitment gates, party selection, persistence and combat roster. Skill harness and Bestiary screenshots visually inspected; no browser errors. Prototype remains separate and local.
+
+## September 13 — concise rank-zero upgrade descriptions
+
+- Rank-zero prototype nodes show only NEXT. Purchased non-maxed nodes retain NOW/NEXT; maxed and locked requirements retain their existing behavior.
+- Syntax and prototype mobile purchase/navigation checks passed; rank-zero screenshot inspected.

@@ -1407,7 +1407,9 @@
     if (def) {
       const current = rank(def.id), maxed = current >= def.max, unlocked = upgradeUnlocked(def);
       const cost = def.costs[current] || 0, balance = def.currency ? state.save.essence[def.currency] : state.save.gold;
-      let description = maxed ? `MAXED: ${def.effect(current - 1)}` : `NOW: ${current ? def.effect(current - 1) : "Not learned"}. NEXT: ${def.effect(current)}`;
+      let description = maxed ? `MAXED: ${def.effect(current - 1)}`
+        : current === 0 ? `NEXT: ${def.effect(current)}`
+        : `NOW: ${def.effect(current - 1)}. NEXT: ${def.effect(current)}`;
       if (!unlocked) {
         const requirements = def.requires.map(id => `${upgradeDefs.find(d => d.id === id)?.name || id} ${def.requiredRanks?.[id] || 1}`);
         if (def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
