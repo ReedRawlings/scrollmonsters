@@ -735,3 +735,14 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Owl enemies hold ~300px from player, retreat below 280px, stay within visible bounds and fire ranged attacks.
 - Mole enemies move underground using the existing Character Shadow asset, emerge at 240px from the nearest party member with moleImpact earth animation and 0.45s rise, then attack normally. Burrow/emergence suppress targeting, damage, health bars and attacks.
 - check-enemy-behaviors.cjs passes Owl range/firing and Mole underground immunity, emergence and surface damage; screenshot inspected with no page errors. Local only.
+
+- Removed obsolete map type-summary fallback (HP ranges/Other monsters) now that all ten stages have explicit rosters. Creature previews show actual roster name, type, spawn percentage, HP and ATK. Bumped game asset version to refresh cached clients.
+
+## Title screen theme refresh
+- Applied the black page background and dark Wood panel interior inside the existing orange title frame. Text uses shared warm theme colors; existing title layout, portraits, journey and reset controls retained.
+- Syntax/whitespace checks passed. Default headless skill harness hit WebGL unsupported; software-WebGL browser check passed with no page errors and verified the journey button opens the map. Inspected `output/title-wood/title.png`.
+
+### Legacy-code cleanup after native port
+- Removed unreachable stage-gated direct recruitment purchase logic. Current catalog creatures are acquired through tier summons; the legacy test hook still toggles already-owned party members.
+- Old Canvas renderer is already removed. Kept captureDefs compatibility data because historical test/economy scripts still reference it; those scripts need a dedicated migration to current summon mechanics.
+- Validation: Phaser browser regression suite, all-stage roster browser check, combat hitbox check, syntax and diff checks passed. Ran the adapted web-game client and inspected its title screenshot/state; no client errors.

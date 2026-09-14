@@ -203,3 +203,6 @@ The player, companions, and regular monsters render at 32×32 (16px frames at 2x
 ## Collection and summon layout — September 14
 
 Both Bestiary views use a solid black full-page backdrop. Collection affinity selectors use normal/selected Wood buttons, not tabs. The collection lists only owned creatures of the selected affinity across all tiers, four rows per page; there are no collection tier filters. Empty affinities show a short unlock prompt without revealing creature names. Center pagination above side-by-side Summon and Back to Map buttons at y=805, matching the summon view's footer. The collection Summon button opens the summon view regardless of essence balance; tier selection and affordability belong to that view.
+
+## Title screen surface
+Use a black page background with `nine_path_bg.png` inset inside the orange Wood title frame, matching the updated menu surfaces. Title, instruction, and secondary text use the shared title/text/muted colors. Keep normal orange Wood action buttons.

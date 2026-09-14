@@ -1618,17 +1618,18 @@
   }
 
   function drawTitle() {
-    drawBackground(); drawRoad();
+    view.rect(0, 0, WIDTH, HEIGHT, "#000000");
     view.beginGroup('title-card');
     drawPanel(24,130,492,635);
-    drawText("SCOLLMONSTERS", WIDTH / 2, 203, 38, "#ffe17d", "center");
-    drawText("A southbound monster journey", WIDTH / 2, 248, 19, "#a8d9ff", "center");
+    drawWood("woodBackground",34,140,472,615,4,2);
+    drawText("SCOLLMONSTERS", WIDTH / 2, 203, 38, UI_THEME.colors.title, "center");
+    drawText("A southbound monster journey", WIDTH / 2, 248, 19, UI_THEME.colors.muted, "center");
     drawPlayer(270, 347, 72);
     drawPet("feral-bat", 180, 412, 48); drawPet("bloom-bamboo", 270, 425, 48); drawPet("arcane-eye", 360, 412, 48);
-    drawText("Touch and drag, or move your mouse", WIDTH / 2, 501, 19, "#fff", "center");
-    drawText("to aim. Attacks fire automatically.", WIDTH / 2, 533, 19, "#fff", "center");
-    drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, "#c9d5e3", "center");
-    drawText("or press Space to switch aiming modes.", WIDTH / 2, 615, 17, "#c9d5e3", "center");
+    drawText("Touch and drag, or move your mouse", WIDTH / 2, 501, 19, UI_THEME.colors.text, "center");
+    drawText("to aim. Attacks fire automatically.", WIDTH / 2, 533, 19, UI_THEME.colors.text, "center");
+    drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, UI_THEME.colors.muted, "center");
+    drawText("or press Space to switch aiming modes.", WIDTH / 2, 615, 17, UI_THEME.colors.muted, "center");
     drawButton(state.save.completed.length ? "CONTINUE" : "BEGIN JOURNEY", 80, 664, 380, 72, true, () => setMode("map"));
     view.endGroup();
     drawButton("RESET PROGRESS",130,768,280,52,true,()=>{resetConfirmation=true;});
@@ -1674,7 +1675,7 @@
         const creature = creatureById(entry.id), stats = rosterStats(entry, stage);
         drawPet(entry.id,x,compact ? 492 : 501,48);
         drawText(creature.name,x,compact ? 526 : 550,15,colors.text,"center");
-        drawText(affinityDefs[creature.affinityId].name,x,compact ? 549 : 575,15,colors[creature.affinityId],"center");
+        drawText(`${affinityDefs[creature.affinityId].name} · ${Math.round(entry.chance*100)}%`,x,compact ? 549 : 575,15,colors[creature.affinityId],"center");
         drawText(`HP ${stats.hp}`,x,compact ? 577 : 609,15,colors.text,"center");
         drawText(`ATK ${stats.damage}`,x,compact ? 601 : 635,15,colors.text,"center");
       };
@@ -1692,25 +1693,6 @@
         drawText(stageBossCreature[stage.number]?`${creatureById(stageBossCreature[stage.number]).name} Boss`:"Demon Cyclop",88,640,15,colors.text);
         drawText(`HP ${bossHp} / ATK ${bossDamage}`,490,640,15,colors.text,"right");
       }
-    } else {
-      const enemyTypes = stage.number === 1 ? [[1,1]] : stage.number === 2 ? [[1,1],[3,2]] : [[1,1],[2,1],[3,2]];
-      const range = values => { const lo=Math.min(...values), hi=Math.max(...values); return lo===hi ? String(lo) : `${lo}-${hi}`; };
-      const hpRange = range(enemyTypes.map(([hp])=>precise(Math.round(hp*stage.hpScale)*stage.hpMultiplier)));
-      const damageRange = range(enemyTypes.map(([,damage])=>Math.max(1,Math.round(damage*stage.damageScale))));
-      Object.values(speciesDefs).forEach((species,index)=>{
-        const x=100+index*170;
-        drawPet(monsterCatalog.find(c => c.affinityId === species.affinityId && c.tier === Math.min(3,Math.ceil(stage.number/4))).id,x-32,489,48);
-        drawCurrencyIcon(species.affinityId,x+16,483,20);
-        drawText(`${Math.round(species.density[stage.number-1]*100)}%`,x+33,485,15,colors[species.affinityId],"left",false);
-        drawText(affinityDefs[species.affinityId].name,x,522,15,colors.text,"center");
-        const openingFanglet = stage.number <= 2 && species.petType === "striker";
-        drawText(`HP ${openingFanglet ? 2*stage.hpMultiplier : hpRange}`,x,547,15,colors.text,"center");
-        drawText(`DMG ${openingFanglet ? 2 : damageRange}`,x,571,15,colors.text,"center");
-      });
-      const bossName=stage.number===3?"Feral boss":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
-      const bossHp=stage.number===2?40:precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
-      drawText(`${bossName}: HP ${bossHp} / DMG ${stageBossDamage(stage)}`,36,638,15,colors.text);
-      drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
     }
     view.beginGroup("map-actions");
     drawWood("woodPanel",18,686,504,162);
@@ -1743,22 +1725,7 @@
   function recruitCreature(creature) {
     if (!creature) return;
     if (hasRecruit(creature.id)) return toggleCreatureInParty(creature.id);
-    if (creature.tier) return;
-    if (!creatureGateUnlocked(creature)) {
-      state.toast = `Clear stage ${creature.requiresStageClear} to unlock ${creature.name}`;
-      state.toastTimer = 2; return;
-    }
-    if (state.save.essence[creature.affinityId] < creature.captureCost) {
-      state.toast = `Need ${creature.captureCost - state.save.essence[creature.affinityId]} more ${currencyName(creature.affinityId)}`;
-      state.toastTimer = 2; return;
-    }
-    state.save.essence[creature.affinityId] -= creature.captureCost;
-    state.save.ownedCreatures.push(creature.id);
-    if (state.save.activeParty.length < 3) state.save.activeParty.push(creature.id);
-    playSound("success");
-    state.toast = `${creature.name} recruited${isActiveCreature(creature.id) ? " and added to the party" : ""}!`;
-    state.toastTimer = 2;
-    writeSave();
+
   }
 
   function toggleCreatureInParty(creatureId) {
