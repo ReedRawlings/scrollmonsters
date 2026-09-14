@@ -628,3 +628,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Browser checks passed rank-4 lock/rank-5 unlock, +3 damage purchase, projectile counts 0–5, origins/damage, vase exclusion, drag and wheel zoom; no page errors. Screenshot inspected and established game harness run. Local only.
 
 - Boulder Buster now uses its own damage source and provisional flat 1 damage, independent of player damage/critical upgrades. Reuses the player projectile and impact art, with existing collision behavior; dedicated damage function provides a future tuning point.
+
+## September 14 — tier-folder roster only
+
+- Removed Fangle, Buttermant, and Tinmin from creature definitions and removed the legacy Tier 1 roster exception. Only the 34 paired tier-folder monsters are available. Title portraits now use Bat, Bamboo, and Eye.
+- User clarified alpha development does not need older-save compatibility. Do not add migration work for retired content; removed the migration-specific test added during this change.
+- Tier-only roster assertion and existing summon browser checks passed; syntax and diff checks passed. Inspected Bestiary screenshot. Default skill harness stalled with Mac graphics flags; reran its Mac-compatible copy for title capture.

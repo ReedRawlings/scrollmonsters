@@ -6,6 +6,8 @@ const { chromium } = require('playwright');
  const page=await browser.newPage({viewport:{width:540,height:900}}); const errors=[];
  page.on('pageerror',e=>errors.push(String(e))); page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto('http://127.0.0.1:4173/?test=1',{waitUntil:'networkidle'});
+ const roster=await page.evaluate(()=>JSON.parse(window.render_game_to_text()).bestiary);
+ assert.equal(roster.length,34);assert(!roster.some(c=>['striker','healer','aoe'].includes(c.id)));
  const result=await page.evaluate(()=>{
   const a=window.__scollTest; a.resetSave(); const catalog=a.monsterCatalog;
   const results=[];
