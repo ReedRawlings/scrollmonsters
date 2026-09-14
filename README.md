@@ -2,6 +2,8 @@
 
 A portrait browser rail shooter with a southbound route, monster companions, and permanent upgrades.
 
+See [ABILITIES.md](ABILITIES.md) for shared attack radii, creature ability assignments, and pending ability decisions.
+
 ## Play locally or on a phone
 
 From this folder, start the server:

@@ -178,3 +178,5 @@ Font and image loading can produce incomplete first captures. Allow assets and `
 - Preserve the Player / Feral / Bloom / Arcane tab row and connected node layout. Upgrade tab labels use 30px NinjaPixel (2x) and actual glyph bounds for visual centering.
 - Show ranks on node icons only, not in the description heading.
 - Generic Feral stat labels use Feral Focus / Feral Rhythm; generic companion stats use type ownership requirements. Named creature abilities retain their individual ownership requirements.
+
+- Player tree supports dragging and zoom buttons/mouse wheel inside its clipped viewport; header and node detail panel stay fixed. Damage +3 requires Damage +1 rank 5; Boulder Buster branches from Rock Breaker.

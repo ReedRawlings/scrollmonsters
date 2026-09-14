@@ -2,6 +2,8 @@
 
 Opening numbers reflect the current direction. Later-stage balance remains provisional.
 
+Current ability range decisions and creature assignments are tracked in [ABILITIES.md](ABILITIES.md). That document distinguishes agreed design from implemented combat behavior.
+
 ## Opening loop
 
 - Start with **1 damage** and **10 shared HP**. Fire every 0.425 seconds, which is 20% fewer shots per second than the previous 0.34-second interval; player shots travel at 560 pixels/second.

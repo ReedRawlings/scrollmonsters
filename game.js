@@ -10,6 +10,7 @@
   let upgradeBranch = 0;
   let selectedUpgrade = null;
   let bestiaryAffinity = "feral";
+  let bestiaryTier = 1, bestiaryPage = 0;
   const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
   const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
   const FIXED_STEP = 1 / 60;
@@ -58,7 +59,7 @@
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
     playerWalk: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Walk.png",
     playerAttack: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Attack.png",
-    monsterBasic: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bamboo/SpriteSheet.png",
+    monsterBasic: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/Bamboo/SpriteSheet.png",
     monsterRanged: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Axolot/SpriteSheet.png",
     woodBackground: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_bg.png",
     woodPanel: "assets/Ninja Adventure - Asset Pack/Ui/Theme/Theme Wood/nine_path_panel.png",
@@ -76,7 +77,7 @@
     treasureChest: "assets/Ninja Adventure - Asset Pack/Items/Treasure/LittleTreasureChest.png",
     demonWalk: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Walk.png",
     demonHit: "assets/Ninja Adventure - Asset Pack/Actor/Boss/DemonCyclop/Hit.png",
-    monsterArmored: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Beast/Beast.png",
+    monsterArmored: "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Beast/Beast.png",
     currencySheet: "assets/Ninja Adventure - Asset Pack/Items/Treasure/Coin2-Sheet.png",
     petRoster: "assets/Sprites/Pets/minimize_F-Sheet.png",
     petFangle: "assets/Sprites/Pets/Fangle.png",
@@ -93,7 +94,7 @@
   ];
   const nodeIconPaths = {
     power: "Spell/BookRock", speed: "Items & Weapon/Boot", multishot: "Spell/BookFire",
-    health: "Spell/Heal", rockBreaker: "Job & Action/Mine", tripleSpark: "Spell/BookThunder",
+    power3: "Spell/BookRock", boulderBuster: "Job & Action/Mine", health: "Spell/Heal", rockBreaker: "Job & Action/Mine", tripleSpark: "Spell/BookThunder",
     magnet: "Job & Action/Harvest", autoTarget: "Spell/BookLight", travelSpeed: "Items & Weapon/Boot",
     strikerPower: "Job & Action/Punch", strikerSpeed: "Items & Weapon/Boot", strikerDouble: "Spell/BookFire",
     strikerTriple: "Spell/BookThunder", strikerFollowup: "Spell/BookDeath", strikerFollowupHeal: "Spell/Heal",
@@ -103,6 +104,354 @@
   for (const [id, path] of Object.entries(nodeIconPaths)) {
     assetPaths[`node_${id}`] = `assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/${path}.png`;
     assetPaths[`node_${id}_off`] = `assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/${path}Disabled.png`;
+  }
+  // Explicit base/shiny pairs; prefer SeparateAnim/Walk.png over full action atlases.
+  // SpiritLarge has no paired variant and is intentionally excluded.
+  const monsterCatalog = [
+  {
+    "id": "feral-bat",
+    "name": "Bat",
+    "affinityId": "feral",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Bat/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/BlueBat/SpriteSheet.png",
+    "shinyName": "BlueBat",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-beast",
+    "name": "Beast",
+    "affinityId": "feral",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Beast/Beast.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Beast2/Beast2.png",
+    "shinyName": "Beast2",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-lizard",
+    "name": "Lizard",
+    "affinityId": "feral",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Lizard/Lizard.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier1/Lizard2/Lizard2.png",
+    "shinyName": "Lizard2",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-bear",
+    "name": "Bear",
+    "affinityId": "feral",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/Bear/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/BearGreen/SpriteSheetGreenbear.png",
+    "shinyName": "BearGreen",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-gladiator",
+    "name": "Gladiator",
+    "affinityId": "feral",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/Gladiator/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/RedGladiator/SeparateAnim/Walk.png",
+    "shinyName": "RedGladiator",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-reptile",
+    "name": "Reptile",
+    "affinityId": "feral",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/Reptile/Reptile.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/Reptile2/Reptile2.png",
+    "shinyName": "Reptile2",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-spiderred",
+    "name": "SpiderRed",
+    "affinityId": "feral",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/SpiderRed/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier2/SpiderYellow/SpriteSheet.png",
+    "shinyName": "SpiderYellow",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-dragon",
+    "name": "Dragon",
+    "affinityId": "feral",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/Dragon/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/DragonYellow/SpriteSheet.png",
+    "shinyName": "DragonYellow",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-knight",
+    "name": "Knight",
+    "affinityId": "feral",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/Knight/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/KnightGold/SeparateAnim/Walk.png",
+    "shinyName": "KnightGold",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-monkey",
+    "name": "Monkey",
+    "affinityId": "feral",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/Monkey/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/MonkeyBoxerBlue/SeparateAnim/Walk.png",
+    "shinyName": "MonkeyBoxerBlue",
+    "petType": "striker"
+  },
+  {
+    "id": "feral-trex",
+    "name": "TRex",
+    "affinityId": "feral",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/TRex/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Feral/Tier3/Grey Trex/SpriteSheet.png",
+    "shinyName": "Grey Trex",
+    "petType": "striker"
+  },
+  {
+    "id": "bloom-bamboo",
+    "name": "Bamboo",
+    "affinityId": "bloom",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/Bamboo/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/BambooYellow/SpriteSheet.png",
+    "shinyName": "BambooYellow",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-fish",
+    "name": "Fish",
+    "affinityId": "bloom",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/Fish/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/FishRed/SpriteSheet.png",
+    "shinyName": "FishRed",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-mole",
+    "name": "Mole",
+    "affinityId": "bloom",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/Mole/Mole.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier1/Mole2/Mole2.png",
+    "shinyName": "Mole2",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-butterfly",
+    "name": "Butterfly",
+    "affinityId": "bloom",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/Butterfly/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/ButterflyBlue/SpriteSheet.png",
+    "shinyName": "ButterflyBlue",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-mushroom",
+    "name": "Mushroom",
+    "affinityId": "bloom",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/Mushroom/mushroom.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/Mushroom2/mushroom2.png",
+    "shinyName": "Mushroom2",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-panda",
+    "name": "Panda",
+    "affinityId": "bloom",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/Panda/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/PandaBlue/PandaBlueSpriteSheet.png",
+    "shinyName": "PandaBlue",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-racoon",
+    "name": "Racoon",
+    "affinityId": "bloom",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/Racoon/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier2/GoldRacoon/SpriteSheet.png",
+    "shinyName": "GoldRacoon",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-heartgreen",
+    "name": "HeartGreen",
+    "affinityId": "bloom",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/HeartGreen/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/HeartRed/SpriteSheet.png",
+    "shinyName": "HeartRed",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-kappagreen",
+    "name": "KappaGreen",
+    "affinityId": "bloom",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/KappaGreen/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/KappaRed/SpriteSheet.png",
+    "shinyName": "KappaRed",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-maskracoon",
+    "name": "MaskRacoon",
+    "affinityId": "bloom",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/MaskRacoon/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/MaskGoldRacoon/SeparateAnim/Walk.png",
+    "shinyName": "MaskGoldRacoon",
+    "petType": "healer"
+  },
+  {
+    "id": "bloom-shaman",
+    "name": "Shaman",
+    "affinityId": "bloom",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/Shaman/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Bloom/Tier3/ShamanLion/SeparateAnim/Walk.png",
+    "shinyName": "ShamanLion",
+    "petType": "healer"
+  },
+  {
+    "id": "arcane-eye",
+    "name": "Eye",
+    "affinityId": "arcane",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Eye/Eye.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Eye2/Eye2.png",
+    "shinyName": "Eye2",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-flam",
+    "name": "Flam",
+    "affinityId": "arcane",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Flam/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Flam2/SpriteSheet.png",
+    "shinyName": "Flam2",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-lantern",
+    "name": "Lantern",
+    "affinityId": "arcane",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Lantern/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/LanternRed/SpriteSheet.png",
+    "shinyName": "LanternRed",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-mouse",
+    "name": "Mouse",
+    "affinityId": "arcane",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Mouse/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/MouseBlack/SpriteSheet.png",
+    "shinyName": "MouseBlack",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-owl",
+    "name": "Owl",
+    "affinityId": "arcane",
+    "tier": 1,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Owl/Owl.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier1/Owl2/Owl2.png",
+    "shinyName": "Owl2",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-skull",
+    "name": "Skull",
+    "affinityId": "arcane",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Skull/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/SkullBlue/SpriteSheet.png",
+    "shinyName": "SkullBlue",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-slime",
+    "name": "Slime",
+    "affinityId": "arcane",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Slime/Slime.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Slime3/Slime3.png",
+    "shinyName": "Slime3",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-spirit",
+    "name": "Spirit",
+    "affinityId": "arcane",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Spirit/SpriteSheet.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Spirit2/SpriteSheet.png",
+    "shinyName": "Spirit2",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-tengu",
+    "name": "Tengu",
+    "affinityId": "arcane",
+    "tier": 2,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Tengu/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier2/Tengu2/SeparateAnim/Walk.png",
+    "shinyName": "Tengu2",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-demon",
+    "name": "Demon",
+    "affinityId": "arcane",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/Demon/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/DemonRed/SeparateAnim/Walk.png",
+    "shinyName": "DemonRed",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-skeleton",
+    "name": "Skeleton",
+    "affinityId": "arcane",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/Skeleton/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/SkeletonDemon/SeparateAnim/Walk.png",
+    "shinyName": "SkeletonDemon",
+    "petType": "aoe"
+  },
+  {
+    "id": "arcane-statue",
+    "name": "Statue",
+    "affinityId": "arcane",
+    "tier": 3,
+    "walk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/Statue/SeparateAnim/Walk.png",
+    "shinyWalk": "assets/Ninja Adventure - Asset Pack/Actor/Monsters/Arcane/Tier3/GoldStatue/SeparateAnim/Walk.png",
+    "shinyName": "GoldStatue",
+    "petType": "aoe"
+  }
+];
+  for (const creature of monsterCatalog) {
+    assetPaths[creature.id] = creature.walk;
+    assetPaths[`${creature.id}-shiny`] = creature.shinyWalk;
   }
   const assets = {};
   Object.entries(assetPaths).forEach(([key, file]) => {
@@ -185,11 +534,7 @@
     mossbud: { id: "mossbud", name: "Mossbud", affinityId: "bloom", petType: "healer", density: [0.08, 0.10, 0.10, 0.25, 0.50, 0.15, 0.35, 0.25, 0.12, 0.30] },
     tinmin: { id: "tinmin", name: "Tinmin", affinityId: "arcane", petType: "aoe", density: [0.04, 0.05, 0.05, 0.10, 0.08, 0.15, 0.15, 0.25, 0.25, 0.35] }
   });
-  const creatureDefs = Object.freeze([
-    { id: "striker", name: "Fangle", affinityId: "feral", role: "Striker", captureCost: 8, requiresStageClear: null, description: "Ground traps target wounded monsters." },
-    { id: "healer", name: "Buttermant", affinityId: "bloom", role: "Healer", captureCost: 12, requiresStageClear: 5, description: "Restores the party's shared health." },
-    { id: "aoe", name: "Tinmin", affinityId: "arcane", role: "Area", captureCost: 20, requiresStageClear: 10, description: "Blasts clustered monsters." }
-  ]);
+  const creatureDefs = Object.freeze(monsterCatalog.map(c => ({ ...c, role: { striker: "Striker", healer: "Healer", aoe: "Area" }[c.petType], captureCost: [0,10,100,1000][c.tier], description: "Duplicates grant shiny fragments." })));
   const creatureById = id => creatureDefs.find(creature => creature.id === id);
   const petDisplayNames = Object.fromEntries(creatureDefs.map(creature => [creature.id, creature.name]));
 
@@ -203,8 +548,8 @@
     { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
-    { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
-    { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
+    { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: ["power"] },
+    { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "PLAYER", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
     { id: "strikerPower", name: "Feral Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Feral Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
@@ -215,14 +560,16 @@
   ];
 
   upgradeDefs.push(
+    { id: "power3", name: "Damage +3", branch: "PLAYER", max: 5, costs: abilityRankCosts(50, 5), effect: level => `+3 player damage per rank (+${3 * (level + 1)} total)`, requires: ["power"], requiredRanks: { power: 5 } },
+    { id: "boulderBuster", name: "Boulder Buster", branch: "PLAYER", max: 5, costs: abilityRankCosts(40, 5), effect: level => `Destroyed rocks fire ${level + 1} player projectile${level ? "s" : ""} in random directions`, requires: ["rockBreaker"] },
     { id: "partyBond", name: "Party Bond", branch: "PLAYER", recruit: "healer", max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
-    { id: "strikerDouble", name: "Double Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second bite chance`, requires: ["strikerSpeed"], recruit: "striker" },
+    { id: "strikerDouble", name: "Double Attack", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% chance for all Feral creatures to attack twice`, requires: ["strikerSpeed"], recruit: "striker" },
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
     { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "bloom", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
     { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "bloom", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
-    { id: "travelSpeed", name: "Trail Pace", branch: "PLAYER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
+    { id: "travelSpeed", name: "Trail Pace", branch: "PLAYER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: ["magnet"] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", effect: rank => `${20 * (rank + 1)}% extra bite on Fangle kill`, requires: [], recruit: "striker" },
     { id: "strikerFollowupHeal", name: "Mending Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", effect: rank => `Follow-Up Bite heals for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "striker" },
   );
@@ -234,7 +581,7 @@
     );
   }
 
-  const typeUpgradeIds = new Set(["strikerPower", "strikerSpeed", "strikerCritChance", "strikerCritDamage", "healerCritChance", "healerCritDamage", "aoeCritChance", "aoeCritDamage"]);
+  const typeUpgradeIds = new Set(["strikerPower", "strikerSpeed", "strikerDouble", "strikerCritChance", "strikerCritDamage", "healerCritChance", "healerCritDamage", "aoeCritChance", "aoeCritDamage"]);
   const upgradeType = definition => typeUpgradeIds.has(definition.id) ? creatureById(definition.recruit)?.affinityId : null;
   const ownsUpgradeType = definition => state.save.ownedCreatures.some(id => creatureById(id)?.affinityId === upgradeType(definition));
 
@@ -346,7 +693,7 @@
   const treePositions = () => {
     const branch = ["PLAYER", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") definitions = ["power", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
     const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
     return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136), height: 108 }));
@@ -354,7 +701,7 @@
   const treeRequirements = definition => definition.requires;
 
   const emptyAffinityMap = () => Object.fromEntries(affinityOrder.map(id => [id, 0]));
-  const defaultSave = () => ({ saveVersion: 2, gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
+  const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
   function mergeHealthRanks(upgrades) {
     const result = { ...upgrades };
     if (result.vitality !== undefined || result.fortitude !== undefined) {
@@ -372,6 +719,8 @@
       return {
         ...fresh,
         ...parsed,
+        fragments: Object.fromEntries(monsterCatalog.map(c => [c.id, Math.max(0, Math.min(5, Math.floor(Number(parsed.fragments?.[c.id]) || 0)))])),
+        shinyCreatures: (parsed.shinyCreatures || []).filter(id => monsterCatalog.some(c => c.id === id) && Number(parsed.fragments?.[id]) >= 5 && (parsed.ownedCreatures || []).includes(id)),
         essence: { ...fresh.essence, ...(parsed.essence || {}) },
         essencePity: { ...fresh.essencePity, ...(parsed.essencePity || {}) },
         ownedCreatures: [...new Set(parsed.ownedCreatures || [])].filter(id => creatureById(id)),
@@ -393,12 +742,12 @@
 
   const rank = id => state.save.upgrades[id] || 0;
   const hasRecruit = id => state.save.ownedCreatures.includes(id);
-  const isActiveCreature = id => state.save.activeParty.includes(id);
+  const isActiveCreature = id => state.save.activeParty.some(member => member === id || creatureById(member)?.petType === id);
   const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
   const partyDamageBonus = () => isActiveCreature("healer") && rank("partyBond") > 0 ? 5 : 0;
-  const playerDamage = () => 1 + rank("power") + partyDamageBonus();
+  const playerDamage = () => 1 + rank("power") + 3 * rank("power3") + partyDamageBonus();
   const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
   const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
   const rollAttackCount = (secondId, thirdId) => {
@@ -417,7 +766,7 @@
   }
 
   function setupCompanions() {
-    state.companions = state.save.activeParty.map((type, index) => ({ type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
+    state.companions = state.save.activeParty.map((type, index) => ({ type: creatureById(type)?.petType || type, creatureId: type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
   }
 
   const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 20 }, ...state.companions.map(companion => ({ ...companion, r: 18 }))];
@@ -525,7 +874,10 @@
     const hp = precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
     const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
     const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
+    const pool = monsterCatalog.filter(c => c.tier === Math.min(3, Math.ceil(state.stage.number / 4)) && (!species || c.affinityId === speciesDefs[species].affinityId));
+    const monsterId = pool[Math.floor(Math.random() * pool.length)].id;
     state.enemies.push({
+      monsterId,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
@@ -648,6 +1000,16 @@
     damageEnemy(target, hit.amount, source);
   }
 
+  const boulderBusterDamage = () => 1;
+
+  function boulderBurst(rock) {
+    if (rock.kind === "vase") return;
+    for (let i = 0; i < rank("boulderBuster"); i++) {
+      const angle = Math.random() * Math.PI * 2;
+      shoot(rock.x, rock.y, rock.x + Math.cos(angle), rock.y + Math.sin(angle), true, boulderBusterDamage(), 560, "boulderBuster");
+    }
+  }
+
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     enemy.hp = precise(enemy.hp - amount);
@@ -655,7 +1017,7 @@
     if (source === "strikerFollowup" && rank("strikerFollowupHeal")) {
       state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("strikerFollowupHeal")));
     }
-    const playerImpact = source === "player";
+    const playerImpact = source === "player" || source === "boulderBuster";
     if (source !== "striker" && source !== "strikerFollowup") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (enemy.type === "boss") state.bossDefeated = true;
@@ -678,7 +1040,8 @@
       if (companion.timer > 0) continue;
       if (companion.type === "striker") {
         if (fangletTarget(companion)) {
-          const count = rollAttackCount("strikerDouble", "strikerTriple");
+          const isFeral = creatureById(companion.creatureId)?.affinityId === "feral";
+          const count = isFeral ? rollAttackCount("strikerDouble", "strikerTriple") : 1;
           for (let index = 0; index < count; index += 1) fangletAttack(companion);
         }
         companion.timer = 1.05 * (1 - rank("strikerSpeed") * 0.15);
@@ -935,7 +1298,7 @@
       projectile.x += projectile.vx * dt;
       projectile.y += projectile.vy * dt;
       let hit = false;
-      if (projectile.source === "player") {
+      if ((projectile.source === "player" || projectile.source === "boulderBuster")) {
         const dx = projectile.x - oldX, dy = projectile.y - oldY;
         const chest = state.treasure;
         if (chest && !chest.open && enemyVisible(chest)) {
@@ -956,6 +1319,7 @@
             if (rock.hp <= 0) {
               const collection = rock.kind === "vase" ? state.vases : state.obstacles;
               collection.splice(collection.indexOf(rock), 1);
+              boulderBurst(rock);
               breakFragments(rock.kind === "vase" ? destructibleVariants[rock.variant ?? 0].material : "rock", rock.x, rock.y, rock.size === "medium");
               if (rock.kind === "vase" && Math.random() < 0.25) {
                 state.runGold = precise(state.runGold + 1);
@@ -1058,7 +1422,7 @@
       if (!drawSheetFrame(animation === "hit" ? "demonHit" : "demonWalk", enemy.x, enemy.y, frame, animation === "hit" ? 3 : 6, 100)) drawSprite("boss", enemy.x, enemy.y, 92);
       return;
     }
-    const sheet = monsterSheets[enemy.type];
+    const sheet = enemy.monsterId || monsterSheets[enemy.type];
     const size = enemy.type === "boss" ? 92 : 48;
     if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
       drawSprite(enemy.type, enemy.x, enemy.y, size);
@@ -1066,6 +1430,12 @@
   }
 
   function drawPet(type, x, y, size = 16, alpha = 1, facing = "south") {
+    const creature = monsterCatalog.find(c => c.id === type);
+    if (creature) {
+      const shiny = state.save.shinyCreatures.includes(type) && state.save.fragments[type] >= 5;
+      drawGridFrame(type + (shiny ? "-shiny" : ""), x, y, monsterColumns[facing] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size, size, alpha);
+      return;
+    }
     const row = { striker: 0, healer: 1, aoe: 2 }[type];
     const image = assets.petRoster;
     if (row === undefined || !image?.naturalWidth) return;
@@ -1203,7 +1573,7 @@
     drawText("SCOLLMONSTERS", WIDTH / 2, 203, 38, "#ffe17d", "center");
     drawText("A southbound monster journey", WIDTH / 2, 248, 19, "#a8d9ff", "center");
     drawPlayer(270, 347, 72);
-    drawPet("striker", 180, 412, 52); drawPet("healer", 270, 425, 52); drawPet("aoe", 360, 412, 52);
+    drawPet("feral-bat", 180, 412, 48); drawPet("bloom-bamboo", 270, 425, 48); drawPet("arcane-eye", 360, 412, 48);
     drawText("Touch and drag, or move your mouse", WIDTH / 2, 501, 19, "#fff", "center");
     drawText("to aim. Attacks fire automatically.", WIDTH / 2, 533, 19, "#fff", "center");
     drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, "#c9d5e3", "center");
@@ -1258,15 +1628,15 @@
     const damageRange = range(enemyTypes.map(([,damage])=>Math.max(1,Math.round(damage*stage.damageScale))));
     Object.values(speciesDefs).forEach((species,index)=>{
       const x=100+index*170;
-      drawPet(species.petType,x-32,489,48);
+      drawPet(monsterCatalog.find(c => c.affinityId === species.affinityId && c.tier === Math.min(3,Math.ceil(stage.number/4))).id,x-32,489,48);
       drawCurrencyIcon(species.affinityId,x+16,483,20);
       drawText(`${Math.round(species.density[stage.number-1]*100)}%`,x+33,485,15,colors[species.affinityId],"left",false);
-      drawText(species.name,x,522,15,colors.text,"center");
+      drawText(affinityDefs[species.affinityId].name,x,522,15,colors.text,"center");
       const openingFanglet = stage.number <= 2 && species.petType === "striker";
       drawText(`HP ${openingFanglet ? 2*stage.hpMultiplier : hpRange}`,x,547,15,colors.text,"center");
       drawText(`DMG ${openingFanglet ? 2 : damageRange}`,x,571,15,colors.text,"center");
     });
-    const bossName=stage.number===3?"Fanglet":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
+    const bossName=stage.number===3?"Feral boss":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
     const bossHp=precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
     drawText(`${bossName}: HP ${bossHp} / DMG ${Math.max(1,Math.round(5*stage.damageScale))}`,36,638,15,colors.text);
     drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
@@ -1277,9 +1647,28 @@
     drawBestiaryButton(`PLAY STAGE ${stage.number}`,34,772,472,58,"normal",()=>startStage(stage.number));
   }
 
+  const summonPool = (affinityId,tier) => monsterCatalog.filter(c => c.affinityId === affinityId && c.tier === tier && (state.save.fragments[c.id] || 0) < 5);
+  function summonCreature(affinityId,tier) {
+    const pool = summonPool(affinityId,tier), cost = [0,10,100,1000][tier];
+    if (!pool.length || !cost || state.save.essence[affinityId] < cost) return null;
+    const creature = pool[Math.floor(Math.random()*pool.length)];
+    state.save.essence[affinityId] -= cost;
+    if (!hasRecruit(creature.id)) {
+      state.save.ownedCreatures.push(creature.id);
+      if (state.save.activeParty.length < 3) state.save.activeParty.push(creature.id);
+      state.toast = `${creature.name} unlocked!`;
+    } else {
+      state.save.fragments[creature.id] = (state.save.fragments[creature.id] || 0)+1;
+      state.toast = state.save.fragments[creature.id] === 5 ? `${creature.name} shiny unlocked!` : `${creature.name} fragment ${state.save.fragments[creature.id]}/5`;
+    }
+    state.toastTimer=3; playSound("success"); writeSave(); return creature.id;
+  }
+
   const creatureGateUnlocked = creature => !creature.requiresStageClear || state.save.completed.includes(creature.requiresStageClear);
   function recruitCreature(creature) {
+    if (!creature) return;
     if (hasRecruit(creature.id)) return toggleCreatureInParty(creature.id);
+    if (creature.tier) return;
     if (!creatureGateUnlocked(creature)) {
       state.toast = `Clear stage ${creature.requiresStageClear} to unlock ${creature.name}`;
       state.toastTimer = 2; return;
@@ -1340,7 +1729,7 @@
   }
 
   function drawBestiaryTab(affinityId, x, selected) {
-    drawMenuTab(affinityDefs[affinityId].name.toUpperCase(), x, 237, 162, 42, selected, () => { bestiaryAffinity = affinityId; });
+    drawMenuTab(affinityDefs[affinityId].name.toUpperCase(), x, 237, 162, 42, selected, () => { bestiaryAffinity = affinityId; bestiaryPage = 0; });
   }
 
   function drawBestiary() {
@@ -1364,21 +1753,26 @@
 
     affinityOrder.forEach((affinityId, index) => drawBestiaryTab(affinityId, 18 + index * 171, affinityId === bestiaryAffinity));
 
-    creatureDefs.forEach((creature, index) => {
-      const y = 291 + index * 129;
-      const owned = hasRecruit(creature.id), active = isActiveCreature(creature.id), gateOpen = creatureGateUnlocked(creature);
-      const cardAction = gateOpen ? () => recruitCreature(creature) : null;
-      drawWood(gateOpen ? "woodPanel" : "woodDisabled", 18, y, 504, 120);
-      if (cardAction) uiTargets.push({ x: 18, y, width: 504, height: 120, action: cardAction });
-      drawPet(creature.id, 72, y + 60, 64, gateOpen ? 1 : 0.35);
-      drawText(creature.name, 111, y + 27, 21, gateOpen ? UI_THEME.colors.text : UI_THEME.colors.locked, "left", gateOpen);
-      drawCurrencyIcon(creature.affinityId, 120, y + 60, 20, gateOpen ? 1 : 0.35);
-      drawText(`${affinityDefs[creature.affinityId].name} • ${creature.role}`, 138, y + 60, 15, gateOpen ? affinityDefs[creature.affinityId].color : UI_THEME.colors.locked, "left", false);
-      const detail = gateOpen ? creature.description : `Clear stage ${creature.requiresStageClear} to unlock recruitment.`;
-      drawText(detail, 111, y + 90, 15, gateOpen ? UI_THEME.colors.muted : UI_THEME.colors.locked, "left", gateOpen);
-      const label = !gateOpen ? "LOCKED" : owned ? (active ? "ACTIVE" : "ADD TO PARTY") : `RECRUIT ${creature.captureCost}`;
-      drawBestiaryButton(label, 354, y + 12, 150, 36, !gateOpen ? "locked" : active ? "selected" : "normal", cardAction);
+    [1,2,3].forEach((tier,index) => drawMenuTab(`TIER ${tier}`,18+index*171,291,162,36,bestiaryTier===tier,()=>{bestiaryTier=tier;bestiaryPage=0;}));
+    const roster = creatureDefs.filter(c => c.affinityId === bestiaryAffinity && c.tier === bestiaryTier);
+    const pages = Math.max(1, Math.ceil(roster.length / 3));
+    roster.slice(bestiaryPage*3,bestiaryPage*3+3).forEach((creature,index)=>{
+      const y=339+index*112, owned=hasRecruit(creature.id), active=state.save.activeParty.includes(creature.id);
+      drawWood(owned ? "woodPanel" : "woodDisabled",18,y,504,102);
+      drawPet(creature.id,63,y+50,48,owned?1:0.35);
+      drawText(creature.name,99,y+24,18,UI_THEME.colors.text);
+      drawText(`${creature.role} · Fragments ${state.save.fragments[creature.id] || 0}/5`,99,y+54,15,UI_THEME.colors.muted);
+      drawBestiaryButton(owned ? (active ? "ACTIVE" : "ADD") : "LOCKED",369,y+10,135,34,owned?"normal":"locked",owned?()=>toggleCreatureInParty(creature.id):null);
+      const unlocked=owned && state.save.fragments[creature.id]>=5;
+      drawBestiaryButton(state.save.shinyCreatures.includes(creature.id)?"SHINY":"BASE",369,y+57,135,32,unlocked?"normal":"locked",unlocked?()=>{
+        state.save.shinyCreatures=state.save.shinyCreatures.includes(creature.id)?state.save.shinyCreatures.filter(id=>id!==creature.id):[...state.save.shinyCreatures,creature.id];writeSave();
+      }:null);
     });
+    drawBestiaryButton("<",18,684,60,34,"normal",()=>{bestiaryPage=(bestiaryPage+pages-1)%pages;});
+    drawText(`${bestiaryPage+1}/${pages}`,108,701,15);
+    drawBestiaryButton(">",144,684,60,34,"normal",()=>{bestiaryPage=(bestiaryPage+1)%pages;});
+    const pool=summonPool(bestiaryAffinity,bestiaryTier), cost=[0,10,100,1000][bestiaryTier];
+    drawBestiaryButton(pool.length?`SUMMON ${cost}`:"COMPLETE",222,684,300,42,pool.length && state.save.essence[bestiaryAffinity]>=cost?"normal":"locked",()=>summonCreature(bestiaryAffinity,bestiaryTier));
 
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 758, 15, UI_THEME.colors.title, "center");
     drawText("Choose up to three creatures for your active party", WIDTH / 2, 792, 15, UI_THEME.colors.muted, "center");
@@ -1394,8 +1788,26 @@
     return (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
+  const treeView = { x: 0, y: 0, zoom: 1 };
+  const inTree = p => p.x >= 18 && p.x <= 522 && p.y >= 230 && p.y <= 582;
+  function zoomTree(factor) {
+    treeView.zoom = clamp(treeView.zoom * factor, 0.5, 1.6);
+    render();
+  }
   function iconTreePositions() {
     const definitions = treePositions().map(item => item.definition);
+    if (upgradeBranch === 0) {
+      // The central damage node anchors four spokes; outer nodes continue each path.
+      const positions = {
+        power3: [160, 490], boulderBuster: [270, 610], power: [270, 370], health: [270, 260], speed: [160, 370],
+        multishot: [58, 370], tripleSpark: [58, 490],
+        rockBreaker: [270, 490], magnet: [380, 370], travelSpeed: [482, 370],
+        autoTarget: [482, 490], playerCritChance: [160, 260],
+        playerCritDamage: [58, 260], partyBond: [380, 260]
+      };
+      return definitions.map(definition => ({ definition, x: positions[definition.id][0], y: positions[definition.id][1] }));
+    }
+
     const depth = def => Math.max(0, ...def.requires.map(id => {
       const parent = definitions.find(item => item.id === id);
       return parent ? depth(parent) + 1 : 0;
@@ -1425,17 +1837,29 @@
     });
     ["Player", "Feral", "Bloom", "Arcane"].forEach((name, index) => {
       const x = 14 + index * 130;
-      drawMenuTab(name, x, 124, 122, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; }, 30);
+      drawMenuTab(name, x, 124, 122, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; treeView.x = treeView.y = 0; treeView.zoom = 1; }, 30);
     });
-    drawText("TAP A NODE TO INSPECT", 270, 207, 15, colors.muted, "center", false);
+    drawText("DRAG TO PAN", 110, 207, 15, colors.muted, "center", false);
+    drawBestiaryButton("−", 290, 190, 48, 34, "normal", () => zoomTree(1 / 1.2));
+    drawBestiaryButton("+", 346, 190, 48, 34, "normal", () => zoomTree(1.2));
+    drawBestiaryButton("RESET", 402, 190, 114, 34, "normal", () => { treeView.x = treeView.y = 0; treeView.zoom = 1; });
     const positions = iconTreePositions();
     if (!positions.some(item => item.definition.id === selectedUpgrade)) selectedUpgrade = positions[0]?.definition.id;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(18, 230, 504, 352); ctx.clip();
+    ctx.translate(270 + treeView.x, 406 + treeView.y);
+    ctx.scale(treeView.zoom, treeView.zoom); ctx.translate(-270, -406);
     for (const item of positions) for (const id of item.definition.requires) {
       const parent = positions.find(p => p.definition.id === id); if (!parent) continue;
       const ready = rank(id) >= (item.definition.requiredRanks?.[id] || 1);
       ctx.strokeStyle = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.muted : "#827660";
       ctx.lineWidth = item.definition.id === selectedUpgrade ? 4 : 2;
-      ctx.beginPath(); ctx.moveTo(parent.x, parent.y + 28); ctx.lineTo(item.x, item.y - 28); ctx.stroke();
+      const dx = item.x - parent.x, dy = item.y - parent.y;
+      const inset = 42 / Math.max(Math.abs(dx), Math.abs(dy));
+      ctx.beginPath();
+      ctx.moveTo(parent.x + dx * inset, parent.y + dy * inset);
+      ctx.lineTo(item.x - dx * inset, item.y - dy * inset);
+      ctx.stroke();
     }
     for (const { definition: def, x, y } of positions) {
       const available = upgradeUnlocked(def), current = rank(def.id), maxed = current >= def.max;
@@ -1458,8 +1882,12 @@
       if (selectedUpgrade === def.id) drawWood("woodFocus", x - 40, y - 40, 80, 80, UI_THEME.slices.focus.x, UI_THEME.slices.focus.scale);
       ctx.fillStyle = colors.dark; ctx.fillRect(x - 26, y + 22, 52, 20);
       drawText(`${current}/${def.max}`, x, y + 32, 14, maxed ? colors.accent : colors.text, "center", false);
-      uiTargets.push({ x: x - 38, y: y - 38, width: 76, height: 80, action: () => { selectedUpgrade = def.id; } });
+      const sx = 270 + treeView.x + (x - 270) * treeView.zoom, sy = 406 + treeView.y + (y - 406) * treeView.zoom;
+      const left = Math.max(18, sx - 38 * treeView.zoom), top = Math.max(230, sy - 38 * treeView.zoom);
+      const right = Math.min(522, sx + 38 * treeView.zoom), bottom = Math.min(582, sy + 42 * treeView.zoom);
+      if (right > left && bottom > top) uiTargets.push({ x: left, y: top, width: right - left, height: bottom - top, action: () => { selectedUpgrade = def.id; } });
     }
+    ctx.restore();
     const def = positions.find(item => item.definition.id === selectedUpgrade)?.definition;
     if (def) {
       const current = rank(def.id), maxed = current >= def.max, unlocked = upgradeUnlocked(def);
@@ -1533,7 +1961,7 @@
       drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 0, 4, 20);
     }
     drawPlayer(state.party.x, state.party.y, 54);
-    for (const companion of state.companions) drawPet(companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
+    for (const companion of state.companions) drawPet(companion.creatureId || companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
     if (state.party.shield) {
       ctx.strokeStyle = "#8ce9ff"; ctx.lineWidth = 3;
       for (const body of partyBodies()) {
@@ -1541,8 +1969,7 @@
       }
     }
     for (const enemy of state.enemies) {
-      if (enemy.species) drawPet(speciesDefs[enemy.species].petType, enemy.x, enemy.y, 48, 1, captureFacing(enemy.edge));
-      else drawMonster(enemy);
+      drawMonster(enemy);
       ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
       ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
     }
@@ -1550,7 +1977,7 @@
       drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
     }
     for (const projectile of state.projectiles) {
-      if (projectile.source === "player") {
+      if ((projectile.source === "player" || projectile.source === "boulderBuster")) {
         const frame = Math.floor(projectile.age * 12) % 4;
         const rotation = Math.atan2(projectile.vy, projectile.vx);
         if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 200, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 6);
@@ -1659,12 +2086,21 @@
     return uiTargets.find(target => point.x >= target.x && point.x <= target.x + target.width && point.y >= target.y && point.y <= target.y + target.height);
   }
 
+  let treeDrag = null, treeDragged = false;
+  canvas.addEventListener("wheel", event => {
+    if (state.mode !== "upgrades" || !inTree(canvasPoint(event))) return;
+    event.preventDefault(); zoomTree(event.deltaY < 0 ? 1.1 : 1 / 1.1);
+  }, { passive: false });
   let aimPointer = null;
   let aimGesture = false;
   canvas.addEventListener("pointerdown", event => {
     if (!event.isPrimary) return;
     unlockAudio();
     const point = canvasPoint(event);
+    if (state.mode === "upgrades" && inTree(point)) {
+      treeDrag = { id: event.pointerId, start: point, x: treeView.x, y: treeView.y }; treeDragged = false;
+      canvas.setPointerCapture?.(event.pointerId); return;
+    }
     aimGesture = state.mode === "combat" && !targetAt(point);
     if (aimGesture) {
       state.mouse = point;
@@ -1673,6 +2109,12 @@
     }
   });
   canvas.addEventListener("pointermove", event => {
+    if (treeDrag && event.pointerId === treeDrag.id && state.mode === "upgrades") {
+      const p = canvasPoint(event), dx = p.x - treeDrag.start.x, dy = p.y - treeDrag.start.y;
+      if (Math.hypot(dx, dy) > 5) treeDragged = true;
+      if (treeDragged) { treeView.x = clamp(treeDrag.x + dx, -650, 650); treeView.y = clamp(treeDrag.y + dy, -650, 650); render(); }
+      return;
+    }
     if (!event.isPrimary || state.mode !== "combat") return;
     if (event.pointerType === "mouse" || event.pointerId === aimPointer) {
       const point = canvasPoint(event);
@@ -1680,9 +2122,10 @@
     }
   });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    canvas.addEventListener(type, event => { if (aimPointer === event.pointerId) aimPointer = null; });
+    canvas.addEventListener(type, event => { if (aimPointer === event.pointerId) aimPointer = null; if (treeDrag?.id === event.pointerId) treeDrag = null; });
   }
   canvas.addEventListener("click", event => {
+    if (treeDragged) { treeDragged = false; return; }
     if (aimGesture) { aimGesture = false; return; }
     unlockAudio();
     const target = targetAt(canvasPoint(event));
@@ -1708,14 +2151,14 @@
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.species || enemy.type, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
-      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: projectile.source === "player" ? Math.floor(projectile.age * 12) % 4 : null })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
+      projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: (projectile.source === "player" || projectile.source === "boulderBuster") ? Math.floor(projectile.age * 12) % 4 : null })),
       weather: weatherType(),
       particles: { total: state.particles.length, counts: state.particles.reduce((counts, p) => { counts[p.kind] = (counts[p.kind] || 0) + 1; return counts; }, {}) },
       destructiblesSpawned: state.propsSpawned,
       vases: state.vases.map(vase => ({ x: Math.round(vase.x), y: Math.round(vase.y), hp: vase.hp, radius: vase.r, variant: destructibleVariants[vase.variant ?? 0].id, coinDropChance: 0.25 })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
-      companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.type], x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
+      companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.creatureId || companion.type], creatureId: companion.creatureId, shiny: state.save.shinyCreatures.includes(companion.creatureId), x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
       coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: Object.fromEntries(affinityOrder.map(id => [id, state.save.essence[id] + state.runEssence[id]])), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
@@ -1723,6 +2166,7 @@
     upgradeBranch: ["Player", "Feral", "Bloom", "Arcane"][upgradeBranch],
     bestiaryAffinity,
     bestiary: creatureDefs.map(creature => ({ id: creature.id, name: creature.name, affinityId: creature.affinityId, role: creature.role, cost: creature.captureCost, requiresStageClear: creature.requiresStageClear, gateUnlocked: creatureGateUnlocked(creature), owned: hasRecruit(creature.id), active: isActiveCreature(creature.id) })),
+    fragments: state.save.fragments, shinyCreatures: state.save.shinyCreatures,
     essence: state.save.essence, essencePity: state.save.essencePity, ownedCreatures: state.save.ownedCreatures, activeParty: state.save.activeParty, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result
   });
 
@@ -1733,6 +2177,7 @@
   };
 
   window.__scollTest = {
+    summonCreature, summonPool, monsterCatalog, spawnEnemy,
     getSave: () => JSON.parse(JSON.stringify(state.save)),
     setSave: save => {
       const fresh = defaultSave();

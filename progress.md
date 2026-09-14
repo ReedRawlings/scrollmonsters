@@ -606,3 +606,25 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 ## Upgrade screen label refinement
 - Kept existing four-tab connected-node layout, doubled upgrade tab labels to 30px and centered actual glyph bounds. Removed duplicate description rank. Renamed generic Fangle stat labels to Feral and changed generic stat ownership wording/checks to matching type; individual abilities retain creature gates.
+
+## September 13 — paired monster summons and directional combat
+
+- Added an explicit catalog of 34 base/shiny pairs across all three affinity types and tiers. Uses SeparateAnim/Walk.png where supplied, otherwise the available 64×64 creature sheet (including nonstandard filenames). User approved SpiderRed→SpiderYellow, HeartGreen→HeartRed, KappaGreen→KappaRed; SpiritLarge remains excluded without a pair.
+- Live Bestiary now filters type/tier, pages the roster, summons for 10/100/1000 matching essence, awards the base on first summon and one fragment per duplicate, and removes a creature from its pool at five fragments. Base/shiny selection is available at five fragments and persists. Existing owned legacy companions remain available in Tier 1.
+- New companions use the existing Feral striker/Bloom healer/Arcane area role implementations. Wild monsters use base catalog artwork by stage tier (1–4 / 5–8 / 9–10); existing encounter stats, essence rolls and special Demon Cyclop bosses remain. Spawn-edge columns are north=0, south=1, east=2, west=3; rows animate at 8 FPS. Updated map labels to affinity groups and fixed stale fallback paths.
+- check-monster-summons.cjs passes all nine pool completions, exact summon costs, first unlock/duplicate fragment transitions, completion and insufficient-funds guards, asset existence/loading, reload persistence, actual summon/shiny buttons, four entry columns, and shiny Tengu combat. Browser screenshots and required game-skill harness screenshots visually inspected; final browser run has no console/page errors. Syntax and diff checks pass.
+- Existing check-game.cjs cannot run unchanged: its VM lacks URLSearchParams. A temporary fixture correction exposed another pre-existing stale upgrade lookup at line 91; fixture was restored. Legacy Bestiary click tests target the superseded three-card recruitment UI and are superseded for this flow by check-monster-summons.cjs.
+- Remaining tuning: human playtest of tier prices and new party combinations. No deployment performed.
+
+## Double Attack shared Feral upgrade
+- Renamed Double Bite to Double Attack and clarified that its second-attack chance applies to all Feral creatures. Added type ownership gating and explicit affinity check in the shared Feral attack loop. Kept the saved upgrade ID and existing ranks, prices, prerequisites, and Triple Bite behavior.
+
+## Player central upgrade tree
+- Centered Damage +1 with Health +5, Quick Hands, Rock Breaker, and Golden Echo spokes. Quick Hands continues through Split Spark to Triple Spark; Golden Echo leads to Trail Pace and existing Hunter’s Eye. Preserved other Player nodes and their prerequisites. Health and Golden Echo now require Damage 1; Trail Pace requires Golden Echo 1.
+
+## Damage +3, Boulder Buster, movable node tree
+- Damage +3 branches diagonally from Damage +1 and requires rank 5. Provisional five ranks, starting at 50G. Boulder Buster requires Rock Breaker, has five ranks starting at 40G, and emits 1–5 current player shots in random directions from destroyed rocks (not vases). Both use existing cost scaling.
+- Added clipped tree viewport with drag pan, mouse-wheel and +/- zoom, reset, transformed node hit targets, and a fixed detail panel.
+- Browser checks passed rank-4 lock/rank-5 unlock, +3 damage purchase, projectile counts 0–5, origins/damage, vase exclusion, drag and wheel zoom; no page errors. Screenshot inspected and established game harness run. Local only.
+
+- Boulder Buster now uses its own damage source and provisional flat 1 damage, independent of player damage/critical upgrades. Reuses the player projectile and impact art, with existing collision behavior; dedicated damage function provides a future tuning point.
