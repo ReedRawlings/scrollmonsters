@@ -518,8 +518,8 @@
   });
 
   const stageRosters = {
-    1: [{ id: "feral-bat", chance: 0.8, type: "basic", baseHp: 2, baseDamage: 1 },
-        { id: "bloom-bamboo", chance: 0.2, type: "basic", baseHp: 1, baseDamage: 1 }],
+    1: [{ id: "feral-bat", chance: 0.8, type: "basic", baseHp: 1, baseDamage: 1 },
+        { id: "bloom-bamboo", chance: 0.2, type: "basic", baseHp: 2, baseDamage: 1 }],
     2: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
         { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
         { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }],
@@ -557,7 +557,7 @@
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
-      hp: stage.number === 2 && entry.id === "feral-beast" ? 6 : precise((openingBat ? 2 : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
+      hp: stage.number === 2 && entry.id === "feral-beast" ? 6 : precise((openingBat ? entry.baseHp : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
       damage: openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
     };
   }
