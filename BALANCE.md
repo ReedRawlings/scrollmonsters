@@ -329,3 +329,21 @@ Supersedes the no-reward pottery settings above. Each level schedules two props:
 ## September 13 — faster early upgrades and combat sprites
 
 Health +5 and Fangle Focus now share Damage +1 prices at every rank: 10/14/18/25/33/45/61/82/110/149G. Existing ranks are preserved. Wild capturable creatures render at 48px in stage combat, matching ordinary monsters. Battle coin drops animate the four frames in the first row of Coin2-Sheet.png.
+
+
+## September 14 — opening stage rosters
+
+Regular enemies now use explicit monster weights, independent of the legacy affinity population rolls. Stage 1 spawns Bat 80% and Bamboo 20%. Stages 2 and 3 spawn Beast 20%, Bat 50%, and Bamboo 30% (the requested Bloom monster is Bamboo). These weights apply from the start of combat; no opening Feral suppression applies to these rosters.
+
+| Stage | Monster | HP | ATK |
+| --- | --- | --- | --- |
+| 1 | Bat | 2 | 2 |
+| 1 | Bamboo | 1 | 1 |
+| 2 | Beast | 8 | 2 |
+| 2 | Bat | 4 | 2 |
+| 2 | Bamboo | 2 | 1 |
+| 3 | Beast | 12 | 3 |
+| 3 | Bat | 8 | 3 |
+| 3 | Bamboo | 4 | 1 |
+
+Beast uses armored movement and higher HP. Bat and Bamboo use basic movement. Stage 1/2 bosses remain Demon Cyclop; Stage 3's Feral boss now consistently uses Bat artwork, with existing boss stats and reward. All regular roster monsters qualify for matching affinity essence: Bat/Beast → Feral, Bamboo → Bloom. Existing drops remain 30%, guaranteed by the fifth dry affinity kill, with one essence per drop in stages 1–3. No separate tier-based essence currency or drop rate was introduced.

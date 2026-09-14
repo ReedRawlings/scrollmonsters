@@ -301,3 +301,21 @@ This is a deliberate fresh progression reset. Saves use the new `scollmonsters-s
 - Existing saved rank-1 purchases remain rank 1 (now a 20% trigger chance). The hybrid boss calculator rolls Deep Bloom chance at each eligible heal; Follow-Up Bite and Mending Bite remain excluded from isolated boss math because no regular-enemy kills are modeled during the boss fight.
 
 - Bloom Guard: one purchase for 200 Buttermant essence, unlocked by Deep Bloom rank 5. Each Deep Bloom proc can grant a single shared shield blocking the entire next damaging hit on any party member. No stacking or expiry; a 2-second cooldown starts when granted. A fresh Deep Bloom proc is required to reapply it after the cooldown. Shield and cooldown reset each stage attempt. Blue rings show protection; calculator includes boss-hit absorption.
+
+
+## September 14 — opening stage rosters
+
+Regular enemies now use explicit monster weights, independent of the legacy affinity population rolls. Stage 1 spawns Bat 80% and Bamboo 20%. Stages 2 and 3 spawn Beast 20%, Bat 50%, and Bamboo 30% (the requested Bloom monster is Bamboo). These weights apply from the start of combat; no opening Feral suppression applies to these rosters.
+
+| Stage | Monster | HP | ATK |
+| --- | --- | --- | --- |
+| 1 | Bat | 2 | 2 |
+| 1 | Bamboo | 1 | 1 |
+| 2 | Beast | 8 | 2 |
+| 2 | Bat | 4 | 2 |
+| 2 | Bamboo | 2 | 1 |
+| 3 | Beast | 12 | 3 |
+| 3 | Bat | 8 | 3 |
+| 3 | Bamboo | 4 | 1 |
+
+Beast uses armored movement and higher HP. Bat and Bamboo use basic movement. Stage 1/2 bosses remain Demon Cyclop; Stage 3's Feral boss now consistently uses Bat artwork, with existing boss stats and reward. All regular roster monsters qualify for matching affinity essence: Bat/Beast → Feral, Bamboo → Bloom. Existing drops remain 30%, guaranteed by the fifth dry affinity kill, with one essence per drop in stages 1–3. No separate tier-based essence currency or drop rate was introduced.

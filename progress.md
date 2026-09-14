@@ -634,3 +634,11 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Removed Fangle, Buttermant, and Tinmin from creature definitions and removed the legacy Tier 1 roster exception. Only the 34 paired tier-folder monsters are available. Title portraits now use Bat, Bamboo, and Eye.
 - User clarified alpha development does not need older-save compatibility. Do not add migration work for retired content; removed the migration-specific test added during this change.
 - Tier-only roster assertion and existing summon browser checks passed; syntax and diff checks passed. Inspected Bestiary screenshot. Default skill harness stalled with Mac graphics flags; reran its Mac-compatible copy for title capture.
+
+
+## September 14 — approved wood panels and opening rosters
+
+- Applied the approved Stage 1 preview to the live game: dark Wood asset inside orange encounter/action frames, individual monsters with affinity/HP/ATK, and boss details.
+- Stage 1: Bat 80%, Bamboo 20%. Stages 2–3: Beast 20%, Bat 50%, Bamboo 30%; interpreted user's “Bloom” as Bamboo. Beast uses armored durability/movement. Shared roster stats power both combat and menu. Stage 3 Feral boss art is fixed to Bat to match its preview.
+- Verified existing essence rules: 30% per affinity kill, fifth dry kill guarantee, one essence in stages 1–3; no separate Tier 1 drop-rule update exists. All configured roster spawns now have their matching affinity, removing the old opening Feral suppression for these stages.
+- Passed `scripts/check-stage-rosters.cjs` (1,000 stratified rolls per stage, combat stats, actual spawned-monster rewards, pity and bosses) and `scripts/check-stage-rosters-browser.cjs` (map selection, combat rosters, navigation, no page errors). Ran Mac-compatible skill harness and inspected all three stage screenshots under `output/stage-rosters/`. Syntax and whitespace checks passed.

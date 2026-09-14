@@ -180,3 +180,8 @@ Font and image loading can produce incomplete first captures. Allow assets and `
 - Generic Feral stat labels use Feral Focus / Feral Rhythm; generic companion stats use type ownership requirements. Named creature abilities retain their individual ownership requirements.
 
 - Player tree supports dragging and zoom buttons/mouse wheel inside its clipped viewport; header and node detail panel stay fixed. Damage +3 requires Damage +1 rank 5; Boulder Buster branches from Rock Breaker.
+
+
+## Approved overworld roster panels — September 14
+
+Use `nine_path_bg.png` (4px slices, 2x) inside the orange frames of the overworld encounter and action panels, as approved in the Stage 1 preview. Buttons retain the normal orange Wood styling. Stages 1–3 display actual monster portraits, names, affinity below each name, HP, and ATK. Stage 1 includes its boss as the third column; Stages 2–3 put their boss in a compact footer below three regular monsters. These roster cards replace affinity density summaries for the configured stages.

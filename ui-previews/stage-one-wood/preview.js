@@ -523,33 +523,6 @@
     };
   });
 
-  const stageRosters = {
-    1: [{ id: "feral-bat", chance: 0.8, type: "basic", baseHp: 2, baseDamage: 2 },
-        { id: "bloom-bamboo", chance: 0.2, type: "basic", baseHp: 1, baseDamage: 1 }],
-    2: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
-        { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
-        { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }],
-    3: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
-        { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
-        { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }]
-  };
-  function rosterStats(entry, stage) {
-    const openingBat = entry.id === "feral-bat" && stage.number <= 2;
-    return {
-      hp: precise((openingBat ? 2 : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
-      damage: openingBat ? 2 : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
-    };
-  }
-  function pickStageMonster(stageNumber, roll, forcedType = null) {
-    const roster = stageRosters[stageNumber];
-    if (!roster || forcedType === "boss") return null;
-    const candidates = forcedType ? roster.filter(entry => entry.type === forcedType) : roster;
-    if (!candidates.length) return null;
-    const total = candidates.reduce((sum, entry) => sum + entry.chance, 0);
-    let threshold = 0;
-    return candidates.find(entry => (threshold += entry.chance) > roll * total) || candidates[candidates.length - 1];
-  }
-
   const affinityDefs = Object.freeze({
     feral: { id: "feral", name: "Feral", short: "FE", color: UI_THEME.colors.feral },
     bloom: { id: "bloom", name: "Bloom", short: "BE", color: UI_THEME.colors.bloom },
@@ -678,9 +651,7 @@
     const stage = stageConfigs[stageNumber - 1];
     const health = [1, 2, 3].map(value => Math.round(value * stage.hpScale));
     const weights = stageNumber === 1 ? [1, 0, 0] : stageNumber === 2 ? [0.78, 0, 0.22] : [0.55, 0.23, 0.22];
-    const averageRegularHealth = stageRosters[stageNumber]
-      ? stageRosters[stageNumber].reduce((total, entry) => total + rosterStats(entry, stage).hp / stage.hpMultiplier * entry.chance, 0)
-      : health.reduce((total, value, index) => total + value * weights[index], 0);
+    const averageRegularHealth = health.reduce((total, value, index) => total + value * weights[index], 0);
     const bossMultiplier = stage.majorBoss ? 1.5 : 1;
     const bossHealth = precise(Math.round(28 * stage.bossHpScale * bossMultiplier) * stage.bossHpMultiplier);
     const regularDemand = averageRegularHealth / stage.spawnRate;
@@ -884,8 +855,7 @@
     const roll = Math.random();
     const rangedChance = state.stage.number >= 2 ? 0.23 : 0.12;
     const armoredChance = state.stage.number >= 3 ? 0.22 : 0.09;
-    const rosterEntry = pickStageMonster(state.stage.number, roll, forcedType);
-    let type = rosterEntry?.type || forcedType;
+    let type = forcedType;
     if (!type && state.stage.number === 1) type = "basic";
     if (!type && state.stage.number === 2) type = roll < 0.22 ? "armored" : "basic";
     if (!type) type = roll < armoredChance ? "armored" : roll < armoredChance + rangedChance ? "ranged" : "basic";
@@ -899,19 +869,17 @@
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
     const speciesRoll = Math.random();
-    const rosterCreature = rosterEntry && creatureById(rosterEntry.id);
-    const species = rosterCreature ? Object.values(speciesDefs).find(species => species.affinityId === rosterCreature.affinityId).id : type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : rollSpecies(state.stage.number, speciesRoll, openingStage && state.stageTime < 15);
+    const species = type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : rollSpecies(state.stage.number, speciesRoll, openingStage && state.stageTime < 15);
     const openingFanglet = openingStage && species === "fanglet";
-    const stats = rosterEntry && rosterStats(rosterEntry, state.stage);
-    const hp = stats ? stats.hp : precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
+    const hp = precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
     const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
     const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
     const pool = monsterCatalog.filter(c => c.tier === Math.min(3, Math.ceil(state.stage.number / 4)) && (!species || c.affinityId === speciesDefs[species].affinityId));
-    const monsterId = rosterEntry?.id || (type === "boss" && state.stage.number === 3 ? "feral-bat" : pool[Math.floor(Math.random() * pool.length)].id);
+    const monsterId = pool[Math.floor(Math.random() * pool.length)].id;
     state.enemies.push({
       monsterId,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
-      hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
+      hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
@@ -1655,52 +1623,19 @@
     const stage = stageConfigs[state.selectedStage-1];
     drawWood("woodPanel",18,450,504,218);
     drawWood("woodBackground",28,460,484,198,4,2);
-    const roster = stageRosters[stage.number];
-    if (roster) {
-      const bossHp = precise(Math.round(28 * stage.bossHpScale) * stage.hpMultiplier * stage.bossHpMultiplier);
-      const bossDamage = Math.max(1, Math.round(5 * stage.damageScale));
-      const drawRosterEntry = (entry, x, compact) => {
-        const creature = creatureById(entry.id), stats = rosterStats(entry, stage);
-        drawPet(entry.id,x,compact ? 492 : 501,48);
-        drawText(creature.name,x,compact ? 526 : 550,15,colors.text,"center");
-        drawText(affinityDefs[creature.affinityId].name,x,compact ? 549 : 575,15,colors[creature.affinityId],"center");
-        drawText(`HP ${stats.hp}`,x,compact ? 577 : 609,15,colors.text,"center");
-        drawText(`ATK ${stats.damage}`,x,compact ? 601 : 635,15,colors.text,"center");
-      };
-      roster.forEach((entry,index)=>drawRosterEntry(entry,102+index*162,roster.length>2));
-      if (roster.length === 2) {
-        drawSheetFrame("demonWalk",432,498,0,6,72);
-        drawText("Demon Cyclop",432,550,15,colors.text,"center");
-        drawText("Boss",432,575,15,colors.accent,"center");
-        drawText(`HP ${bossHp}`,432,609,15,colors.text,"center");
-        drawText(`ATK ${bossDamage}`,432,635,15,colors.text,"center");
-      } else {
-        ctx.fillStyle=colors.muted;ctx.fillRect(44,615,452,1);
-        if(stage.number===3) drawPet("feral-bat",62,637,32);
-        else drawSheetFrame("demonWalk",62,637,0,6,40);
-        drawText(stage.number===3?"Bat Boss":"Demon Cyclop",88,640,15,colors.text);
-        drawText(`HP ${bossHp} / ATK ${bossDamage}`,490,640,15,colors.text,"right");
-      }
-    } else {
-      const enemyTypes = stage.number === 1 ? [[1,1]] : stage.number === 2 ? [[1,1],[3,2]] : [[1,1],[2,1],[3,2]];
-      const range = values => { const lo=Math.min(...values), hi=Math.max(...values); return lo===hi ? String(lo) : `${lo}-${hi}`; };
-      const hpRange = range(enemyTypes.map(([hp])=>precise(Math.round(hp*stage.hpScale)*stage.hpMultiplier)));
-      const damageRange = range(enemyTypes.map(([,damage])=>Math.max(1,Math.round(damage*stage.damageScale))));
-      Object.values(speciesDefs).forEach((species,index)=>{
-        const x=100+index*170;
-        drawPet(monsterCatalog.find(c => c.affinityId === species.affinityId && c.tier === Math.min(3,Math.ceil(stage.number/4))).id,x-32,489,48);
-        drawCurrencyIcon(species.affinityId,x+16,483,20);
-        drawText(`${Math.round(species.density[stage.number-1]*100)}%`,x+33,485,15,colors[species.affinityId],"left",false);
-        drawText(affinityDefs[species.affinityId].name,x,522,15,colors.text,"center");
-        const openingFanglet = stage.number <= 2 && species.petType === "striker";
-        drawText(`HP ${openingFanglet ? 2*stage.hpMultiplier : hpRange}`,x,547,15,colors.text,"center");
-        drawText(`DMG ${openingFanglet ? 2 : damageRange}`,x,571,15,colors.text,"center");
-      });
-      const bossName=stage.number===3?"Feral boss":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
-      const bossHp=precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
-      drawText(`${bossName}: HP ${bossHp} / DMG ${Math.max(1,Math.round(5*stage.damageScale))}`,36,638,15,colors.text);
-      drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
-    }
+    const roster = [
+      {id:"feral-bat",name:"Bat",type:"Feral",hp:2,atk:2,x:102},
+      {id:"bloom-bamboo",name:"Bamboo",type:"Bloom",hp:1,atk:1,x:264},
+      {name:"Demon Cyclop",type:"Boss",hp:28,atk:4,x:432}
+    ];
+    roster.forEach(monster=>{
+      if(monster.id) drawPet(monster.id,monster.x,501,48);
+      else drawSheetFrame("demonWalk",monster.x,498,0,6,72);
+      drawText(monster.name,monster.x,550,15,colors.text,"center");
+      drawText(monster.type,monster.x,575,15,monster.type==="Feral"?colors.feral:monster.type==="Bloom"?colors.bloom:colors.accent,"center");
+      drawText(`HP ${monster.hp}`,monster.x,609,15,colors.text,"center");
+      drawText(`ATK ${monster.atk}`,monster.x,635,15,colors.text,"center");
+    });
     drawWood("woodPanel",18,686,504,162);
     drawWood("woodBackground",28,696,484,142,4,2);
 
@@ -2255,7 +2190,7 @@
     balanceProjection, stageDpsEstimate
   };
 
-  if (new URLSearchParams(location.search).get("overworld") === "explored") setMode("map");
+  setMode("map");
 
   document.fonts?.load('16px "NinjaPixel"').then(() => render());
   render();
