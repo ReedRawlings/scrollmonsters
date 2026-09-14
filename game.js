@@ -204,8 +204,8 @@
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
-    { id: "magnet", name: "Golden Echo", branch: "SHARED", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
-    { id: "autoTarget", name: "Hunter's Eye", branch: "SHARED", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
+    { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
+    { id: "autoTarget", name: "Hunter's Eye", branch: "PLAYER", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
     { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Fangle Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
@@ -215,14 +215,14 @@
   ];
 
   upgradeDefs.push(
-    { id: "partyBond", name: "Party Bond", branch: "HEALER", recruit: "healer", max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
+    { id: "partyBond", name: "Party Bond", branch: "PLAYER", recruit: "healer", max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
     { id: "strikerDouble", name: "Double Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second bite chance`, requires: ["strikerSpeed"], recruit: "striker" },
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
     { id: "rockBreaker", name: "Rock Breaker", branch: "PLAYER", max: 1, costs: abilityRankCosts(30, 1), effect: () => "Player shots damage rocks", requires: ["power"] },
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "bloom", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
     { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "bloom", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
-    { id: "travelSpeed", name: "Trail Pace", branch: "SHARED", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
+    { id: "travelSpeed", name: "Trail Pace", branch: "PLAYER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: [] },
     { id: "strikerFollowup", name: "Follow-Up Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", effect: rank => `${20 * (rank + 1)}% extra bite on Fangle kill`, requires: [], recruit: "striker" },
     { id: "strikerFollowupHeal", name: "Mending Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", effect: rank => `Follow-Up Bite heals for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "striker" },
   );
@@ -340,9 +340,9 @@
   const playerAttackDuration = 0.24;
   const treeDefs = [...upgradeDefs];
   const treePositions = () => {
-    const branch = ["PLAYER", "SHARED", "STRIKER", "HEALER", "AOE"][upgradeBranch];
+    const branch = ["PLAYER", "STRIKER", "HEALER", "AOE"][upgradeBranch];
     let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") definitions = ["power", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
     else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
     const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
     return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136), height: 108 }));
@@ -1394,14 +1394,16 @@
     const levels = definitions.map(depth), maxDepth = Math.max(0, ...levels);
     return definitions.map((definition, index) => {
       const level = levels[index], peers = definitions.filter((_, i) => levels[i] === level);
-      return { definition, x: Math.round(48 + (peers.indexOf(definition) + 0.5) * 444 / peers.length),
+      return { definition, x: Math.round(18 + (peers.indexOf(definition) + 0.5) * 504 / peers.length),
         y: Math.round(258 + level * Math.min(94, 278 / Math.max(1, maxDepth))) };
     });
   }
 
   function drawUpgrades() {
     const colors = UI_THEME.colors;
-    drawBestiaryBackground();
+    ctx.fillStyle = colors.dark;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
     drawPanel(0, 0, WIDTH, 104);
     drawBestiaryButton("< MAP", 16, 16, 120, 48, "normal", () => setMode("map"));
     drawText("UPGRADES", 154, 39, 30, colors.title);
@@ -1412,24 +1414,38 @@
       drawCurrencyIcon(id, x, 82, 20);
       drawText(formatAmount(state.save.essence[id]), x + 22, 82, 18, colors[id], "left", false);
     });
-    ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"].forEach((name, index) => {
-      const x = 14 + index * 104;
-      drawMenuTab(name, x, 124, 96, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; });
+    ["Player", "Feral", "Bloom", "Arcane"].forEach((name, index) => {
+      const x = 14 + index * 130;
+      drawMenuTab(name, x, 124, 122, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; });
     });
-    drawText("TAP A NODE TO INSPECT", 270, 207, 15, colors.dark, "center", false);
+    drawText("TAP A NODE TO INSPECT", 270, 207, 15, colors.muted, "center", false);
     const positions = iconTreePositions();
     if (!positions.some(item => item.definition.id === selectedUpgrade)) selectedUpgrade = positions[0]?.definition.id;
     for (const item of positions) for (const id of item.definition.requires) {
       const parent = positions.find(p => p.definition.id === id); if (!parent) continue;
       const ready = rank(id) >= (item.definition.requiredRanks?.[id] || 1);
-      ctx.strokeStyle = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.dark : colors.locked;
+      ctx.strokeStyle = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.muted : "#827660";
       ctx.lineWidth = item.definition.id === selectedUpgrade ? 4 : 2;
       ctx.beginPath(); ctx.moveTo(parent.x, parent.y + 28); ctx.lineTo(item.x, item.y - 28); ctx.stroke();
     }
     for (const { definition: def, x, y } of positions) {
       const available = upgradeUnlocked(def), current = rank(def.id), maxed = current >= def.max;
       const icon = nodeIconPaths[def.id] ? def.id : def.id.endsWith("CritChance") ? "autoTarget" : "tripleSpark";
-      drawSprite(`node_${icon}${available ? "" : "_off"}`, x, y, 72, available ? 1 : 0.65);
+      drawSprite(`node_${icon}${current > 0 ? "" : "_off"}`, x, y, 72, available ? 1 : 0.65);
+      const balance = def.currency ? state.save.essence[def.currency] : state.save.gold;
+      if (available && !maxed && balance >= def.costs[current]) {
+        // A quiet, staggered sweep marks upgrades that can be bought right now.
+        const phase = (state.animationTime * 0.32 + x / 540 + y / 900) % 1;
+        const sweep = x - 100 + phase * 200;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x - 36, y - 36, 72, 58); ctx.clip();
+        const glow = ctx.createLinearGradient(sweep - 14, y - 36, sweep + 14, y + 22);
+        glow.addColorStop(0, "#fff0b000");
+        glow.addColorStop(0.5, "#fff0b033");
+        glow.addColorStop(1, "#fff0b000");
+        ctx.fillStyle = glow; ctx.fillRect(x - 36, y - 36, 72, 58);
+        ctx.restore();
+      }
       if (selectedUpgrade === def.id) drawWood("woodFocus", x - 40, y - 40, 80, 80, UI_THEME.slices.focus.x, UI_THEME.slices.focus.scale);
       ctx.fillStyle = colors.dark; ctx.fillRect(x - 26, y + 22, 52, 20);
       drawText(`${current}/${def.max}`, x, y + 32, 14, maxed ? colors.accent : colors.text, "center", false);
@@ -1693,7 +1709,7 @@
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: Object.fromEntries(affinityOrder.map(id => [id, state.save.essence[id] + state.runEssence[id]])), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
-    upgradeBranch: ["Player", "Shared", "Fangle", "Buttermant", "Tinmin"][upgradeBranch],
+    upgradeBranch: ["Player", "Feral", "Bloom", "Arcane"][upgradeBranch],
     bestiaryAffinity,
     bestiary: creatureDefs.map(creature => ({ id: creature.id, name: creature.name, affinityId: creature.affinityId, role: creature.role, cost: creature.captureCost, requiresStageClear: creature.requiresStageClear, gateUnlocked: creatureGateUnlocked(creature), owned: hasRecruit(creature.id), active: isActiveCreature(creature.id) })),
     essence: state.save.essence, essencePity: state.save.essencePity, ownedCreatures: state.save.ownedCreatures, activeParty: state.save.activeParty, bankedGold: state.save.gold, upgrades: state.save.upgrades, autoTargetUnlocked: autoTargetUnlocked(), autoTargetEnabled: state.save.autoTargetEnabled, result: state.result

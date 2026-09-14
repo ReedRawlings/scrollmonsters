@@ -6,6 +6,6 @@ await p.evaluate(()=>window.__scollTest.setSave({gold:1000,essence:{feral:100,bl
 const before=await p.evaluate(()=>window.__scollTest.getSave());await tap(122,258);assert.deepEqual(await p.evaluate(()=>window.__scollTest.getSave()),before);
 await p.locator('canvas').screenshot({path:'output/upgrade-nodes/player.png'});
 await tap(270,702);assert((await p.evaluate(()=>window.__scollTest.getSave())).gold<before.gold);
-for(let i=1;i<5;i++){await tap(62+i*104,150);await p.locator('canvas').screenshot({path:`output/upgrade-nodes/branch-${i}.png`});}
-await tap(76,40);assert.equal(await p.evaluate(()=>JSON.parse(window.render_game_to_text()).mode),'map');assert.deepEqual(errors,[]);console.log('PASS: node tap does not spend, explicit upgrade buys, five branches render without errors');
+for(let i=1;i<4;i++){await tap(75+i*130,150);await p.locator('canvas').screenshot({path:`output/upgrade-nodes/branch-${i}.png`});}
+await tap(76,40);assert.equal(await p.evaluate(()=>JSON.parse(window.render_game_to_text()).mode),'map');assert.deepEqual(errors,[]);console.log('PASS: node tap does not spend, explicit upgrade buys, four branches render without errors');
 }finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});

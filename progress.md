@@ -582,3 +582,24 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Main game now opens the approved connected-icon upgrade UI. Removed the old card renderer; prototype demo save remains isolated on its own page.
 - Verified main-entry mobile node inspection without spending, explicit purchase, all five branches, Map return, and starting combat. Build and syntax pass; inspected browser and skill-harness screenshots.
 - Updated the main script cache version for release.
+
+## September 13 — dark upgrade background
+
+- Upgrade nodes now use the overworld's woodBackground nine-slice instead of the old walking path. Lightened instruction text and connector lines for contrast on the darker surface.
+- Syntax check and visual browser capture passed. Local update, not deployed.
+
+## September 13 — purchasable node shimmer
+
+- All rank-zero nodes use their grey disabled artwork, including unlocked roots. Purchased nodes use colored artwork.
+- Added a low-opacity staggered diagonal shimmer only for unlocked, affordable, non-maxed nodes; rank labels remain unobscured.
+- Syntax and mobile purchase/branch checks pass; inspected funded and unfunded screenshots. Changes remain local.
+
+## September 13 — affinity upgrade tab names
+
+- Renamed companion upgrade tabs to Feral, Bloom, and Arcane; Player and Shared retain their names. Text-state branch labels match the UI.
+- Syntax check passed.
+
+## September 13 — merge Shared into Player
+
+- Moved Golden Echo, Hunter's Eye, Trail Pace, and Party Bond into Player. Removed Shared tab; remaining tabs are Player, Feral, Bloom, Arcane. Party Bond retains its recruitment requirement and effect.
+- Expanded node layout width to keep six root nodes separated at original icon size. Syntax and four-tab purchase/navigation checks pass; inspected merged-tree screenshot.
