@@ -206,8 +206,8 @@
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: [] },
     { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: [] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "PLAYER", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
-    { id: "strikerPower", name: "Fangle Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
-    { id: "strikerSpeed", name: "Fangle Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
+    { id: "strikerPower", name: "Feral Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
+    { id: "strikerSpeed", name: "Feral Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
     { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
     { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 10, costs: abilityRankCosts(25, 10), effect: rank => `+1 damage (${4 + rank} total)`, requires: [], recruit: "aoe" },
@@ -233,6 +233,10 @@
       { id: `${owner}CritDamage`, name: owner === "healer" ? "Crit Healing" : "Crit Damage", branch, recruit, max: 5, costs: abilityRankCosts(30, 5), requires: [`${owner}CritChance`], effect: level => `${110 + level * 10}% critical ${owner === "healer" ? "healing" : "damage"}` }
     );
   }
+
+  const typeUpgradeIds = new Set(["strikerPower", "strikerSpeed", "strikerCritChance", "strikerCritDamage", "healerCritChance", "healerCritDamage", "aoeCritChance", "aoeCritDamage"]);
+  const upgradeType = definition => typeUpgradeIds.has(definition.id) ? creatureById(definition.recruit)?.affinityId : null;
+  const ownsUpgradeType = definition => state.save.ownedCreatures.some(id => creatureById(id)?.affinityId === upgradeType(definition));
 
   const balanceModel = Object.freeze({
     offenseShare: 0.35,
@@ -1320,14 +1324,19 @@
     drawText(label, x + width / 2, y + height / 2, size, visualState === "locked" ? UI_THEME.colors.locked : UI_THEME.colors.dark, "center", false);
   }
 
-  function drawMenuTab(label, x, y, width, height, selected, action) {
+  function drawMenuTab(label, x, y, width, height, selected, action, fontSize = 15) {
     const slice = UI_THEME.slices.tab;
     uiTargets.push({ x, y, width, height, action });
     drawWood(selected ? "woodTabSelected" : "woodTabUnselected", x, y, width, height, slice.x, slice.scale, slice.y);
-    ctx.font = '15px "NinjaPixel", monospace';
-    const size = Math.max(10, Math.floor(Math.min(15, 15 * (width - 16) / Math.max(1, ctx.measureText(label).width))));
-    drawText(label, Math.round(x + width / 2), Math.round(y + height / 2), size,
-      selected ? UI_THEME.colors.dark : UI_THEME.colors.text, "center", false);
+    ctx.font = `${fontSize}px "NinjaPixel", monospace`;
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "center";
+    ctx.wordSpacing = "2px";
+    const metrics = ctx.measureText(label);
+    const baseline = Math.round(y + height / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2);
+    ctx.fillStyle = selected ? UI_THEME.colors.dark : UI_THEME.colors.text;
+    ctx.fillText(label, Math.round(x + width / 2), baseline, width - 16);
+
   }
 
   function drawBestiaryTab(affinityId, x, selected) {
@@ -1382,7 +1391,7 @@
   }
 
   function upgradeUnlocked(definition) {
-    return (!definition.recruit || hasRecruit(definition.recruit)) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
+    return (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
   function iconTreePositions() {
@@ -1416,7 +1425,7 @@
     });
     ["Player", "Feral", "Bloom", "Arcane"].forEach((name, index) => {
       const x = 14 + index * 130;
-      drawMenuTab(name, x, 124, 122, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; });
+      drawMenuTab(name, x, 124, 122, 56, index === upgradeBranch, () => { upgradeBranch = index; selectedUpgrade = null; }, 30);
     });
     drawText("TAP A NODE TO INSPECT", 270, 207, 15, colors.muted, "center", false);
     const positions = iconTreePositions();
@@ -1460,7 +1469,8 @@
         : `NOW: ${def.effect(current - 1)}. NEXT: ${def.effect(current)}`;
       if (!unlocked) {
         const requirements = def.requires.map(id => `${upgradeDefs.find(d => d.id === id)?.name || id} ${def.requiredRanks?.[id] || 1}`);
-        if (def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
+        if (upgradeType(def) && !ownsUpgradeType(def)) requirements.unshift(`Summon a ${affinityDefs[upgradeType(def)].name} creature`);
+        else if (!upgradeType(def) && def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
         description = `LOCKED: ${requirements.join("; ")}. ${description}`;
       }
       ctx.font = '15px "NinjaPixel", monospace';
@@ -1471,7 +1481,7 @@
       }
       const buttonY = 642 + lines.length * 20;
       drawWood(unlocked ? "woodPanel" : "woodDisabled", 20, 596, 500, buttonY + 54 - 596);
-      drawText(def.name, 38, 620, 21, unlocked ? colors.text : colors.locked, "left", unlocked); drawText(`${current}/${def.max}`, 498, 620, 18, unlocked ? colors.accent : colors.locked, "right", false);
+      drawText(def.name, 38, 620, 21, unlocked ? colors.text : colors.locked, "left", unlocked);
       lines.forEach((line, i) => drawText(line, 38, 646 + i * 20, 15, unlocked ? colors.muted : colors.locked, "left", unlocked));
       const label = maxed ? "MAXED" : !unlocked ? "LOCKED" : `${balance >= cost ? "UPGRADE" : "NEED"} ${cost} ${def.currency ? affinityDefs[def.currency].short : "G"}`;
       drawBestiaryButton(label, 38, buttonY, 464, 42, !maxed && unlocked && balance >= cost ? "normal" : "locked",
@@ -1619,7 +1629,8 @@
   function attemptUpgrade(definition) {
     const current = rank(definition.id);
     if (!upgradeUnlocked(definition)) {
-      if (definition.id === "partyBond") state.toast = "Recruit Buttermant first";
+      if (upgradeType(definition) && !ownsUpgradeType(definition)) state.toast = `Summon a ${affinityDefs[upgradeType(definition)].name} creature first`;
+      else if (definition.id === "partyBond") state.toast = "Recruit Buttermant first";
       else if (definition.requiredRanks) state.toast = rankRequirementText(definition);
       else if (definition.recruit) state.toast = `Recruit ${petDisplayNames[definition.recruit]} first`;
       else state.toast = "Purchase the prerequisite first";

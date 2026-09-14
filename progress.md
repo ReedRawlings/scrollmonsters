@@ -603,3 +603,6 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Moved Golden Echo, Hunter's Eye, Trail Pace, and Party Bond into Player. Removed Shared tab; remaining tabs are Player, Feral, Bloom, Arcane. Party Bond retains its recruitment requirement and effect.
 - Expanded node layout width to keep six root nodes separated at original icon size. Syntax and four-tab purchase/navigation checks pass; inspected merged-tree screenshot.
+
+## Upgrade screen label refinement
+- Kept existing four-tab connected-node layout, doubled upgrade tab labels to 30px and centered actual glyph bounds. Removed duplicate description rank. Renamed generic Fangle stat labels to Feral and changed generic stat ownership wording/checks to matching type; individual abilities retain creature gates.
