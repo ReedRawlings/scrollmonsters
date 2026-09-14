@@ -642,3 +642,13 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Stage 1: Bat 80%, Bamboo 20%. Stages 2–3: Beast 20%, Bat 50%, Bamboo 30%; interpreted user's “Bloom” as Bamboo. Beast uses armored durability/movement. Shared roster stats power both combat and menu. Stage 3 Feral boss art is fixed to Bat to match its preview.
 - Verified existing essence rules: 30% per affinity kill, fifth dry kill guarantee, one essence in stages 1–3; no separate Tier 1 drop-rule update exists. All configured roster spawns now have their matching affinity, removing the old opening Feral suppression for these stages.
 - Passed `scripts/check-stage-rosters.cjs` (1,000 stratified rolls per stage, combat stats, actual spawned-monster rewards, pity and bosses) and `scripts/check-stage-rosters-browser.cjs` (map selection, combat rosters, navigation, no page errors). Ran Mac-compatible skill harness and inspected all three stage screenshots under `output/stage-rosters/`. Syntax and whitespace checks passed.
+
+## September 14 — 32px combat spacing prototype
+
+- Added isolated `ui-previews/combat-scale/` prototype with current/32px toggles and 6/12 monster toggles, using the real Stage 1 terrain, HUD, player, Bat and Bamboo sprites. Positions remain fixed and sprites animate; this is a visual comparison, not combat balance simulation. Live game files are unchanged by this request.
+- `build.py` regenerates the prototype game copy. Browser checks passed all four size/count combinations with no page errors. Ran the Mac-compatible web-game skill harness and inspected the rendered prototype. Opened the comparison in Codex's browser panel.
+
+## September 14 — applied 32px combat scale
+
+- User approved the spacing prototype. Applied 32px rendering to player, companions, and regular monsters in the live game. Reduced corresponding contact/projectile hitboxes and adjusted player shot origin; health bars follow the smaller enemy radii. Bosses, terrain, camera, HUD, menu portraits and spawn rates retain their prior settings.
+- Passed stage roster regression checks and new combat-scale collision checks (old-radius miss, new-radius contact, projectile hit/miss, boss radius). Browser draw-call assertions verified actual 32×32 player/companion/monster rendering without page errors; inspected `output/combat-scale/live.png`. Ran Mac-compatible skill harness, syntax and whitespace checks.

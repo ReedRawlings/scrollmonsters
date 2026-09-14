@@ -14,6 +14,7 @@
   const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
   const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
   const FIXED_STEP = 1 / 60;
+  const COMBAT_SPRITE_SIZE = 32; // 16px frames at crisp 2x scale.
   // Shared menu styling. Keep these values aligned with UI_STYLE_GUIDE.md.
   const UI_THEME = Object.freeze({
     colors: Object.freeze({
@@ -798,7 +799,7 @@
     state.companions = state.save.activeParty.map((type, index) => ({ type: creatureById(type)?.petType || type, creatureId: type, x: state.party.x, y: state.party.y - (index + 1) * 40, timer: 0.4 + index * 0.45, pulse: 0 }));
   }
 
-  const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 20 }, ...state.companions.map(companion => ({ ...companion, r: 18 }))];
+  const partyBodies = () => [{ type: "player", x: state.party.x, y: state.party.y, r: 12 }, ...state.companions.map(companion => ({ ...companion, r: 12 }))];
   const nearestPartyBody = (x, y) => partyBodies().reduce((best, body) => Math.hypot(body.x - x, body.y - y) < Math.hypot(best.x - x, best.y - y) ? body : best);
   function hitParty(body, damage) {
     if (state.party.shield && damage > 0) {
@@ -891,9 +892,9 @@
     if (!type) type = roll < armoredChance ? "armored" : roll < armoredChance + rangedChance ? "ranged" : "basic";
     const openingStage = state.stage.number <= 2;
     const base = {
-      basic: { hp: 1, speed: openingStage ? 92 : 32, damage: 1, cooldown: 99, radius: 17 },
-      ranged: { hp: 2, speed: 28, damage: 1, cooldown: 2.7, radius: 18 },
-      armored: { hp: 3, speed: openingStage ? 70 : 24, damage: 2, cooldown: 99, radius: 22 },
+      basic: { hp: 1, speed: openingStage ? 92 : 32, damage: 1, cooldown: 99, radius: 11 },
+      ranged: { hp: 2, speed: 28, damage: 1, cooldown: 2.7, radius: 12 },
+      armored: { hp: 3, speed: openingStage ? 70 : 24, damage: 2, cooldown: 99, radius: 15 },
       boss: { hp: 28, speed: state.stage.number <= 5 ? 72 : 28, damage: 5, cooldown: 2.4, radius: 42 }
     }[type];
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
@@ -965,7 +966,7 @@
     const count = playerProjectiles();
     for (let index = 0; index < count; index += 1) {
       const spread = count === 1 ? 0 : (index - (count - 1) / 2) * 0.105;
-      shoot(state.party.x, state.party.y + 20, targetX, targetY, true, playerDamage(), 560, "player", spread);
+      shoot(state.party.x, state.party.y + 12, targetX, targetY, true, playerDamage(), 560, "player", spread);
     }
   }
 
@@ -1455,7 +1456,7 @@
       return;
     }
     const sheet = enemy.monsterId || monsterSheets[enemy.type];
-    const size = enemy.type === "boss" ? 92 : 48;
+    const size = enemy.type === "boss" ? 92 : COMBAT_SPRITE_SIZE;
     if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
       drawSprite(enemy.type, enemy.x, enemy.y, size);
     }
@@ -2022,8 +2023,8 @@
       ctx.beginPath(); ctx.ellipse(x, groundY + 7, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
       drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 0, 4, 20);
     }
-    drawPlayer(state.party.x, state.party.y, 54);
-    for (const companion of state.companions) drawPet(companion.creatureId || companion.type, companion.x, companion.y, companion.type === "aoe" ? 48 : 43);
+    drawPlayer(state.party.x, state.party.y, COMBAT_SPRITE_SIZE);
+    for (const companion of state.companions) drawPet(companion.creatureId || companion.type, companion.x, companion.y, COMBAT_SPRITE_SIZE);
     if (state.party.shield) {
       ctx.strokeStyle = "#8ce9ff"; ctx.lineWidth = 3;
       for (const body of partyBodies()) {

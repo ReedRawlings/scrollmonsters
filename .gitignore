@@ -1,2 +1,5 @@
 # Generated simulation reports, screenshots, and temporary browser harnesses.
 /output/
+
+# Local UI prototypes and preview artifacts.
+/ui-previews/

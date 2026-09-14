@@ -185,3 +185,7 @@ Font and image loading can produce incomplete first captures. Allow assets and `
 ## Approved overworld roster panels — September 14
 
 Use `nine_path_bg.png` (4px slices, 2x) inside the orange frames of the overworld encounter and action panels, as approved in the Stage 1 preview. Buttons retain the normal orange Wood styling. Stages 1–3 display actual monster portraits, names, affinity below each name, HP, and ATK. Stage 1 includes its boss as the third column; Stages 2–3 put their boss in a compact footer below three regular monsters. These roster cards replace affinity density summaries for the configured stages.
+
+## Combat sprite scale — September 14
+
+The player, companions, and regular monsters render at 32×32 (16px frames at 2x) using `COMBAT_SPRITE_SIZE`. Boss and menu portrait sizes retain their existing values. Player/companion collision radii are 12px; regular enemy radii are basic 11px, ranged 12px, armored 15px. Enemy health bars follow those radii. Player shots originate 12px below the center. Terrain, camera, HUD and encounter spawn rates retain their existing settings.

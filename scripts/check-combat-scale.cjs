@@ -1,0 +1,26 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+let roll = 0;
+const math = Object.create(Math); math.random = () => roll;
+const ctx = new Proxy({measureText:t=>({width:String(t).length*8})}, {get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
+const sandbox = {URLSearchParams,Math:math,document:{getElementById:()=>({width:540,height:900,getContext:()=>ctx,addEventListener(){}}),addEventListener(){}},Image:class{},location:{search:''},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{__vt_pending:true}};
+const source = fs.readFileSync('game.js','utf8').replace('  render();\n  if (!window.__vt_pending)', '  window.review={state,damageEnemy,updateCombat};\n  render();\n  if (!window.__vt_pending)');
+vm.runInNewContext(source,sandbox);
+const api=sandbox.window.__scollTest, {state,damageEnemy,updateCombat}=sandbox.window.review;
+
+api.startStage(1);state.spawnTimer=999;state.fireTimer=999;
+api.spawnEnemy();const enemy=state.enemies[0];
+assert.equal(enemy.r,11);
+assert.equal(JSON.parse(sandbox.window.render_game_to_text()).party.bodies[0].r,12);
+enemy.x=state.party.x+35;enemy.y=state.party.y;enemy.speed=0;
+const hp=state.party.hp;updateCombat(1/60);assert.equal(state.party.hp,hp,'No contact at old larger radius');
+enemy.x=state.party.x+23;updateCombat(1/60);assert.equal(state.party.hp,hp-enemy.damage,'Contact at the new combined radius');
+enemy.x=100;enemy.y=300;enemy.meleeTimer=999;
+const enemyHp=enemy.hp;
+state.projectiles=[{x:118,y:300,vx:0,vy:0,r:6,friendly:true,damage:1,age:0,source:'player'}];
+updateCombat(1/60);assert.equal(enemy.hp,enemyHp,'Shot outside the reduced enemy hitbox misses');
+state.projectiles=[{x:110,y:300,vx:0,vy:0,r:6,friendly:true,damage:1,age:0,source:'player'}];
+updateCombat(1/60);assert.equal(enemy.hp,enemyHp-1,'Shot inside the reduced enemy hitbox hits');
+api.spawnEnemy('boss');assert.equal(state.enemies.at(-1).r,42);
+console.log('PASS: smaller contact and projectile hitboxes; boss radius preserved');
