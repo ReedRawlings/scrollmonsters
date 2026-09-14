@@ -1,6 +1,6 @@
 # Creature abilities and attack ranges
 
-This is the current design reference for ability implementation. The range assignments and individual Tier 1 abilities below are agreed design; they have not yet been wired into combat.
+This is the current ability reference. Player range and the Tier 1 Feral abilities below are implemented in `game.js` using shared `ABILITY_RANGES` and per-creature `feralAttacks` definitions. Bloom already has the separate attacks documented below.
 
 ## Shared range definitions
 
@@ -19,9 +19,9 @@ Ranges are circular radii measured in game pixels from the attacking creature's 
 | Attacker | Range | Ability behavior |
 | --- | --- | --- |
 | Player | Short — 152 px | Player's primary attack. |
-| Bat / BlueBat | Medium — 216 px | Quick attacks for minor damage. |
-| Beast / Beast2 | Melee — 120 px | Defensive close-range slash with a small AOE arc. Stays in formation; enemies must approach it. |
-| Lizard / Lizard2 | Short — 152 px | Fire hit with a 5% chance to burn. Burn deals 1 damage each second for 2 seconds. |
+| Bat / BlueBat | Medium — 216 px | 1 base damage every 0.5 seconds; targets the lowest-health eligible enemy. |
+| Beast / Beast2 | Melee — 120 px | 3 base damage every second in a 90° arc aimed at the nearest enemy. Stays in formation; enemies must approach it. |
+| Lizard / Lizard2 | Short — 152 px | 2 base damage every second to the nearest enemy; 5% chance to burn. Burn deals 1 damage at 1 and 2 seconds. Reapplication refreshes duration and tick clock without stacking. |
 
 Shinies currently share their base creature's ability and range. Keep their definitions separable so they can diverge later.
 
@@ -34,9 +34,27 @@ Shinies currently share their base creature's ability and range. Keep their defi
 | Lizard hit | `/Users/reedrawlings/Downloads/SoggySocks Fire FX/PNG/impact_fire_sheet.png` |
 | Burn status | `/Users/reedrawlings/Downloads/SoggySocks FX Status Effects/PNG/statusfx_burn_sheet.png` |
 
-## Remaining implementation decisions
+## Range and scaling rules
 
-- Exact direct-hit damage, attack intervals, targeting priorities, and Beast's arc angle remain provisional. Earlier suggested numbers were not explicitly approved.
-- Specify whether range eligibility tests enemy centers or overlaps their hitboxes, and how projectile travel is capped by attack range.
-- Specify burn reapplication behavior; refreshing duration without stacking was suggested but not explicitly approved.
-- Bloom and Arcane Tier 1 abilities are not yet assigned.
+- Eligibility uses center-to-center distance, inclusive of the radius boundary. Hidden/underground enemies cannot be selected.
+- Player projectiles originate at the player's center, stop at 152 px of travel, and cannot damage enemy centers beyond that radius. Auto-target selection uses the same radius.
+- Feral Focus adds damage to each direct Feral hit. Feral speed, critical, and double/triple attack upgrades continue to apply. Burn remains a fixed 1 damage per tick.
+- Initial damage, intervals and Beast arc are provisional tuning values; they are implemented, not yet campaign-balanced.
+
+## Existing Bloom Tier 1 implementation
+
+Verified against the current code and browser behavior; these predate the Feral update and retain their existing custom ranges.
+
+| Creature | Attack | Damage | Interval | Radius |
+| --- | --- | ---: | ---: | ---: |
+| Bamboo / BambooYellow | Leaf projectile, 300 px/s | 3 | 2 s | 480 px |
+| Fish / FishRed | Water projectile, 420 px/s | 1 | 1 s | 240 px |
+| Mole / Mole2 | Targeted earth impact | 1 | 1 s | 240 px |
+
+Bloom's custom radii have not been reassigned to the shared range categories. Arcane Tier 1 individual abilities remain undefined.
+
+## Beast upgrade: Follow-Up Slash
+
+Replaces Follow-Up Bite. One rank costs 30 Feral essence and requires owning Beast. Each kill from a normal Beast slash independently has a fixed 20% chance to grant another slash. Resolve the first arc fully, then aim each earned slash at the nearest surviving enemy within 120 px. Bonus slashes retain the 90° arc and damage scaling, but cannot trigger further bonus slashes. No target means no bonus attack; boss victory ends attacks immediately.
+
+The linked Mending Slash upgrade replaces Mending Bite and heals the party by 1 HP per rank for each bonus-slash hit, capped at maximum health. It requires Beast and Follow-Up Slash. Base and shiny Beast behave identically.

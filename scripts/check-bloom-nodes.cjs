@@ -1,7 +1,8 @@
 const assert = require('node:assert/strict'), fs = require('fs'), vm = require('vm');
 const ctx = new Proxy({measureText: text => ({width:text.length*8})}, {get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
 const canvas={width:540,height:900,getContext:()=>ctx,addEventListener(){}};
-const sandbox={URLSearchParams,document:{getElementById:()=>canvas,addEventListener(){}},Image:class{},location:{search:'?test=1'},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{__vt_pending:true},console};
+const testMath = Object.create(Math);
+const sandbox={Math:testMath,URLSearchParams,document:{getElementById:()=>canvas,addEventListener(){}},Image:class{},location:{search:'?test=1'},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{__vt_pending:true},console};
 const source=fs.readFileSync('game.js','utf8').replace('  window.__scollTest = {','  window.review = {state, damageEnemy, updateCombat, bloomCreatureAttack, bloomAttacks, upgradeDefs, attemptUpgrade, hitParty};\n  window.__scollTest = {');
 vm.runInNewContext(source,sandbox);
 const {state,damageEnemy,updateCombat,bloomCreatureAttack,bloomAttacks,upgradeDefs,attemptUpgrade,hitParty}=sandbox.window.review, api=sandbox.window.__scollTest;
@@ -11,6 +12,11 @@ state.save.activeParty=['bloom-bamboo'];for(let i=0;i<5;i++){buy('bloom');buy('f
 api.startStage(1);assert.equal(state.party.maxHp,15);state.party.hp=1;
 const enemy=()=>{api.spawnEnemy('basic');const e=state.enemies.at(-1);Object.assign(e,{x:270,y:300,hp:100,maxHp:100});return e};
 let e=enemy();damageEnemy(e,1);assert.equal(state.party.hp,15);state.party.hp=1;state.save.activeParty=[];damageEnemy(e,1);assert.equal(state.party.hp,1);
+state.save.activeParty=['bloom-bamboo'];state.save.upgrades.flush=0;
+state.party.hp=1;testMath.random=()=>0.499;damageEnemy(e,1);assert.equal(state.party.hp,6);
+state.party.hp=1;testMath.random=()=>0.5;damageEnemy(e,1);assert.equal(state.party.hp,1);
+state.save.upgrades.flush=1;damageEnemy(e,1);assert.equal(state.party.hp,4);
+state.save.activeParty=[];testMath.random=Math.random;
 e=enemy();damageEnemy(e,1,'bloom-mole');assert.equal(e.stunRemaining,1);const y=e.y;state.companions=[];state.fireTimer=100;updateCombat(.1);assert.equal(e.y,y);damageEnemy(e,1,'bloom-mole');assert.equal(e.stunRemaining,.9);
 e=enemy();damageEnemy(e,100,'bloom-fish');assert.equal(state.party.shield,5);hitParty({type:'player'},1);assert.equal(state.party.shield,4);
 state.enemies=[];e=enemy();const c={x:270,y:400,creatureId:'bloom-bamboo'};bloomCreatureAttack(c,bloomAttacks[c.creatureId]);const p=state.projectiles.at(-1);assert.equal(p.pierceRemaining,5);Object.assign(p,{x:e.x,y:e.y,vx:0,vy:0});updateCombat(.01);const hp=e.hp;updateCombat(.01);assert.equal(e.hp,hp);assert.equal(p.pierceRemaining,4);

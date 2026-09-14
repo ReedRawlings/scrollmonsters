@@ -746,3 +746,27 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Removed unreachable stage-gated direct recruitment purchase logic. Current catalog creatures are acquired through tier summons; the legacy test hook still toggles already-owned party members.
 - Old Canvas renderer is already removed. Kept captureDefs compatibility data because historical test/economy scripts still reference it; those scripts need a dedicated migration to current summon mechanics.
 - Validation: Phaser browser regression suite, all-stage roster browser check, combat hitbox check, syntax and diff checks passed. Ran the adapted web-game client and inspected its title screenshot/state; no client errors.
+
+## September 14 — Feral Tier 1 abilities and player range
+
+- Implemented Bat (216px, 1 base damage/0.5s, lowest HP), defensive Beast (120px, 3 damage/1s, nearest-target 90° arc), and Lizard (152px, 2 damage/1s, nearest target). Copied the four supplied hit/slash/fire/burn sheets into assets/abilities and wired their animation frames. Base/shiny variants share abilities; Feral damage/speed/crit/multiple-attack upgrades apply.
+- Lizard rolls 5% burn per direct hit: fixed 1 damage at 1s and 2s; reapplication resets the timer without stacking. Status animation follows the enemy. Generic impacts no longer hide supplied Feral hit effects.
+- Shared ABILITY_RANGES defines 120/152/216/280/All. Player shots originate at the player's center, expire at 152px, and cannot hit enemy centers beyond that radius. Auto-target uses the same radius. Projectile range endpoints are processed before expiry.
+- Corrected stale conversation/docs: Bloom already has Bamboo leaf projectiles (3 damage/2s, 480px), Fish water projectiles (1/1s, 240px), and Mole targeted earth impacts (1/1s, 240px). Preserved these custom ranges and verified all three attacks; no new Bloom design inferred.
+- check-feral-abilities.cjs passes exact range boundaries, damage, arc inclusion/exclusion, burn probability boundary/ticks/refresh, player endpoint/expiry, shiny dispatch/cooldowns, and all Bloom direct/projectile damage checks. Browser assets loaded without errors. Syntax/diff checks passed; combat screenshot inspected. Skill harness adapted for Phaser Metal rendering and page screenshots (WebGL toDataURL returned a cleared black buffer).
+- Updated ABILITIES.md with implemented behavior and provisional tuning. Campaign balance remains untested; no deployment.
+
+## Explicit party slot replacement
+- Add now selects an owned reserve creature without changing the saved party. Highlighted party slots accept a click to replace an occupant or fill an empty slot; other members remain in place. The selected creature's button becomes Cancel. Selection clears on placement or leaving collection; existing Active removal remains available.
+- Browser checks passed full-party replacement, persistence after reload, cancellation, and empty-slot placement with no page errors. Inspected `output/party-replacement/select.png`. Browser actions wait for existing button transitions to settle.
+
+## September 14 — Beast Follow-Up Slash
+
+- Replaced the retired Fangle Follow-Up Bite with Beast-specific Follow-Up Slash: one 30-Feral-essence rank, fixed 20% per normal slash kill. Rolls resolve after the original arc; bonus slashes retarget in the same 120px/90° area and cannot chain. Removed the old Fangle kill proc.
+- Updated dependent Mending Slash wording and Beast ownership gate; its existing per-hit healing now applies to bonus slashes. Base and shiny share behavior.
+- Added browser assertions for proc success, exact 20% boundary, non-chaining, missing-upgrade guard, animation creation, and linked healing. Updated ABILITIES.md.
+
+## September 14 — Bloom trigger chance
+
+- Bloom node now has a fixed 50% chance per positive-damage enemy hit to heal its existing +1 HP/rank. Updated node text. Flush retains its separate existing healing behavior.
+- Deterministic checks pass for triggering below 0.5, not triggering at 0.5, unchanged healing amount, independent Flush healing, and existing Bloom combat regressions.

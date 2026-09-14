@@ -206,3 +206,6 @@ Both Bestiary views use a solid black full-page backdrop. Collection affinity se
 
 ## Title screen surface
 Use a black page background with `nine_path_bg.png` inset inside the orange Wood title frame, matching the updated menu surfaces. Title, instruction, and secondary text use the shared title/text/muted colors. Keep normal orange Wood action buttons.
+
+## Party slot selection
+Collection Add enters placement mode. Display “Choose a party slot”, Wood focus outlines around the three slots, a Cancel button on the selected creature, and its name in the footer prompt. Clicking a slot assigns that creature and saves; clicking Add alone never alters the party. Leaving collection clears selection.
