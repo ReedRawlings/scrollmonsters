@@ -12,6 +12,7 @@
   let selectedUpgrade = null;
   let bestiaryAffinity = "feral";
   let bestiaryTier = 1, bestiaryPage = 0;
+  let bestiaryView = "summon", summonPresentation = null;
   const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
   const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
   const FIXED_STEP = 1 / 60;
@@ -456,6 +457,12 @@
     assetPaths[`${creature.id}-shiny`] = creature.shinyWalk;
   }
   const assets = {};
+  assetPaths.summonPattern_feral = "assets/PatternMix/color/paw.png";
+  assetPaths.summonCharge_feral = "assets/fx/summon/charge-feral.png";
+  assetPaths.summonPattern_bloom = "assets/PatternMix/color/brambles.png";
+  assetPaths.summonCharge_bloom = "assets/fx/summon/charge-bloom.png";
+  assetPaths.summonPattern_arcane = "assets/PatternMix/color/iso.png";
+  assetPaths.summonCharge_arcane = "assets/fx/summon/charge-arcane.png";
   Object.entries(assetPaths).forEach(([key, file]) => {
     const image = new Image();
     image.onload = () => render();
@@ -719,6 +726,8 @@
   const monsterSheets = { basic: "monsterBasic", ranged: "monsterRanged", armored: "monsterArmored" };
   // Columns name spawn sections, not the monster's current movement heading.
   const monsterColumns = { north: 0, south: 1, east: 2, west: 3 };
+  // Portrait headings differ from enemy entry edges: north-entry enemies face south.
+  const creatureFacingColumns = { south: 0, north: 1, west: 2, east: 3 };
   const playerAttackDuration = 0.24;
   const treeDefs = [...upgradeDefs];
   const treePositions = () => {
@@ -1467,7 +1476,7 @@
     const creature = monsterCatalog.find(c => c.id === type);
     if (creature) {
       const shiny = state.save.shinyCreatures.includes(type) && state.save.fragments[type] >= 5;
-      drawGridFrame(type + (shiny ? "-shiny" : ""), x, y, monsterColumns[facing] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size, size, alpha);
+      drawGridFrame(type + (shiny ? "-shiny" : ""), x, y, creatureFacingColumns[facing] ?? 0, 4, Math.floor(state.animationTime * 8) % 4, 4, size, size, alpha);
       return;
     }
     const row = { striker: 0, healer: 1, aoe: 2 }[type];
@@ -1796,7 +1805,74 @@
     drawMenuTab(affinityDefs[affinityId].name.toUpperCase(), x, 237, 162, 42, selected, () => { bestiaryAffinity = affinityId; bestiaryPage = 0; });
   }
 
+  function drawSummonBestiary() {
+    const colors = UI_THEME.colors, now = state.animationTime;
+    const elapsed = summonPresentation ? (now - summonPresentation.start) * 1000 : 0;
+    const duration = [0, 1800, 2900, 4100][bestiaryTier];
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const progress = summonPresentation ? Math.min(1, elapsed / (reduced ? 180 : duration)) : 0;
+    const revealAt = [0, .48, .60, .66][bestiaryTier];
+    const busy = !!summonPresentation && progress < 1;
+    ctx.fillStyle = colors.field; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    drawWood("woodPanel", 15, 15, 510, 72);
+    drawText("BESTIARY", 33, 51, 30, colors.title);
+    affinityOrder.forEach((id,index) => {
+      const x=273+index*87; drawCurrencyIcon(id,x,51,30);
+      drawText(formatAmount(state.save.essence[id]),x+21,51,18,colors[id],"left",false);
+      drawBestiaryButton(affinityDefs[id].name,18+index*171,103,162,44,id===bestiaryAffinity?"selected":"normal",busy?null:()=>{bestiaryAffinity=id;summonPresentation=null;});
+    });
+    drawWood("woodPanel",18,163,504,617);
+    [1,2,3].forEach((tier,index)=>{
+      const x=34+index*160;
+      drawBestiaryButton(`Tier ${tier} · ${[0,10,100,1000][tier]}`,x,183,152,48,tier===bestiaryTier?"selected":"normal",busy?null:()=>{bestiaryTier=tier;summonPresentation=null;});
+    });
+    ctx.save();
+    ctx.fillStyle="#30221a";ctx.fillRect(34,245,472,414);
+    const pattern=assets[`summonPattern_${bestiaryAffinity}`], offset=reduced?0:Math.floor(now*4)%64;
+    if(pattern?.naturalWidth){ctx.globalAlpha=.52;for(let y=245-64+offset;y<659;y+=64)for(let x=34;x<506;x+=64){const top=Math.max(y,245),bottom=Math.min(y+64,659),right=Math.min(x+64,506);ctx.drawImage(pattern,0,(top-y)/2,(right-x)/2,(bottom-top)/2,x,top,right-x,bottom-top);}ctx.globalAlpha=1;}
+    if(summonPresentation && progress>=revealAt){
+      const arrival=reduced?1:Math.min(1,(progress-revealAt)*duration/350);
+      drawPet(summonPresentation.id,270,452-Math.round((1-arrival)*20),96,arrival);
+    } else if(!summonPresentation) drawText("A new companion awaits",270,452,18,colors.text,"center");
+    if(busy&&!reduced){
+      const img=assets[`summonCharge_${bestiaryAffinity}`];
+      const fw=img?.naturalWidth/20, fh=img?.naturalHeight;
+      if(img?.naturalWidth&&progress<revealAt){
+        const frame=Math.max(0,Math.min(19,Math.floor((1-progress/revealAt)*19)));
+        ctx.globalAlpha=Math.min(1,progress*8);
+        ctx.drawImage(img,frame*fw,0,fw,fh,Math.round(270-fw/2),Math.round(452-fh/2),fw,fh);
+        if(bestiaryTier>1){ctx.globalAlpha=.5;for(const dx of [-28,28])ctx.drawImage(img,Math.max(0,frame-3)*fw,0,fw,fh,Math.round(270-fw/2+dx),Math.round(452-fh/2),fw,fh);}
+        ctx.globalAlpha=1;
+      }
+      // Existing charge frames become orbiting motes around the reveal.
+      if(img?.naturalWidth&&progress>=revealAt){
+        const fade=(progress-revealAt)/(1-revealAt),count=4*bestiaryTier;
+        ctx.globalAlpha=1-fade;
+        for(let i=0;i<count;i++){
+          const angle=elapsed/290+i*Math.PI*2/count,radius=65+fade*55;
+          const size=32,frame=8+i%6;
+          ctx.drawImage(img,frame*fw,0,fw,fh,Math.round(270+Math.cos(angle)*radius-size/2),Math.round(452+Math.sin(angle)*radius*.65-size/2),size,size);
+        }ctx.globalAlpha=1;
+      }
+    }
+    ctx.restore();
+    const message=summonPresentation?(progress<revealAt?"Gathering essence…":summonPresentation.message):"";
+    drawText(message,270,687,18,colors.text,"center");
+    const cost=[0,10,100,1000][bestiaryTier],complete=!summonPool(bestiaryAffinity,bestiaryTier).length;
+    const affordable=state.save.essence[bestiaryAffinity]>=cost;
+    const label=busy?"SUMMONING…":complete?"POOL COMPLETE":!affordable?"NOT ENOUGH ESSENCE":`SUMMON${summonPresentation?" AGAIN":""} · ${cost} ${affinityDefs[bestiaryAffinity].short}`;
+    drawBestiaryButton(label,34,719,472,44,busy||complete||!affordable?"locked":"normal",busy||complete||!affordable?null:()=>{
+      const id=summonCreature(bestiaryAffinity,bestiaryTier);if(!id)return;
+      const creature=creatureById(id),fragments=state.save.fragments[id]||0;
+      summonPresentation={id,start:state.animationTime,message:fragments===5?`${creature.name} Shiny Unlocked!`:fragments?`${creature.name} Fragment ${fragments}/5`:`${creature.name} Unlocked!`};
+      state.toastTimer=0;
+    });
+    drawBestiaryButton("COLLECTION",18,805,244,44,"normal",busy?null:()=>{bestiaryView="collection";});
+    drawBestiaryButton("BACK TO MAP",278,805,244,44,"normal",busy?null:()=>setMode("map"));
+  }
+
   function drawBestiary() {
+    if (bestiaryView === "summon") return drawSummonBestiary();
     drawBestiaryBackground();
     drawWood("woodPanel", 15, 15, 510, 72);
     drawText("BESTIARY", 33, 51, 30, UI_THEME.colors.title);
@@ -1836,7 +1912,7 @@
     drawText(`${bestiaryPage+1}/${pages}`,108,701,15);
     drawBestiaryButton(">",144,684,60,34,"normal",()=>{bestiaryPage=(bestiaryPage+1)%pages;});
     const pool=summonPool(bestiaryAffinity,bestiaryTier), cost=[0,10,100,1000][bestiaryTier];
-    drawBestiaryButton(pool.length?`SUMMON ${cost}`:"COMPLETE",222,684,300,42,pool.length && state.save.essence[bestiaryAffinity]>=cost?"normal":"locked",()=>summonCreature(bestiaryAffinity,bestiaryTier));
+    drawBestiaryButton(pool.length?`SUMMON ${cost}`:"COMPLETE",222,684,300,42,pool.length && state.save.essence[bestiaryAffinity]>=cost?"normal":"locked",()=>{bestiaryView="summon";summonPresentation=null;});
 
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 758, 15, UI_THEME.colors.title, "center");
     drawText("Choose up to three creatures for your active party", WIDTH / 2, 792, 15, UI_THEME.colors.muted, "center");
@@ -2276,6 +2352,9 @@
   class ScrollMonstersScene extends Phaser.Scene {
     constructor() { super('ScrollMonsters'); }
     create() {
+      // Pixel positions are rounded by the game; Phaser canvas rounding expands
+      // source frames by half a pixel, which distorts stretched nine-slice art.
+      this.cameras.main.setRoundPixels(false);
       createGame(this);
       window.__phaserReady = true;
     }

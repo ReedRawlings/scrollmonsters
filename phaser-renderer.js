@@ -21,8 +21,8 @@
   const applyClips = (context, clips) => {
     for (const path of clips) { trace(context, path); context.clip(); }
   };
-  class CanvasArtwork extends Phaser.GameObjects.GameObject {
-    constructor(scene) { super(scene, 'CanvasArtwork'); }
+  class CanvasArtwork extends Phaser.GameObjects.Zone {
+    constructor(scene) { super(scene, 0, 0, 540, 900); this.type = 'CanvasArtwork'; }
     renderCanvas(renderer, source, camera) {
       const context = renderer.currentContext;
       context.save();
@@ -54,7 +54,6 @@
       }
       object.setActive(true);
       object.visible = true;
-      // GameObject has no Depth mixin; the native Image does.
       object.depth = cursor++;
       return object;
     };
@@ -99,7 +98,11 @@
         if (clips.length) {
           const savedClips = clips.slice();
           object.mask = {
-            preRenderCanvas(renderer) { renderer.currentContext.save(); applyClips(renderer.currentContext, savedClips); },
+            preRenderCanvas(renderer) {
+              const context = renderer.currentContext, transform = matrix(context);
+              context.save(); applyClips(context, savedClips);
+              context.setTransform(...transform);
+            },
             postRenderCanvas(renderer) { renderer.currentContext.restore(); }
           };
         } else object.mask = null;

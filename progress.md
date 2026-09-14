@@ -652,3 +652,20 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - User approved the spacing prototype. Applied 32px rendering to player, companions, and regular monsters in the live game. Reduced corresponding contact/projectile hitboxes and adjusted player shot origin; health bars follow the smaller enemy radii. Bosses, terrain, camera, HUD, menu portraits and spawn rates retain their prior settings.
 - Passed stage roster regression checks and new combat-scale collision checks (old-radius miss, new-radius contact, projectile hit/miss, boss radius). Browser draw-call assertions verified actual 32×32 player/companion/monster rendering without page errors; inspected `output/combat-scale/live.png`. Ran Mac-compatible skill harness, syntax and whitespace checks.
+
+## Approved summon layout restored
+- Bestiary defaults to the approved dedicated summon screen: type and tier choices, large downward-drifting Paw/Brambles/Iso background, VfxMix type-colored charge, stable creature reveal and single-line results. No visible pool, party slots, roster cards or explanatory footer on summon screen. Collection remains accessible for party management.
+- Uses real summon transaction and balances; prevents repeat purchase during animation. Browser purchase and asset loading verified. Phaser image clipping suppressed patterns; replaced pattern mask with explicit edge crops and visually confirmed. Local only.
+
+
+## September 14 — Phaser 4 migration
+
+- Installed and pinned Phaser 4.2.1; vendored its browser bundle and MIT license so local/static hosting needs no CDN. Both browser entry points load Phaser and the renderer adapter.
+- Phaser now owns the visible Canvas renderer and frame loop through ScrollMonstersScene. All image/spritesheet draws use pooled native Phaser Images and texture frames. The approved text, paths, gradients, and nested clips use custom Canvas Game Objects. Canvas rendering is intentional; this is not a WebGL conversion.
+- Retained gameplay, combat timing, collision formulas, save schema/key, audio behavior, touch gestures, CSS portrait sizing, and deterministic hooks. Kept the Node simulation path for existing regression scripts.
+- Fixed Phaser Canvas half-pixel source expansion on stretched wood panels, clip transform restoration, and custom object visibility/depth sorting. Compared against the original renderer and inspected title, map, upgrade tree/pan, summoning, combat, mobile, and result screenshots.
+- Added scripts/check-phaser.cjs and npm run test:phaser. Verified upgrades, drag/zoom, summon/party changes, auto-target/mouse/touch input, victory/defeat/retry, all ten stage clears, save reload, upgrade prototype, and real-time Phaser updates, with no browser console errors. Ran the required web-game client successfully.
+- Current stage-roster and combat-scale Node checks pass. Ten older VM scripts fail with URLSearchParams undefined; reproduced identical failures against the pre-migration game (a4ed06e), so these are pre-existing harness issues.
+- Preserved concurrent summoning-screen changes arriving in game.js and verified their latest UI under Phaser.
+
+- Fixed summoned/owned creature facing: portraits and party sprites now use south-facing column 0. Kept enemy entry-edge mapping separate so spawn directions remain correct.

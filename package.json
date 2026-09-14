@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build-music.cjs",
-    "dev": "python3 scripts/serve.py"
+    "dev": "python3 scripts/serve.py",
+    "test:phaser": "node scripts/check-phaser.cjs"
   },
   "dependencies": {
     "phaser": "4.2.1"

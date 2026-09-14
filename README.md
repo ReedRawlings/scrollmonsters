@@ -1,6 +1,6 @@
 # ScollMonsters prototype
 
-A portrait browser rail shooter with a southbound route, monster companions, and permanent upgrades.
+A portrait browser rail shooter built on Phaser 4.2.1, with a southbound route, monster companions, and permanent upgrades.
 
 See [ABILITIES.md](ABILITIES.md) for shared attack radii, creature ability assignments, and pending ability decisions.
 
@@ -40,3 +40,23 @@ Run `node scripts/calculate-dps.cjs` to simulate spending all affordable gold us
 Generated reports, screenshots and temporary browser harnesses live in `output/`, which is ignored by Git. Reusable scripts in `scripts/` remain tracked. Detailed unlock summaries are in `output/unlock-timing-hybrid.json`.
 
 Current calculator what-if: Party Bond is a 50G node unlocked by Buttermant capture, granting +5 damage to attacking members only. It is implemented in the live game for player and Fangle damage. Run `BUTTERMANT_PARTY_BONUS=0 node scripts/calculate-dps.cjs` for the no-node baseline. Scenario report filenames end in `-buttermant5-cost50.json`.
+
+## Phaser runtime
+
+The main game and upgrade prototype load the pinned Phaser 4.2.1 browser bundle
+from `vendor/`, so the existing Python server and static deployment still work
+without a CDN or a bundler. `package.json` and `package-lock.json` pin the matching
+npm package; the vendored distribution includes Phaser's MIT license.
+
+`ScrollMonstersScene` in `game.js` owns the frame lifecycle. `phaser-renderer.js`
+turns image and spritesheet draws into pooled native Phaser Images and texture
+frames. Custom Canvas Game Objects preserve text, wood UI, gradients, and nested
+clipping. This deliberately uses **Phaser's Canvas renderer**, not WebGL. Gameplay,
+collision rules, music, pointer gestures, the 540×900 coordinate system, and save
+storage remain compatible. The existing CSS controls the portrait fit.
+
+Run `GAME_URL=http://localhost:5173 npm run test:phaser` with the server running
+and Playwright installed. It checks screen navigation, upgrades, summoning, party
+changes, mouse/touch aiming, all ten stages, victory/defeat, save reload, the
+upgrade prototype, and the real Phaser loop. Screenshots are in `output/phaser/`.
+The Node-only simulation entry remains available for the existing VM checks.
