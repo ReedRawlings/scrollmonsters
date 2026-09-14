@@ -688,3 +688,37 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Browser checks passed attacks, damage, ranges and cooldowns with no page errors; screenshot inspected and game harness run. Local only.
 
 - Bamboo base attack damage increased from 1 to 3; medium range and 2-second cooldown unchanged.
+
+## September 14 — remove obsolete drawing helpers
+
+- Removed unused treeRequirements, speciesDensity, and captureFacing helpers. Replaced the old upgrade-card coordinate generator with direct branch-definition selection; the active icon tree supplies its own positions. Removed the redundant definition-array copy and retired capture-card sorting.
+- Kept active Canvas artwork, Phaser adapter, upgrade prototype, and Node simulation entry after checking their references. These remain functional dependencies, not abandoned HTML implementation code.
+- Updated the Phaser browser check's outdated Tier 1 summon expectation from 10 to the current 20 essence. Full Phaser browser checks, roster and combat-scale checks, syntax and diff checks passed. Ran the required web-game client and inspected title and panned upgrade screenshots.
+
+- Bloom range adjustment: Bamboo now long range (480px); Fish and Mole now medium range (240px). Damage and cooldowns unchanged.
+
+## September 14 — Bloom type nodes
+
+- Bloom tab now shows Health → Bloom → Flush and solo Razor Leaf, Water Burst, Rock Burst; all five ranks. Health starts at 10 gold, Bloom 20 gold, Flush 50 gold, and the solo nodes 20 Bloom essence, using existing 35% rank-cost scaling.
+- Health grants +5 max HP/rank. Bloom/Flush heal +1/+3 HP per rank on enemy hits with an active Bloom party member; nodes show “Bloom Required.” Bamboo pierces +1 additional enemy/rank, Fish kills grant +1 stackable hit-blocking shield/rank, Mole hits on full-health enemies stun for +0.2s/rank. User confirmed shield/stun scaling and essence costs.
+- Legacy healer definitions/save ranks retained internally; Bloom tab displays the six requested nodes. Interpreted connected nodes as Health → Bloom → Flush with one parent rank needed; solo nodes have no prerequisite.
+- Added check-bloom-nodes.cjs and check-bloom-browser.cjs. Both passed combat effects, party gating, purchase limits, all six browser purchases, persistence, and no page errors. Inspected tree, purchased tree and combat screenshots under output/bloom-nodes. Browser requires software WebGL flags in this environment.
+- Existing check-game.cjs cannot initialize because its sandbox omits URLSearchParams; left unrelated test unchanged.
+
+
+## September 14 — full native Phaser UI and WebGL port
+
+- Removed phaser-renderer.js and all Canvas context calls from the game. Phaser WebGL now renders native Image, Text, Graphics, NineSlice, Container, and Zone objects. The Node-only simulation path simply skips presentation; it has no old renderer.
+- Added phaser-ui.js with retained WoodPanel/WoodButton components, grouped cards, native masks, stable hit areas, disabled/hover/pressed states, release/drag cancellation, and clean screen/tween lifecycles.
+- Replaced manual uiTargets and DOM pointer/keyboard handlers with Phaser input. Moved images/font/audio to the Loader and Sound Manager, and portrait/fullscreen scaling to Scale Manager FIT. Preserved existing gameplay, save keys, and balance, including the current Bloom changes.
+- Added native press/release tweens, summon reveal bounce/fade, result-card entry, reduced-motion handling, and a native reset-confirmation modal that blocks underlying controls.
+- Updated native font spacing and removed duplicate CSS font loading. Retained source labels as Phaser object data; collection tests now inspect native labels instead of intercepting Canvas fillText.
+- Validation: current roster, combat-scale, and Bloom logic checks pass; full Phaser gameplay checks, native component/tween/modal/reduced-motion/fullscreen checks, and collection navigation/transaction checks pass. Inspected title, combat, upgrade/panned tree, explored-map masks, collection, summon reveal, result, and reset-modal captures.
+- The required web-game client was run. Its default Mac headless backend could not render WebGL reliably, so used a local copy with Metal and browser screenshots (WebGL's cleared drawing buffer otherwise produces black toDataURL captures). No custom rendering fallback was added to the game.
+
+## September 14 — player attack interval and Quick Hands
+
+- Player base firing interval is now 1 second. Quick Hands has five ranks, reducing the interval by 2% per rank to 0.90 seconds at rank 5. Starts at 10 gold with existing rank scaling (10, 14, 18, 25, 33).
+- Updated both offense projection formulas to match live combat. Syntax, all six rank interval/cost checks, and Bloom combat regression checks passed.
+
+- Map 1 Bat attack reduced to 1 and boss attack to 3. Shared stat calculations keep map previews and combat aligned; later maps retain prior attack values.

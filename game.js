@@ -1,22 +1,7 @@
 (() => {
   "use strict";
 
-  function createGame(scene = null) {
-  const canvas = scene ? scene.game.canvas : document.getElementById("game");
-  const ctx = scene ? window.createPhaserRenderer(scene) : canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const WIDTH = canvas.width;
-  const HEIGHT = canvas.height;
-  let uiTargets = [];
-  let upgradeBranch = 0;
-  let selectedUpgrade = null;
-  let bestiaryAffinity = "feral";
-  let bestiaryTier = 1, bestiaryPage = 0;
-  let bestiaryView = "summon", summonPresentation = null;
-  const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
-  const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
-  const FIXED_STEP = 1 / 60;
-  const COMBAT_SPRITE_SIZE = 32; // 16px frames at crisp 2x scale.
+  const WIDTH = 540, HEIGHT = 900;
   // Shared menu styling. Keep these values aligned with UI_STYLE_GUIDE.md.
   const UI_THEME = Object.freeze({
     colors: Object.freeze({
@@ -99,6 +84,7 @@
     { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
   ];
   const nodeIconPaths = {
+    bloomHealth: "Spell/Heal", bloom: "Spell/BookPlant", flush: "Spell/Heal", razorLeaf: "Spell/BookPlant", waterBurst: "Items & Weapon/Armor", rockBurst: "Spell/BookRock",
     power: "Spell/BookRock", speed: "Items & Weapon/Boot", multishot: "Spell/BookFire",
     power3: "Spell/BookRock", boulderBuster: "Job & Action/Mine", health: "Spell/Heal", rockBreaker: "Job & Action/Mine", tripleSpark: "Spell/BookThunder",
     magnet: "Job & Action/Harvest", autoTarget: "Spell/BookLight", travelSpeed: "Items & Weapon/Boot",
@@ -459,62 +445,52 @@
     assetPaths[creature.id] = creature.walk;
     assetPaths[`${creature.id}-shiny`] = creature.shinyWalk;
   }
-  const assets = {};
   assetPaths.summonPattern_feral = "assets/PatternMix/color/paw.png";
   assetPaths.summonCharge_feral = "assets/fx/summon/charge-feral.png";
   assetPaths.summonPattern_bloom = "assets/PatternMix/color/brambles.png";
   assetPaths.summonCharge_bloom = "assets/fx/summon/charge-bloom.png";
   assetPaths.summonPattern_arcane = "assets/PatternMix/color/iso.png";
   assetPaths.summonCharge_arcane = "assets/fx/summon/charge-arcane.png";
-  Object.entries(assetPaths).forEach(([key, file]) => {
-    const image = new Image();
-    image.onload = () => render();
-    image.src = file.includes("/") ? file : `assets/placeholder/${file}`;
-    assets[key] = image;
-  });
+
+  function createGame(scene = null) {
+  const view = scene ? new window.ScrollUI.NativeView(scene) : null;
+  let upgradeBranch = 0, resetConfirmation = false;
+  let selectedUpgrade = null;
+  let bestiaryAffinity = "feral";
+  let bestiaryTier = 1, bestiaryPage = 0;
+  let bestiaryView = "summon", summonPresentation = null;
+  const SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-v1" : "scollmonsters-save-v2";
+  const LEGACY_SAVE_KEY = window.UPGRADE_TREE_PROTOTYPE ? "scollmonsters-upgrade-prototype-legacy" : "scollmonsters-save-v1";
+  const FIXED_STEP = 1 / 60;
+  const COMBAT_SPRITE_SIZE = 32; // 16px frames at crisp 2x scale.
+  const assets = {};
+  if (scene) for (const key of Object.keys(assetPaths)) {
+    if (!scene.textures.exists(key)) continue;
+    const source = scene.textures.get(key).getSourceImage();
+    assets[key] = { key, complete: true, naturalWidth: source.width, naturalHeight: source.height };
+  }
 
   const roundTracks = window.GAME_MUSIC?.combat || [];
   const menuTracks = window.GAME_MUSIC?.menu || [];
   const menuTrack = menuTracks[0] || null;
-  const music = typeof Audio === "undefined" ? null : new Audio();
-  const soundEffects = typeof Audio === "undefined" ? {} : {
-    select: new Audio("assets/Ninja Adventure - Asset Pack/Audio/Sounds/Menu/Accept4.wav"),
-    success: new Audio("assets/Ninja Adventure - Asset Pack/Audio/Jingles/Success1.wav")
-  };
-  let audioUnlocked = false;
-  let currentTrack = null;
-  if (music) { music.loop = true; music.volume = 0.3; music.preload = "auto"; }
-  Object.values(soundEffects).forEach(sound => { sound.volume = 0.55; sound.preload = "auto"; });
-  function playAudio(sound) {
-    if (sound && audioUnlocked && !document.hidden) sound.play()?.catch(() => {});
-  }
+  let music = null, audioUnlocked = false, currentTrack = null;
   function setMusic(track) {
-    if (!music) return;
-    if (!track) { music.pause(); music.removeAttribute("src"); currentTrack = null; return; }
+    if (!scene) return;
     if (track !== currentTrack) {
-      music.pause();
-      currentTrack = track;
-      music.src = `assets/music/${track.split("/").map(encodeURIComponent).join("/")}`;
+      music?.destroy(); music = null; currentTrack = track;
+      if (track && scene.cache.audio.exists(`music:${track}`)) music = scene.sound.add(`music:${track}`, {loop:true,volume:0.3});
     }
-    playAudio(music);
+    if (audioUnlocked && music && !music.isPlaying) music.play();
   }
   function unlockAudio() {
     audioUnlocked = true;
-    if (!currentTrack) setMusic(menuTrack);
-    else playAudio(music);
+    if (scene?.sound.locked) scene.sound.unlock();
+    setMusic(currentTrack || menuTrack);
   }
   function playSound(name) {
-    const sound = soundEffects[name];
-    if (!sound) return;
-    sound.currentTime = 0;
-    playAudio(sound);
+    if (audioUnlocked && scene?.cache.audio.exists(`sfx:${name}`)) scene.sound.play(`sfx:${name}`, {volume:0.55});
   }
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      music?.pause();
-      Object.values(soundEffects).forEach(sound => sound.pause());
-    } else playAudio(music);
-  });
+  scene?.events.once('shutdown', () => music?.destroy());
 
   const stageNames = ["Mossy Mile", "Pebble Pass", "Bramble Bend", "Amber Road", "Old Mill", "Fern Crossing", "Dusty Rise", "Rune Trail", "Moonlit Gate", "Crownroot Keep"];
   const stageConfigs = Array.from({ length: 10 }, (_, index) => {
@@ -536,7 +512,7 @@
   });
 
   const stageRosters = {
-    1: [{ id: "feral-bat", chance: 0.8, type: "basic", baseHp: 2, baseDamage: 2 },
+    1: [{ id: "feral-bat", chance: 0.8, type: "basic", baseHp: 2, baseDamage: 1 },
         { id: "bloom-bamboo", chance: 0.2, type: "basic", baseHp: 1, baseDamage: 1 }],
     2: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
         { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
@@ -545,11 +521,12 @@
         { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
         { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }]
   };
+  const stageBossDamage = stage => stage.number === 1 ? 3 : Math.max(1, Math.round(5 * stage.damageScale));
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
       hp: precise((openingBat ? 2 : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
-      damage: openingBat ? 2 : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
+      damage: openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
     };
   }
   function pickStageMonster(stageNumber, roll, forcedType = null) {
@@ -586,7 +563,7 @@
 
   const upgradeDefs = [
     { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
-    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `Fire interval -${10 * (rank + 1)}%`, requires: ["power"] },
+    { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: rank => `Fire interval -${2 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: ["power"] },
     { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: ["power"] },
@@ -620,6 +597,16 @@
       { id: `${owner}CritDamage`, name: owner === "healer" ? "Crit Healing" : "Crit Damage", branch, recruit, max: 5, costs: abilityRankCosts(30, 5), requires: [`${owner}CritChance`], effect: level => `${110 + level * 10}% critical ${owner === "healer" ? "healing" : "damage"}` }
     );
   }
+
+  upgradeDefs.push(
+    { id: "bloomHealth", name: "Health", branch: "HEALER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `+5 Health per rank (+${5 * (r + 1)} total)`, requires: [] },
+    { id: "bloom", name: "Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), effect: r => `+${r + 1} Health when hitting an enemy`, requires: ["bloomHealth"], partyAffinity: "bloom" },
+    { id: "flush", name: "Flush", branch: "HEALER", max: 5, costs: abilityRankCosts(50, 5), effect: r => `+${3 * (r + 1)} Health when hitting an enemy`, requires: ["bloom"], partyAffinity: "bloom" },
+    { id: "razorLeaf", name: "Razor Leaf", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Bamboo attacks pierce ${r + 1} extra enem${r ? "ies" : "y"}`, requires: [] },
+    { id: "waterBurst", name: "Water Burst", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Fish kills grant ${r + 1} shield${r ? "s" : ""}`, requires: [] },
+    { id: "rockBurst", name: "Rock Burst", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Mole hits stun full-health enemies for ${((r + 1) * 0.2).toFixed(1)}s`, requires: [] }
+  );
+  const hasPartyAffinity = affinity => state.save.activeParty.some(id => creatureById(id)?.affinityId === affinity);
 
   const typeUpgradeIds = new Set(["strikerPower", "strikerSpeed", "strikerDouble", "strikerCritChance", "strikerCritDamage", "healerCritChance", "healerCritDamage", "aoeCritChance", "aoeCritDamage"]);
   const upgradeBranchAffinity = Object.freeze({ STRIKER: "feral", HEALER: "bloom", AOE: "arcane" });
@@ -662,7 +649,7 @@
   function playerDpsFor(upgrades, flatBonus = upgrades.partyBond ? 5 : 0) {
     const damage = 1 + (upgrades.power || 0) + flatBonus;
     const projectiles = expectedProjectiles(upgrades);
-    const interval = 0.425 * (1 - (upgrades.speed || 0) * 0.1);
+    const interval = 1 - (upgrades.speed || 0) * 0.02;
     return damage * projectiles / interval * (1 + Math.min(10, upgrades.playerCritChance || 0) / 100 * (Math.min(5, upgrades.playerCritDamage || 0) * 0.1));
   }
 
@@ -683,7 +670,7 @@
       upgrades,
       damage: 1 + (upgrades.power || 0),
       projectiles: expectedProjectiles(upgrades),
-      fireInterval: 0.425 * (1 - (upgrades.speed || 0) * 0.1),
+      fireInterval: 1 - (upgrades.speed || 0) * 0.02,
       dps: playerDpsFor(upgrades)
     };
   }
@@ -716,7 +703,7 @@
     const effectivePlayerDps = offense.damage / offense.fireInterval * (1 + (offense.projectiles - 1) * 0.65) * 0.75;
     const fangletDps = stageNumber >= 4 ? 2 / 1.05 : 0;
     const partyDps = effectivePlayerDps + fangletDps;
-    return { stage: stageNumber, basicDamage: Math.max(1, Math.round(stageConfigs[stageNumber - 1].damageScale)), armoredDamage: Math.max(1, Math.round(2 * stageConfigs[stageNumber - 1].damageScale)), bossDamage: Math.max(1, Math.round(5 * stageConfigs[stageNumber - 1].damageScale)), hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
+    return { stage: stageNumber, basicDamage: Math.max(1, Math.round(stageConfigs[stageNumber - 1].damageScale)), armoredDamage: Math.max(1, Math.round(2 * stageConfigs[stageNumber - 1].damageScale)), bossDamage: stageBossDamage(stageConfigs[stageNumber - 1]), hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
       basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
       bossHp: precise(Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) * stageConfigs[stageNumber - 1].bossHpMultiplier) };
   }
@@ -734,16 +721,12 @@
   // Portrait headings differ from enemy entry edges: north-entry enemies face south.
   const creatureFacingColumns = { south: 0, north: 1, west: 2, east: 3 };
   const playerAttackDuration = 0.24;
-  const treeDefs = [...upgradeDefs];
-  const treePositions = () => {
+  const upgradeBranchDefinitions = () => {
     const branch = ["PLAYER", "STRIKER", "HEALER", "AOE"][upgradeBranch];
-    let definitions = treeDefs.filter(definition => definition.branch === branch);
-    if (branch === "PLAYER") definitions = ["power", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
-    else definitions.sort((a, b) => Number(!!b.capture) - Number(!!a.capture));
-    const rows = definitions.length > 8 ? Math.ceil(definitions.length / 2) : definitions.length > 6 ? 4 : 3;
-    return definitions.map((definition, index) => ({ definition, x: 24 + Math.floor(index / rows) * 256, y: (rows > 4 ? 218 : 230) + index % rows * (rows > 4 ? 112 : rows === 4 ? 120 : 136), height: 108 }));
+    if (branch === "PLAYER") return ["power", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "HEALER") return ["bloomHealth", "bloom", "flush", "razorLeaf", "waterBurst", "rockBurst"].map(id => upgradeDefs.find(def => def.id === id));
+    return upgradeDefs.filter(definition => definition.branch === branch);
   };
-  const treeRequirements = definition => definition.requires;
 
   const emptyAffinityMap = () => Object.fromEntries(affinityOrder.map(id => [id, 0]));
   const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
@@ -794,17 +777,18 @@
   const partyDamageBonus = () => isActiveCreature("healer") && rank("partyBond") > 0 ? 5 : 0;
   const playerDamage = () => 1 + rank("power") + 3 * rank("power3") + partyDamageBonus();
   const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
-  const playerFireInterval = () => 0.425 * (1 - rank("speed") * 0.1);
+  const playerFireInterval = () => 1 - rank("speed") * 0.02;
   const rollAttackCount = (secondId, thirdId) => {
     if (!rank(secondId) || Math.random() >= shotChance(rank(secondId))) return 1;
     return 2 + (rank(thirdId) > 0 && Math.random() < shotChance(rank(thirdId)) ? 1 : 0);
   };
   const playerProjectiles = () => rollAttackCount("multishot", "tripleSpark");
-  const maxPartyHealth = () => 10 + rank("health") * 5;
+  const maxPartyHealth = () => 10 + (rank("health") + rank("bloomHealth")) * 5;
   const autoTargetUnlocked = () => rank("autoTarget") > 0;
 
   function setMode(mode) {
     state.mode = mode;
+    resetConfirmation = false;
     setMusic(mode === "combat" ? (roundTracks.length ? roundTracks[Math.floor(Math.random() * roundTracks.length)] : null) : menuTrack);
     state.toast = "";
     render();
@@ -818,7 +802,7 @@
   const nearestPartyBody = (x, y) => partyBodies().reduce((best, body) => Math.hypot(body.x - x, body.y - y) < Math.hypot(best.x - x, best.y - y) ? body : best);
   function hitParty(body, damage) {
     if (state.party.shield && damage > 0) {
-      state.party.shield = false;
+      state.party.shield = Math.max(0, Number(state.party.shield) - 1);
       state.effects.push({ type: "heal", x: body.x, y: body.y, life: 0.3, maxLife: 0.3, radius: 40 });
       return;
     }
@@ -927,7 +911,7 @@
     state.enemies.push({
       monsterId,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
-      hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
+      hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: type === "boss" ? stageBossDamage(state.stage) : stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
@@ -941,7 +925,6 @@
     }
     return null;
   }
-  const speciesDensity = (speciesId, stage) => speciesDefs[speciesId].density[stage - 1];
   const currencyName = currency => currency === "gold" ? "gold" : `${affinityDefs[currency].name} essence`;
   const currencyAmount = currency => currency === "gold" ? state.save.gold : state.save.essence[currency];
   const spendCurrency = (currency, amount) => {
@@ -1060,6 +1043,10 @@
 
   function damageEnemy(enemy, amount, source = "player") {
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
+    if (amount > 0) {
+      if (source === "bloom-mole" && enemy.hp === enemy.maxHp) enemy.stunRemaining = rank("rockBurst") * 0.2;
+      if (hasPartyAffinity("bloom")) state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("bloom") + 3 * rank("flush")));
+    }
     enemy.hp = precise(enemy.hp - amount);
     if (enemy.demonCyclop && amount > 0) enemy.hitStartedAt = state.animationTime;
     if (source === "strikerFollowup" && rank("strikerFollowupHeal")) {
@@ -1068,6 +1055,7 @@
     const playerImpact = source === "player" || source === "boulderBuster";
     if (source !== "striker" && source !== "strikerFollowup") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
+      if (source === "bloom-fish") state.party.shield = Number(state.party.shield || 0) + rank("waterBurst");
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
       if (enemy.type === "boss") { finishStage(true); return; }
@@ -1079,9 +1067,9 @@
   }
 
   const bloomAttacks = Object.freeze({
-    "bloom-bamboo": { damage: 3, range: 240, cooldown: 2, speed: 300, sheet: "bambooProjectile", frames: 4 },
-    "bloom-fish": { damage: 1, range: 480, cooldown: 1, speed: 420, sheet: "fishProjectile", frames: 8 },
-    "bloom-mole": { damage: 1, range: 480, cooldown: 1, sheet: "moleImpact", frames: 9, targeted: true }
+    "bloom-bamboo": { damage: 3, range: 480, cooldown: 2, speed: 300, sheet: "bambooProjectile", frames: 4 },
+    "bloom-fish": { damage: 1, range: 240, cooldown: 1, speed: 420, sheet: "fishProjectile", frames: 8 },
+    "bloom-mole": { damage: 1, range: 240, cooldown: 1, sheet: "moleImpact", frames: 9, targeted: true }
   });
   function bloomCreatureAttack(companion, ability) {
     const target = state.enemies.filter(enemy => enemyVisible(enemy) && Math.hypot(enemy.x-companion.x, enemy.y-companion.y) <= ability.range)
@@ -1092,7 +1080,7 @@
       damageEnemy(target, ability.damage, companion.creatureId);
     } else {
       shoot(companion.x,companion.y,target.x,target.y,true,ability.damage,ability.speed,companion.creatureId);
-      Object.assign(state.projectiles[state.projectiles.length-1],{maxDistance:ability.range,distance:0});
+      Object.assign(state.projectiles[state.projectiles.length-1],{maxDistance:ability.range,distance:0,pierceRemaining:companion.creatureId === "bloom-bamboo" ? rank("razorLeaf") : 0,hitEnemies:new Set()});
     }
     companion.pulse=.25;
     return true;
@@ -1270,21 +1258,21 @@
   }
 
   function drawParticles(ground) {
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 112, WIDTH, HEIGHT - 208); ctx.clip();
+    view.beginGroup(`particles-${ground}`, {clip:{x:0,y:112,width:WIDTH,height:HEIGHT-208}});
     for (const p of state.particles) {
       if ((p.kind === "splash") !== ground) continue;
       const specs = { rain: ["particleRain", 8, 8], splash: ["particleSplash", 8, 8],
         leaf: ["particleLeaf", 12, 7], rock: ["particleRock", 16, 16], vase: ["particleVase", 14, 14], wood: ["particleWood", 16, 16] };
       const [key, w, h] = specs[p.kind], image = assets[key];
-      if (!image?.complete || !image.naturalWidth) continue;
+      if (!image) continue;
       const frame = p.kind === "splash" ? Math.min(2, Math.floor(p.age * 10))
         : p.kind === "leaf" ? Math.floor(p.age * 7 + p.phase) % 6 : p.frame;
       const ambient = p.kind === "rain" || p.kind === "leaf";
-      ctx.globalAlpha = (p.kind === "rain" ? 0.45 : p.kind === "splash" ? 0.4 : 0.9)
+      const alpha = (p.kind === "rain" ? 0.45 : p.kind === "splash" ? 0.4 : 0.9)
         * Math.min(1, p.life / 0.25, ambient ? p.age / 0.2 : 1);
-      ctx.drawImage(image, frame * w, 0, w, h, Math.round(p.x - w), Math.round(p.y - h), w * 2, h * 2);
+      view.image(image,Math.round(p.x-w),Math.round(p.y-h),w*2,h*2,{frame:[frame*w,0,w,h],alpha});
     }
-    ctx.restore();
+    view.endGroup();
   }
 
   function updateCombat(dt) {
@@ -1339,6 +1327,7 @@
     if (state.mode !== "combat") return;
 
     for (const enemy of [...state.enemies]) {
+      if (enemy.stunRemaining > 0) { enemy.stunRemaining = Math.max(0, enemy.stunRemaining - dt); continue; }
       // Enemies steer toward the fixed party independently of decorative terrain scroll.
       const targetBody = nearestPartyBody(enemy.x, enemy.y);
       const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
@@ -1409,11 +1398,13 @@
         }
       }
       if (projectile.friendly) {
-        const enemy = state.enemies.find(candidate => enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
+        const enemy = state.enemies.find(candidate => !projectile.hitEnemies?.has(candidate) && enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
         if (enemy) {
           damageEnemy(enemy, projectile.damage, projectile.source);
           if (state.mode !== "combat") return;
-          hit = true;
+          projectile.hitEnemies?.add(enemy);
+          if (projectile.pierceRemaining > 0) projectile.pierceRemaining--;
+          else hit = true;
         }
       } else {
         const body = projectilePartyHit(projectile, oldX, oldY);
@@ -1440,35 +1431,20 @@
   }
 
   function drawSprite(name, x, y, size = 40, alpha = 1) {
-    const image = assets[name];
-    if (!image?.complete) return;
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(image, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
-    ctx.globalAlpha = 1;
+    return view.image(assets[name],Math.round(x),Math.round(y),size,size,{center:true,alpha});
   }
 
   function drawSheetFrame(name, x, y, frame, frameCount, size = 100, rotation = 0, alpha = 1) {
-    const image = assets[name];
-    if (!image?.complete || !image.naturalWidth) return false;
-    const frameWidth = image.naturalWidth / frameCount;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(Math.round(x), Math.round(y));
-    ctx.rotate(rotation);
-    ctx.drawImage(image, frame * frameWidth, 0, frameWidth, image.naturalHeight, -size / 2, -size / 2, size, size);
-    ctx.restore();
+    const image=assets[name]; if(!image) return false;
+    const frameWidth=image.naturalWidth/frameCount;
+    view.image(image,Math.round(x),Math.round(y),size,size,{center:true,alpha,rotation,frame:[frame*frameWidth,0,frameWidth,image.naturalHeight]});
     return true;
   }
 
   function drawGridFrame(name, x, y, frame, columns, row, rows, width, height = width, alpha = 1) {
-    const image = assets[name];
-    if (!image?.complete || !image.naturalWidth) return false;
-    const frameWidth = image.naturalWidth / columns;
-    const frameHeight = image.naturalHeight / rows;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(image, frame * frameWidth, row * frameHeight, frameWidth, frameHeight, Math.round(x - width / 2), Math.round(y - height / 2), width, height);
-    ctx.restore();
+    const image=assets[name]; if(!image)return false;
+    const fw=image.naturalWidth/columns,fh=image.naturalHeight/rows;
+    view.image(image,Math.round(x),Math.round(y),width,height,{center:true,alpha,frame:[frame*fw,row*fh,fw,fh]});
     return true;
   }
 
@@ -1517,58 +1493,23 @@
     if (row === undefined || !image?.naturalWidth) return;
     const direction = facing === "north" ? 1 : facing === "east" || facing === "west" ? 2 : 0;
     const column = (Math.floor(state.animationTime * 8) % 4) * 3 + direction;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(Math.round(x), Math.round(y));
-    if (facing === "west") ctx.scale(-1, 1);
-    ctx.drawImage(image, column * 16, row * 32, 16, 16, -size / 2, -size / 2, size, size);
-    ctx.restore();
+    view.image(image,Math.round(x),Math.round(y),size,size,{center:true,alpha,flipX:facing==="west",frame:[column*16,row*32,16,16]});
   }
-
-  const captureFacing = edge => ({ north: "south", south: "north", east: "west", west: "east" }[edge] || "south");
 
   function drawText(value, x, y, size = 18, color = "#fff", align = "left", shadow = true) {
-    ctx.font = `${size}px "NinjaPixel", monospace`;
-    ctx.wordSpacing = "2px";
-    ctx.textAlign = align;
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#172335";
-    if (shadow && color !== "#2b2218") ctx.fillText(value, x + 2, y + 2);
-    ctx.fillStyle = color;
-    ctx.fillText(value, x, y);
+    return view.text(value,x,y,size,color,align,shadow && color!=="#2b2218");
   }
 
-  // Stretch only the centers and edges, preserving the pixel-art corners.
-  function drawWood(name, x, y, width, height, borderX = UI_THEME.slices.panel.x, scale = UI_THEME.slices.panel.scale, borderY = borderX) {
-    const image = assets[name];
-    if (!image?.complete || !image.naturalWidth) return;
-    const sw = image.naturalWidth, sh = image.naturalHeight;
-    const sourceBorderX = Math.min(borderX, Math.floor(sw / 2));
-    const sourceBorderY = Math.min(borderY, Math.floor(sh / 2));
-    const targetBorderX = Math.min(sourceBorderX * scale, width / 2);
-    const targetBorderY = Math.min(sourceBorderY * scale, height / 2);
-    const sx = [0, sourceBorderX, sw - sourceBorderX], sy = [0, sourceBorderY, sh - sourceBorderY];
-    const srcW = [sourceBorderX, sw - sourceBorderX * 2, sourceBorderX], srcH = [sourceBorderY, sh - sourceBorderY * 2, sourceBorderY];
-    const dx = [x, x + targetBorderX, x + width - targetBorderX], dy = [y, y + targetBorderY, y + height - targetBorderY];
-    const dw = [targetBorderX, width - targetBorderX * 2, targetBorderX], dh = [targetBorderY, height - targetBorderY * 2, targetBorderY];
-    for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
-      ctx.drawImage(image, sx[col], sy[row], srcW[col], srcH[row], dx[col], dy[row], dw[col], dh[row]);
-    }
+  function drawWood(name,x,y,width,height,borderX=UI_THEME.slices.panel.x,scale=UI_THEME.slices.panel.scale,borderY=borderX) {
+    return view.panel(name,x,y,width,height,borderX,scale,borderY);
   }
 
-  function drawPanel(x, y, width, height, color = "") {
-    drawWood(color === "#303541f5" ? "woodDisabled" : "woodPanel", x, y, width, height);
-
+  function drawPanel(x,y,width,height,color="") {
+    return drawWood(color==="#303541f5"?"woodDisabled":"woodPanel",x,y,width,height);
   }
 
-  function drawButton(label, x, y, width, height, active = true, action = null) {
-    const slice = UI_THEME.slices.button;
-    if (active && action) uiTargets.push({ x, y, width, height, action });
-    drawWood(active ? "woodButton" : "woodButtonDisabled", x, y, width, height, slice.x, slice.scale, slice.y);
-    // Long creature names must fit the narrow branch tabs.
-    ctx.font = '16px "NinjaPixel", monospace';
-    const size = Math.min(16, 16 * (width - 16) / Math.max(1, ctx.measureText(label).width));
-    drawText(label, x + width / 2, y + height / 2, size, active ? "#2b2218" : "#ded1b8", "center");
+  function drawButton(label,x,y,width,height,active=true,action=null) {
+    return view.button(label,x,y,width,height,{texture:active?"woodButton":"woodButtonDisabled",color:active?"#2b2218":"#ded1b8",action:active?action:null});
   }
 
   function sceneryKey() {
@@ -1582,13 +1523,12 @@
     const offset = Math.floor(state.scroll) % height;
     const x = Math.floor((WIDTH - image.naturalWidth * scale) / 2);
     for (let y = -offset; y < HEIGHT; y += height) {
-      ctx.drawImage(image, x, y, image.naturalWidth * scale, height);
+      view.image(image,x,y,image.naturalWidth*scale,height);
     }
   }
 
   function drawBackground() {
-    ctx.fillStyle = "#70b55f";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    view.rect(0, 0, WIDTH, HEIGHT, "#70b55f");
     const offset = state.mode === "combat" ? (state.scroll * 0.45) % 32 : 0;
     for (let x = 0; x < WIDTH; x += 32) {
       for (let y = -32 - offset; y < HEIGHT; y += 32) drawSprite("grass", x + 16, y + 16, 32);
@@ -1596,8 +1536,7 @@
   }
 
   function drawRoad() {
-    ctx.fillStyle = "#c9a96b";
-    ctx.fillRect(48, 0, WIDTH - 96, HEIGHT);
+    view.rect(48, 0, WIDTH - 96, HEIGHT, "#c9a96b");
     const offset = state.mode === "combat" ? state.scroll % 32 : 0;
     for (let x = 48; x < WIDTH - 48; x += 32) {
       for (let y = -32 - offset; y < HEIGHT; y += 32) drawSprite("path", x + 16, y + 16, 32);
@@ -1605,8 +1544,7 @@
   }
 
   function drawBestiaryBackground() {
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    view.rect(0, 0, WIDTH, HEIGHT, "#000000");
   }
 
   function drawCurrencyIcon(currencyId, x, y, size = 30, alpha = 1) {
@@ -1615,10 +1553,7 @@
     const row = UI_THEME.currencyRows[currencyId];
     if (row === undefined) return;
     const frame = Math.floor(state.animationTime * 10) % 4;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(image, frame * 10, row * 10, 10, 10, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
-    ctx.restore();
+    view.image(image,Math.round(x),Math.round(y),size,size,{center:true,alpha,frame:[frame*10,row*10,10,10]});
   }
 
   function drawHeader(title, subtitle = "") {
@@ -1639,7 +1574,9 @@
   }
 
   function drawTitle() {
-    drawBackground(); drawRoad(); drawPanel(24, 130, 492, 635);
+    drawBackground(); drawRoad();
+    view.beginGroup('title-card');
+    drawPanel(24,130,492,635);
     drawText("SCOLLMONSTERS", WIDTH / 2, 203, 38, "#ffe17d", "center");
     drawText("A southbound monster journey", WIDTH / 2, 248, 19, "#a8d9ff", "center");
     drawPlayer(270, 347, 72);
@@ -1649,12 +1586,8 @@
     drawText("Unlock auto-target, then tap its button", WIDTH / 2, 587, 17, "#c9d5e3", "center");
     drawText("or press Space to switch aiming modes.", WIDTH / 2, 615, 17, "#c9d5e3", "center");
     drawButton(state.save.completed.length ? "CONTINUE" : "BEGIN JOURNEY", 80, 664, 380, 72, true, () => setMode("map"));
-    drawButton("RESET PROGRESS", 130, 768, 280, 52, true, () => {
-      if (!window.confirm("Reset all progress in this browser? Gold, essence, creatures, upgrades and cleared stages will be erased. This cannot be undone.")) return;
-      localStorage.removeItem(SAVE_KEY);
-      localStorage.removeItem(LEGACY_SAVE_KEY);
-      window.location.reload();
-    });
+    view.endGroup();
+    drawButton("RESET PROGRESS",130,768,280,52,true,()=>{resetConfirmation=true;});
   }
 
   function mapNodePosition(stageNumber) {
@@ -1664,39 +1597,35 @@
 
   function drawMap() {
     const colors = UI_THEME.colors;
-    ctx.fillStyle = UI_THEME.colors.dark;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    view.rect(0, 0, WIDTH, HEIGHT, UI_THEME.colors.dark);
     drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
     drawHeader("OVERWORLD", affinityWalletText());
     const reached = new URLSearchParams(location.search).get("overworld") === "explored" ? 10 : Math.min(10, state.save.unlockedStage);
     state.selectedStage = Math.min(state.selectedStage, reached);
     // Unreached terrain is not drawn; only the cleared route and current frontier are revealed.
-    ctx.save();ctx.beginPath();ctx.rect(14,116,512,320);ctx.clip();
-    ctx.fillStyle = colors.dark;ctx.fillRect(14,116,512,320);
-    ctx.save();ctx.beginPath();
-    if (reached === 10) ctx.rect(14,116,512,320);
-    else for(let n=1;n<=reached;n++) { const p=mapNodePosition(n);ctx.moveTo(p.x+82,p.y);ctx.arc(p.x,p.y,82,0,Math.PI*2); }
-    ctx.clip();
-    const map = assets.overworldMap;
-    if(map?.complete && map.naturalWidth)ctx.drawImage(map,14,116,512,320);
-    ctx.restore();
+    view.beginGroup('map-viewport',{clip:{x:14,y:116,width:512,height:320}});
+    view.rect(14,116,512,320,colors.dark);
+    const explored = reached===10 ? {x:14,y:116,width:512,height:320}
+      : Array.from({length:reached},(_,index)=>({...mapNodePosition(index+1),radius:82}));
+    view.beginGroup('explored',{clip:explored});
+    view.image(assets.overworldMap,14,116,512,320);
+    view.endGroup();
     for(let n=1;n<=reached;n++) {
       const p=mapNodePosition(n),selected=n===state.selectedStage,complete=state.save.completed.includes(n);
-      ctx.fillStyle=selected?colors.accent:complete?colors.field:colors.dark;
-      ctx.fillRect(p.x-16,p.y-9,32,30);
+      view.rect(p.x-16,p.y-9,32,30, selected?colors.accent:complete?colors.field:colors.dark);
       drawText(String(n),p.x,p.y+6,18,selected?colors.dark:colors.text,"center",false);
-      if(selected) {ctx.strokeStyle=colors.text;ctx.lineWidth=2;ctx.strokeRect(p.x-20,p.y-13,40,38);}
-      uiTargets.push({x:p.x-26,y:p.y-26,width:52,height:52,action:()=>{state.selectedStage=n;}});
+      if(selected) view.strokeRect(p.x-20,p.y-13,40,38,colors.text,2);
+      view.hitArea(p.x-26,p.y-26,52,52,()=>{state.selectedStage=n;},`stage-${n}`);
     }
     if(reached<10)drawText("UNEXPLORED",270,139,15,colors.muted,"center");
-    ctx.restore();
+    view.endGroup();
     const stage = stageConfigs[state.selectedStage-1];
     drawWood("woodPanel",18,450,504,218);
     drawWood("woodBackground",28,460,484,198,4,2);
     const roster = stageRosters[stage.number];
     if (roster) {
       const bossHp = precise(Math.round(28 * stage.bossHpScale) * stage.hpMultiplier * stage.bossHpMultiplier);
-      const bossDamage = Math.max(1, Math.round(5 * stage.damageScale));
+      const bossDamage = stageBossDamage(stage);
       const drawRosterEntry = (entry, x, compact) => {
         const creature = creatureById(entry.id), stats = rosterStats(entry, stage);
         drawPet(entry.id,x,compact ? 492 : 501,48);
@@ -1713,7 +1642,7 @@
         drawText(`HP ${bossHp}`,432,609,15,colors.text,"center");
         drawText(`ATK ${bossDamage}`,432,635,15,colors.text,"center");
       } else {
-        ctx.fillStyle=colors.muted;ctx.fillRect(44,615,452,1);
+        view.rect(44,615,452,1, colors.muted);
         if(stage.number===3) drawPet("feral-bat",62,637,32);
         else drawSheetFrame("demonWalk",62,637,0,6,40);
         drawText(stage.number===3?"Bat Boss":"Demon Cyclop",88,640,15,colors.text);
@@ -1736,15 +1665,17 @@
       });
       const bossName=stage.number===3?"Feral boss":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
       const bossHp=precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
-      drawText(`${bossName}: HP ${bossHp} / DMG ${Math.max(1,Math.round(5*stage.damageScale))}`,36,638,15,colors.text);
+      drawText(`${bossName}: HP ${bossHp} / DMG ${stageBossDamage(stage)}`,36,638,15,colors.text);
       drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
     }
+    view.beginGroup("map-actions");
     drawWood("woodPanel",18,686,504,162);
     drawWood("woodBackground",28,696,484,142,4,2);
 
     drawBestiaryButton("BESTIARY",34,704,228,50,"normal",()=>setMode("bestiary"));
     drawBestiaryButton("UPGRADES",278,704,228,50,"normal",()=>setMode("upgrades"));
     drawBestiaryButton(`PLAY STAGE ${stage.number}`,34,772,472,58,"normal",()=>startStage(stage.number));
+    view.endGroup();
   }
 
   const summonPool = (affinityId,tier) => monsterCatalog.filter(c => c.affinityId === affinityId && c.tier === tier && (state.save.fragments[c.id] || 0) < 5);
@@ -1803,29 +1734,18 @@
     writeSave();
   }
 
-  function drawBestiaryButton(label, x, y, width, height, visualState = "normal", action = null) {
-    const slice = UI_THEME.slices.button;
-    if (action) uiTargets.push({ x, y, width, height, action });
-    const image = visualState === "selected" ? "woodButtonHover" : visualState === "locked" ? "woodButtonDisabled" : "woodButton";
-    drawWood(image, x, y, width, height, slice.x, slice.scale, slice.y);
-    ctx.font = '15px "NinjaPixel", monospace';
-    const size = Math.floor(Math.min(15, 15 * (width - 16) / Math.max(1, ctx.measureText(label).width)));
-    drawText(label, x + width / 2, y + height / 2, size, visualState === "locked" ? UI_THEME.colors.locked : UI_THEME.colors.dark, "center", false);
+  function drawBestiaryButton(label,x,y,width,height,visualState="normal",action=null) {
+    return view.button(label,x,y,width,height,{
+      texture:visualState==="selected"?"woodButtonHover":visualState==="locked"?"woodButtonDisabled":"woodButton",
+      size:15,color:visualState==="locked"?UI_THEME.colors.locked:UI_THEME.colors.dark,action
+    });
   }
 
-  function drawMenuTab(label, x, y, width, height, selected, action, fontSize = 15) {
-    const slice = UI_THEME.slices.tab;
-    uiTargets.push({ x, y, width, height, action });
-    drawWood(selected ? "woodTabSelected" : "woodTabUnselected", x, y, width, height, slice.x, slice.scale, slice.y);
-    ctx.font = `${fontSize}px "NinjaPixel", monospace`;
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign = "center";
-    ctx.wordSpacing = "2px";
-    const metrics = ctx.measureText(label);
-    const baseline = Math.round(y + height / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2);
-    ctx.fillStyle = selected ? UI_THEME.colors.dark : UI_THEME.colors.text;
-    ctx.fillText(label, Math.round(x + width / 2), baseline, width - 16);
-
+  function drawMenuTab(label,x,y,width,height,selected,action,fontSize=15) {
+    return view.button(label,x,y,width,height,{
+      texture:selected?"woodTabSelected":"woodTabUnselected",size:fontSize,
+      color:selected?UI_THEME.colors.dark:UI_THEME.colors.text,borderY:5,action
+    });
   }
 
   function drawSummonBestiary() {
@@ -1844,41 +1764,40 @@
       drawText(formatAmount(state.save.essence[id]),x+21,51,18,colors[id],"left",false);
       drawBestiaryButton(affinityDefs[id].name,18+index*171,103,162,44,id===bestiaryAffinity?"selected":"normal",busy?null:()=>{bestiaryAffinity=id;summonPresentation=null;});
     });
+    view.beginGroup("summon-card");
     drawWood("woodPanel",18,163,504,617);
     [1,2,3].forEach((tier,index)=>{
       const x=34+index*160;
       drawBestiaryButton(`Tier ${tier} · ${summonCosts[tier]}`,x,183,152,48,tier===bestiaryTier?"selected":"normal",busy?null:()=>{bestiaryTier=tier;summonPresentation=null;});
     });
-    ctx.save();
-    ctx.fillStyle="#30221a";ctx.fillRect(34,245,472,414);
+    view.rect(34,245,472,414, "#30221a");
     const pattern=assets[`summonPattern_${bestiaryAffinity}`], offset=reduced?0:Math.floor(now*4)%64;
-    if(pattern?.naturalWidth){ctx.globalAlpha=.52;for(let y=245-64+offset;y<659;y+=64)for(let x=34;x<506;x+=64){const top=Math.max(y,245),bottom=Math.min(y+64,659),right=Math.min(x+64,506);ctx.drawImage(pattern,0,(top-y)/2,(right-x)/2,(bottom-top)/2,x,top,right-x,bottom-top);}ctx.globalAlpha=1;}
+    if(pattern?.naturalWidth){for(let y=245-64+offset;y<659;y+=64)for(let x=34;x<506;x+=64){const top=Math.max(y,245),bottom=Math.min(y+64,659),right=Math.min(x+64,506);view.image(pattern,x,top,right-x,bottom-top,{frame:[0,(top-y)/2,(right-x)/2,(bottom-top)/2],alpha:.52});}}
     if(summonPresentation && progress>=revealAt){
-      const arrival=reduced?1:Math.min(1,(progress-revealAt)*duration/350);
-      drawPet(summonPresentation.id,270,452-Math.round((1-arrival)*20),96,arrival);
+      const id=summonPresentation.id,shiny=state.save.shinyCreatures.includes(id)&&state.save.fragments[id]>=5;
+      const image=assets[id+(shiny?"-shiny":"")],fw=image.naturalWidth/4,fh=image.naturalHeight/4;
+      view.reveal(image,270,452,96,96,{frame:[0,Math.floor(now*8)%4*fh,fw,fh]},summonPresentation);
     } else if(!summonPresentation) drawText("A new companion awaits",270,452,18,colors.text,"center");
     if(busy&&!reduced){
       const img=assets[`summonCharge_${bestiaryAffinity}`];
       const fw=img?.naturalWidth/20, fh=img?.naturalHeight;
       if(img?.naturalWidth&&progress<revealAt){
         const frame=Math.max(0,Math.min(19,Math.floor((1-progress/revealAt)*19)));
-        ctx.globalAlpha=Math.min(1,progress*8);
-        ctx.drawImage(img,frame*fw,0,fw,fh,Math.round(270-fw/2),Math.round(452-fh/2),fw,fh);
-        if(bestiaryTier>1){ctx.globalAlpha=.5;for(const dx of [-28,28])ctx.drawImage(img,Math.max(0,frame-3)*fw,0,fw,fh,Math.round(270-fw/2+dx),Math.round(452-fh/2),fw,fh);}
-        ctx.globalAlpha=1;
+        view.image(img,270,452,fw,fh,{center:true,frame:[frame*fw,0,fw,fh],alpha:Math.min(1,progress*8)});
+        if(bestiaryTier>1)for(const dx of [-28,28])view.image(img,270+dx,452,fw,fh,{center:true,frame:[Math.max(0,frame-3)*fw,0,fw,fh],alpha:.5});
+
       }
       // Existing charge frames become orbiting motes around the reveal.
       if(img?.naturalWidth&&progress>=revealAt){
         const fade=(progress-revealAt)/(1-revealAt),count=4*bestiaryTier;
-        ctx.globalAlpha=1-fade;
+
         for(let i=0;i<count;i++){
           const angle=elapsed/290+i*Math.PI*2/count,radius=65+fade*55;
           const size=32,frame=8+i%6;
-          ctx.drawImage(img,frame*fw,0,fw,fh,Math.round(270+Math.cos(angle)*radius-size/2),Math.round(452+Math.sin(angle)*radius*.65-size/2),size,size);
-        }ctx.globalAlpha=1;
+          view.image(img,Math.round(270+Math.cos(angle)*radius),Math.round(452+Math.sin(angle)*radius*.65),size,size,{center:true,frame:[frame*fw,0,fw,fh],alpha:1-fade});
+        }
       }
     }
-    ctx.restore();
     const message=summonPresentation?(progress<revealAt?"Gathering essence…":summonPresentation.message):"";
     drawText(message,270,687,18,colors.text,"center");
     const cost=summonCosts[bestiaryTier],complete=!summonPool(bestiaryAffinity,bestiaryTier).length;
@@ -1890,6 +1809,7 @@
       summonPresentation={id,start:state.animationTime,message:fragments===5?`${creature.name} Shiny Unlocked!`:fragments?`${creature.name} Fragment ${fragments}/5`:`${creature.name} Unlocked!`};
       state.toastTimer=0;
     });
+    view.endGroup();
     drawBestiaryButton("COLLECTION",18,805,244,44,"normal",busy?null:()=>{bestiaryView="collection";});
     drawBestiaryButton("BACK TO MAP",278,805,244,44,"normal",busy?null:()=>setMode("map"));
   }
@@ -1954,7 +1874,7 @@
   }
 
   function upgradeUnlocked(definition) {
-    return (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
+    return (!definition.partyAffinity || hasPartyAffinity(definition.partyAffinity)) && (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
   const treeView = { x: 0, y: 0, zoom: 1 };
@@ -1964,7 +1884,7 @@
     render();
   }
   function iconTreePositions() {
-    const definitions = treePositions().map(item => item.definition);
+    const definitions = upgradeBranchDefinitions();
     if (upgradeBranch === 0) {
       // The central damage node anchors four spokes; outer nodes continue each path.
       const positions = {
@@ -1977,6 +1897,10 @@
       return definitions.map(definition => ({ definition, x: positions[definition.id][0], y: positions[definition.id][1] }));
     }
 
+    if (upgradeBranch === 2) {
+      const positions = [[100, 285], [270, 285], [440, 285], [100, 470], [270, 470], [440, 470]];
+      return definitions.map((definition, i) => ({ definition, x: positions[i][0], y: positions[i][1] }));
+    }
     const depth = def => Math.max(0, ...def.requires.map(id => {
       const parent = definitions.find(item => item.id === id);
       return parent ? depth(parent) + 1 : 0;
@@ -1991,8 +1915,7 @@
 
   function drawUpgrades() {
     const colors = UI_THEME.colors;
-    ctx.fillStyle = colors.dark;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    view.rect(0, 0, WIDTH, HEIGHT, colors.dark);
     drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
     drawPanel(0, 0, WIDTH, 104);
     drawBestiaryButton("< MAP", 16, 16, 120, 48, "normal", () => setMode("map"));
@@ -2014,21 +1937,16 @@
     drawBestiaryButton("RESET", 402, 190, 114, 34, "normal", () => { treeView.x = treeView.y = 0; treeView.zoom = 1; });
     const positions = iconTreePositions();
     if (!positions.some(item => item.definition.id === selectedUpgrade)) selectedUpgrade = positions[0]?.definition.id;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(18, 230, 504, 352); ctx.clip();
-    ctx.translate(270 + treeView.x, 406 + treeView.y);
-    ctx.scale(treeView.zoom, treeView.zoom); ctx.translate(-270, -406);
+    view.beginGroup('upgrade-tree',{x:270+treeView.x-270*treeView.zoom,y:406+treeView.y-406*treeView.zoom,
+      scale:treeView.zoom,clip:{x:18,y:230,width:504,height:352}});
     for (const item of positions) for (const id of item.definition.requires) {
       const parent = positions.find(p => p.definition.id === id); if (!parent) continue;
       const ready = rank(id) >= (item.definition.requiredRanks?.[id] || 1);
-      ctx.strokeStyle = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.muted : "#827660";
-      ctx.lineWidth = item.definition.id === selectedUpgrade ? 4 : 2;
+      const stroke = item.definition.id === selectedUpgrade ? colors.accent : ready ? colors.muted : "#827660";
+      const lineWidth = item.definition.id === selectedUpgrade ? 4 : 2;
       const dx = item.x - parent.x, dy = item.y - parent.y;
       const inset = 42 / Math.max(Math.abs(dx), Math.abs(dy));
-      ctx.beginPath();
-      ctx.moveTo(parent.x + dx * inset, parent.y + dy * inset);
-      ctx.lineTo(item.x - dx * inset, item.y - dy * inset);
-      ctx.stroke();
+      view.line(parent.x+dx*inset,parent.y+dy*inset,item.x-dx*inset,item.y-dy*inset,stroke,lineWidth);
     }
     for (const { definition: def, x, y } of positions) {
       const available = upgradeUnlocked(def), current = rank(def.id), maxed = current >= def.max;
@@ -2038,25 +1956,18 @@
       if (available && !maxed && balance >= def.costs[current]) {
         // A quiet, staggered sweep marks upgrades that can be bought right now.
         const phase = (state.animationTime * 0.32 + x / 540 + y / 900) % 1;
-        const sweep = x - 100 + phase * 200;
-        ctx.save();
-        ctx.beginPath(); ctx.rect(x - 36, y - 36, 72, 58); ctx.clip();
-        const glow = ctx.createLinearGradient(sweep - 14, y - 36, sweep + 14, y + 22);
-        glow.addColorStop(0, "#fff0b000");
-        glow.addColorStop(0.5, "#fff0b033");
-        glow.addColorStop(1, "#fff0b000");
-        ctx.fillStyle = glow; ctx.fillRect(x - 36, y - 36, 72, 58);
-        ctx.restore();
+        view.sheen(x-36,y-36,72,58,phase);
       }
       if (selectedUpgrade === def.id) drawWood("woodFocus", x - 40, y - 40, 80, 80, UI_THEME.slices.focus.x, UI_THEME.slices.focus.scale);
-      ctx.fillStyle = colors.dark; ctx.fillRect(x - 26, y + 22, 52, 20);
+      view.rect(x - 26, y + 22, 52, 20, colors.dark);
       drawText(`${current}/${def.max}`, x, y + 32, 14, maxed ? colors.accent : colors.text, "center", false);
+      if (def.partyAffinity) drawText("Bloom Required", x, y + 57, 13, colors.muted, "center", false);
       const sx = 270 + treeView.x + (x - 270) * treeView.zoom, sy = 406 + treeView.y + (y - 406) * treeView.zoom;
       const left = Math.max(18, sx - 38 * treeView.zoom), top = Math.max(230, sy - 38 * treeView.zoom);
       const right = Math.min(522, sx + 38 * treeView.zoom), bottom = Math.min(582, sy + 42 * treeView.zoom);
-      if (right > left && bottom > top) uiTargets.push({ x: left, y: top, width: right - left, height: bottom - top, action: () => { selectedUpgrade = def.id; } });
+      if (right > left && bottom > top) view.hitArea(left,top,right-left,bottom-top,()=>{selectedUpgrade=def.id;},`upgrade-${def.id}`,true);
     }
-    ctx.restore();
+    view.endGroup();
     const def = positions.find(item => item.definition.id === selectedUpgrade)?.definition;
     if (def) {
       const current = rank(def.id), maxed = current >= def.max, unlocked = upgradeUnlocked(def);
@@ -2064,18 +1975,21 @@
       let description = maxed ? `MAXED: ${def.effect(current - 1)}`
         : current === 0 ? `NEXT: ${def.effect(current)}`
         : `NOW: ${def.effect(current - 1)}. NEXT: ${def.effect(current)}`;
+      if (def.partyAffinity) description = `Bloom Required. ${description}`;
       if (!unlocked) {
         const requirements = def.requires.map(id => `${upgradeDefs.find(d => d.id === id)?.name || id} ${def.requiredRanks?.[id] || 1}`);
+        if (def.partyAffinity && !hasPartyAffinity(def.partyAffinity)) requirements.unshift("Bloom Required");
         if (upgradeType(def) && !ownsUpgradeType(def)) requirements.unshift(`Summon a ${affinityDefs[upgradeType(def)].name} creature`);
         else if (!upgradeType(def) && def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
         description = `LOCKED: ${requirements.join("; ")}. ${description}`;
       }
-      ctx.font = '15px "NinjaPixel", monospace';
+
       const lines = [""];
       for (const word of description.split(" ")) {
         const i = lines.length - 1, next = lines[i] ? `${lines[i]} ${word}` : word;
-        if (ctx.measureText(next).width > 456 && lines[i]) lines.push(word); else lines[i] = next;
+        if (view.measureText(next,15) > 456 && lines[i]) lines.push(word); else lines[i] = next;
       }
+      view.beginGroup("upgrade-detail");
       const buttonY = 642 + lines.length * 20;
       drawWood(unlocked ? "woodPanel" : "woodDisabled", 20, 596, 500, buttonY + 54 - 596);
       drawText(def.name, 38, 620, 21, unlocked ? colors.text : colors.locked, "left", unlocked);
@@ -2083,6 +1997,7 @@
       const label = maxed ? "MAXED" : !unlocked ? "LOCKED" : `${balance >= cost ? "UPGRADE" : "NEED"} ${cost} ${def.currency ? affinityDefs[def.currency].short : "G"}`;
       drawBestiaryButton(label, 38, buttonY, 464, 42, !maxed && unlocked && balance >= cost ? "normal" : "locked",
         !maxed && unlocked && balance >= cost ? () => attemptUpgrade(def) : null);
+      view.endGroup();
     }
   }
 
@@ -2093,7 +2008,7 @@
       if (vase.y < 126 || vase.y > HEIGHT - 96) continue;
       const variant = destructibleVariants[vase.variant ?? 0], image = assets[variant.sheet];
       if (image?.complete && image.naturalWidth) {
-        ctx.drawImage(image, variant.x * 16, variant.y * 16, 16, 16, Math.round(vase.x - 16), Math.round(vase.y - 16), 32, 32);
+        view.image(image,Math.round(vase.x),Math.round(vase.y),32,32,{center:true,frame:[variant.x*16,variant.y*16,16,16]});
       }
     }
     for (const rock of state.obstacles) {
@@ -2102,14 +2017,14 @@
       const image = assets.natureTiles;
       if (image?.complete && image.naturalWidth) {
         // Transparent atlas margins excluded from the circular shot collider.
-        ctx.drawImage(image, small ? 272 : 240, small ? 208 : 160, small ? 16 : 32, small ? 16 : 32,
-          Math.round(rock.x - size / 2), Math.round(rock.y - size / 2), size, size);
+        view.image(image,Math.round(rock.x),Math.round(rock.y),small?32:64,small?32:64,{center:true,
+          frame:[small?272:240,small?208:160,small?16:32,small?16:32]});
       } else {
-        ctx.fillStyle = "#b58a64"; ctx.beginPath(); ctx.arc(rock.x, rock.y, rock.r, 0, Math.PI * 2); ctx.fill();
+        view.circle(rock.x,rock.y,rock.r,"#b58a64");
       }
       if (rank("rockBreaker")) {
-        ctx.fillStyle = "#371c27"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2, 5);
-        ctx.fillStyle = "#f0c65a"; ctx.fillRect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2 * Math.max(0, rock.hp / rock.maxHp), 5);
+        view.rect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2, 5, "#371c27");
+        view.rect(rock.x - rock.r, rock.y - rock.r - 10, rock.r * 2 * Math.max(0, rock.hp / rock.maxHp), 5, "#f0c65a");
       }
     }
     if (state.treasure) {
@@ -2117,30 +2032,29 @@
       drawGridFrame("treasureChest", x, y, open ? 1 : 0, 2, 0, 1, 48);
       if (!open) {
         drawText("15G", x, y - 32, 16, "#ffe17d", "center");
-        ctx.fillStyle = "#371c27"; ctx.fillRect(x - 20, y - 26, 40, 5);
-        ctx.fillStyle = "#ffe17d"; ctx.fillRect(x - 20, y - 26, 40 * state.treasure.hp / state.treasure.maxHp, 5);
+        view.rect(x - 20, y - 26, 40, 5, "#371c27");
+        view.rect(x - 20, y - 26, 40 * state.treasure.hp / state.treasure.maxHp, 5, "#ffe17d");
       }
     }
     for (const coin of state.drops) {
       const progress = Math.min(1, coin.age / 0.5);
       const x = coin.x + coin.offsetX * progress;
       const groundY = coin.y + coin.offsetY * progress;
-      ctx.fillStyle = "#59452355";
-      ctx.beginPath(); ctx.ellipse(x, groundY + 7, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+      view.ellipse(x,groundY+7,7,3,"#59452355");
       drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 0, 4, 20);
     }
     drawPlayer(state.party.x, state.party.y, COMBAT_SPRITE_SIZE);
     for (const companion of state.companions) drawPet(companion.creatureId || companion.type, companion.x, companion.y, COMBAT_SPRITE_SIZE);
     if (state.party.shield) {
-      ctx.strokeStyle = "#8ce9ff"; ctx.lineWidth = 3;
+
       for (const body of partyBodies()) {
-        ctx.beginPath(); ctx.arc(body.x, body.y, body.r + 9, 0, Math.PI * 2); ctx.stroke();
+        view.circle(body.x,body.y,body.r+9,null,"#8ce9ff",3);
       }
     }
     for (const enemy of state.enemies) {
       drawMonster(enemy);
-      ctx.fillStyle = "#371c27"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5);
-      ctx.fillStyle = enemy.type === "boss" ? "#ffb347" : "#ff6b5c"; ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5);
+      view.rect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5, "#371c27");
+      view.rect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5, enemy.type === "boss" ? "#ffb347" : "#ff6b5c");
     }
     if (state.bossSpawned && !state.bossDefeated) {
       drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
@@ -2158,7 +2072,7 @@
     for (const effect of state.effects) {
       const alpha = clamp(effect.life / effect.maxLife, 0, 1);
       if (effect.type === "aoe") {
-        ctx.strokeStyle = `rgba(185,124,255,${alpha})`; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius * (1.1 - alpha * 0.1), 0, Math.PI * 2); ctx.stroke();
+        view.circle(effect.x,effect.y,effect.radius*(1.1-alpha*0.1),null,`rgba(185,124,255,${alpha})`,7);
       } else if (effect.type === "groundTrap") {
         const frame = Math.min(9, Math.floor((1 - effect.life / effect.maxLife) * 10));
         drawSheetFrame("groundTrap", effect.x, effect.y, frame, 10, 300);
@@ -2174,20 +2088,18 @@
     drawPanel(12, 12, WIDTH - 24, 96);
     const healthRatio = clamp(state.party.hp / state.party.maxHp, 0, 1);
     const vessel = assets.healthVessel, fill = assets.healthFill;
-    if (vessel?.naturalWidth) ctx.drawImage(vessel, 25, 32, 34, 56);
+    if (vessel?.naturalWidth) view.image(vessel,25,32,34,56);
     if (fill?.naturalWidth && healthRatio > 0) {
       // Fixed artwork; only the integer-pixel reveal changes with actual HP.
       const height = Math.round(40 * healthRatio);
-      ctx.save();
-      ctx.beginPath(); ctx.rect(31, 80 - height, 22, height); ctx.clip();
-      ctx.drawImage(fill, 31, 40, 22, 40);
-      ctx.restore();
+      const sourceHeight=fill.naturalHeight*height/40;
+      view.image(fill,31,80-height,22,height,{frame:[0,fill.naturalHeight-sourceHeight,fill.naturalWidth,sourceHeight]});
     }
     drawText(`${Math.max(0, precise(state.party.hp))}/${state.party.maxHp} HP`, 75, 36, 20, "#fff");
     if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 155, 18, "#ffe17d", "center");
     const goldText = formatAmount(state.save.gold + state.runGold);
-    ctx.font = '20px "NinjaPixel", monospace';
-    const goldIconX = 446 - ctx.measureText(goldText).width - 18;
+
+    const goldIconX = 446 - view.measureText(goldText,20) - 18;
     drawCurrencyIcon("gold", goldIconX, 36, 24);
     drawText(goldText, 446, 36, 20, "#ffe17d", "right");
     affinityOrder.forEach((affinityId, index) => {
@@ -2197,12 +2109,14 @@
     });
     const autoOn = autoTargetUnlocked() && state.save.autoTargetEnabled;
     drawSprite(autoOn ? "autoAttackBook" : "autoAttackBookDisabled", 484, 60, 48);
-    if (autoTargetUnlocked()) uiTargets.push({ x: 460, y: 36, width: 48, height: 48, action: toggleAutoTarget });
+    if (autoTargetUnlocked()) view.hitArea(460,36,48,48,toggleAutoTarget,"auto-target");
 
   }
 
   function drawResult() {
-    drawBackground(); drawRoad(); drawPanel(24, 130, 492, 650);
+    drawBackground(); drawRoad();
+    view.beginGroup('result-card',{preserveMotion:true,enter:true});
+    drawPanel(24,130,492,650);
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
     drawText(`Total gold: ${formatAmount(state.save.gold)}`, WIDTH / 2, 270, 24, "#ffe17d", "center");
     affinityOrder.forEach((affinityId, index) => {
@@ -2214,24 +2128,27 @@
     drawText(gateOpened ? "A new creature is available in the Bestiary." : state.result.won ? (state.result.stage < 10 ? `Stage ${state.result.stage + 1} is now available.` : "All ten stages cleared!") : "Buy upgrades or adjust your party, then retry.", WIDTH / 2, 478, 20, "#fff", "center");
     drawButton("RETURN TO MAP", 80, 590, 380, 70, true, () => setMode("map"));
     drawButton("RETRY STAGE", 80, 685, 380, 64, true, () => startStage(state.result.stage));
+    view.endGroup();
   }
 
   function render() {
-    uiTargets = [];
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    if (!view) return;
+    view.begin(state.mode + (state.mode==="bestiary"?`:${bestiaryView}`:""));
     if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "bestiary") drawBestiary(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
-    ctx.endFrame?.();
-  }
-
-  function canvasPoint(event) {
-    const rect = canvas.getBoundingClientRect();
-    return { x: (event.clientX - rect.left) * WIDTH / rect.width, y: (event.clientY - rect.top) * HEIGHT / rect.height };
+    if(resetConfirmation) view.confirmation('RESET PROGRESS?',[
+      'Gold, essence, creatures and upgrades',
+      'will be erased. This cannot be undone.'
+    ],()=>{resetConfirmation=false;},()=>{
+      localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LEGACY_SAVE_KEY);window.location.reload();
+    });
+    view.end();
   }
 
   function attemptUpgrade(definition) {
     const current = rank(definition.id);
     if (!upgradeUnlocked(definition)) {
-      if (upgradeType(definition) && !ownsUpgradeType(definition)) state.toast = `Summon a ${affinityDefs[upgradeType(definition)].name} creature first`;
+      if (definition.partyAffinity && !hasPartyAffinity(definition.partyAffinity)) state.toast = "Bloom Required";
+      else if (upgradeType(definition) && !ownsUpgradeType(definition)) state.toast = `Summon a ${affinityDefs[upgradeType(definition)].name} creature first`;
       else if (definition.id === "partyBond") state.toast = "Recruit Buttermant first";
       else if (definition.requiredRanks) state.toast = rankRequirementText(definition);
       else if (definition.recruit) state.toast = `Recruit ${petDisplayNames[definition.recruit]} first`;
@@ -2257,73 +2174,44 @@
     writeSave(); render();
   }
 
-  function targetAt(point) {
-    return uiTargets.find(target => point.x >= target.x && point.x <= target.x + target.width && point.y >= target.y && point.y <= target.y + target.height);
+  let treeDrag=null, treeDragged=false;
+  if (scene) {
+    view.onPress=unlockAudio;
+    view.onActivate=()=>playSound("select");
+    view.invalidate=render;
+    view.isDragging=()=>treeDragged;
+    scene.input.on('wheel',(pointer,_objects,_dx,dy)=>{
+      if(state.mode==="upgrades"&&inTree(pointer))zoomTree(dy<0?1.1:1/1.1);
+    });
+    scene.input.on('pointerdown',(pointer,objects)=>{
+      unlockAudio();treeDragged=false;
+      if(state.mode==="upgrades"&&inTree(pointer))treeDrag={id:pointer.id,start:{x:pointer.x,y:pointer.y},x:treeView.x,y:treeView.y};
+      else if(state.mode==="combat"&&!objects.length)state.mouse={x:pointer.x,y:pointer.y};
+    });
+    scene.input.on('pointermove',(pointer,objects)=>{
+      if(treeDrag&&pointer.id===treeDrag.id&&state.mode==="upgrades") {
+        const dx=pointer.x-treeDrag.start.x,dy=pointer.y-treeDrag.start.y;
+        if(Math.hypot(dx,dy)>5)treeDragged=true;
+        if(treeDragged){treeView.x=clamp(treeDrag.x+dx,-650,650);treeView.y=clamp(treeDrag.y+dy,-650,650);render();}
+      } else if(state.mode==="combat"&&!objects.length&&(!pointer.wasTouch||pointer.isDown))state.mouse={x:pointer.x,y:pointer.y};
+    });
+    const release=()=>{treeDrag=null;};
+    scene.input.on('pointerup',release);scene.input.on('pointerupoutside',release);
+    scene.game.events.on('blur',release);
+    scene.events.once('shutdown',()=>scene.game.events.off('blur',release));
+    scene.input.keyboard.on('keydown',event=>{
+      unlockAudio();
+      if(event.code==="Space"&&autoTargetUnlocked()){event.preventDefault();if(!event.repeat)toggleAutoTarget();}
+      if(event.key.toLowerCase()==="f"&&!event.repeat){if(scene.scale.isFullscreen)scene.scale.stopFullscreen();else scene.scale.startFullscreen();}
+    });
   }
-
-  let treeDrag = null, treeDragged = false;
-  canvas.addEventListener("wheel", event => {
-    if (state.mode !== "upgrades" || !inTree(canvasPoint(event))) return;
-    event.preventDefault(); zoomTree(event.deltaY < 0 ? 1.1 : 1 / 1.1);
-  }, { passive: false });
-  let aimPointer = null;
-  let aimGesture = false;
-  canvas.addEventListener("pointerdown", event => {
-    if (!event.isPrimary) return;
-    unlockAudio();
-    const point = canvasPoint(event);
-    if (state.mode === "upgrades" && inTree(point)) {
-      treeDrag = { id: event.pointerId, start: point, x: treeView.x, y: treeView.y }; treeDragged = false;
-      canvas.setPointerCapture?.(event.pointerId); return;
-    }
-    aimGesture = state.mode === "combat" && !targetAt(point);
-    if (aimGesture) {
-      state.mouse = point;
-      aimPointer = event.pointerId;
-      canvas.setPointerCapture?.(event.pointerId);
-    }
-  });
-  canvas.addEventListener("pointermove", event => {
-    if (treeDrag && event.pointerId === treeDrag.id && state.mode === "upgrades") {
-      const p = canvasPoint(event), dx = p.x - treeDrag.start.x, dy = p.y - treeDrag.start.y;
-      if (Math.hypot(dx, dy) > 5) treeDragged = true;
-      if (treeDragged) { treeView.x = clamp(treeDrag.x + dx, -650, 650); treeView.y = clamp(treeDrag.y + dy, -650, 650); render(); }
-      return;
-    }
-    if (!event.isPrimary || state.mode !== "combat") return;
-    if (event.pointerType === "mouse" || event.pointerId === aimPointer) {
-      const point = canvasPoint(event);
-      if (!targetAt(point)) state.mouse = point;
-    }
-  });
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    canvas.addEventListener(type, event => { if (aimPointer === event.pointerId) aimPointer = null; if (treeDrag?.id === event.pointerId) treeDrag = null; });
-  }
-  canvas.addEventListener("click", event => {
-    if (treeDragged) { treeDragged = false; return; }
-    if (aimGesture) { aimGesture = false; return; }
-    unlockAudio();
-    const target = targetAt(canvasPoint(event));
-    if (target) { playSound("select"); target.action(); }
-    render();
-  });
-
-  document.addEventListener("keydown", event => {
-    unlockAudio();
-    if (event.code === "Space" && autoTargetUnlocked()) {
-      event.preventDefault(); if (!event.repeat) toggleAutoTarget();
-    }
-    if (event.key.toLowerCase() === "f") {
-      if (!document.fullscreenElement) canvas.requestFullscreen?.(); else document.exitFullscreen?.();
-    }
-  });
 
   window.render_game_to_text = () => JSON.stringify({
-    engine: scene ? { name: "Phaser", version: Phaser.VERSION, renderer: "Canvas", scene: scene.sys.settings.key } : null,
-    audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music && !music.paused },
+    engine: scene ? { name: "Phaser", version: Phaser.VERSION, renderer: "WebGL", ui: "native", scene: scene.sys.settings.key } : null,
+    audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music?.isPlaying },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCharges: Number(state.party.shield || 0), shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
@@ -2371,7 +2259,7 @@
 
   if (new URLSearchParams(location.search).get("overworld") === "explored") setMode("map");
 
-  document.fonts?.load('16px "NinjaPixel"').then(() => render());
+
   render();
   if (!window.__vt_pending) {
     // Phaser supplies delta in milliseconds; simulation remains in seconds.
@@ -2385,22 +2273,33 @@
   if (!window.Phaser) { createGame(); return; }
   class ScrollMonstersScene extends Phaser.Scene {
     constructor() { super('ScrollMonsters'); }
+    preload() {
+      const status=this.add.text(270,450,'Loading ScrollMonsters…',{fontFamily:'monospace',fontSize:18,color:'#fff0b0'}).setOrigin(0.5);
+      this.load.on('progress',value=>status.setText(`Loading ${Math.round(value*100)}%`));
+      for(const [key,file] of Object.entries(assetPaths)) {
+        const url=file.includes('/')?file:`assets/placeholder/${file}`;
+        if(file.endsWith('.svg'))this.load.svg(key,url);else this.load.image(key,url);
+      }
+      this.load.font('NinjaPixel',encodeURI('assets/Ninja Adventure - Asset Pack/Ui/Font/NormalFont.ttf'));
+      for(const track of [...(window.GAME_MUSIC?.combat||[]),...(window.GAME_MUSIC?.menu||[])])
+        this.load.audio(`music:${track}`,`assets/music/${track.split('/').map(encodeURIComponent).join('/')}`);
+      this.load.audio('sfx:select','assets/Ninja Adventure - Asset Pack/Audio/Sounds/Menu/Accept4.wav');
+      this.load.audio('sfx:success','assets/Ninja Adventure - Asset Pack/Audio/Jingles/Success1.wav');
+      this.load.once('complete',()=>status.destroy());
+    }
     create() {
-      // Pixel positions are rounded by the game; Phaser canvas rounding expands
-      // source frames by half a pixel, which distorts stretched nine-slice art.
-      this.cameras.main.setRoundPixels(false);
       createGame(this);
       window.__phaserReady = true;
     }
   }
   window.scrollMonstersGame = new Phaser.Game({
-    type: Phaser.CANVAS,
+    type: Phaser.WEBGL,
     canvas: document.getElementById('game'),
     width: 540, height: 900,
     transparent: false, backgroundColor: '#79b867',
     pixelArt: true, roundPixels: false,
-    audio: { noAudio: true }, // Existing music selection and unlock rules are retained.
-    scale: { mode: Phaser.Scale.NONE, autoRound: false },
+    audio: { disableWebAudio: true },
+    scale: { parent:'game-shell',mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,fullscreenTarget:'game-shell',autoRound:false },
     scene: [ScrollMonstersScene],
     banner: false
   });

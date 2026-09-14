@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Upgrade Tree Prototype</title>
-    <link rel="stylesheet" href="styles.css?v=node-rank-cost-1" />
+    <link rel="stylesheet" href="styles.css?v=native-phaser-1" />
   </head>
   <body>
-    <main>
+    <main id="game-shell">
       <canvas id="game" width="540" height="900" aria-label="ScollMonsters game canvas"></canvas>
     </main>
     <script src="assets/music/playlist.js"></script>
@@ -16,7 +16,7 @@
         localStorage.setItem("scollmonsters-upgrade-prototype-v1", JSON.stringify({gold: 500, essence: {feral: 100, bloom: 100, arcane: 100}}));
       }</script>
     <script src="vendor/phaser-4.2.1.min.js"></script>
-    <script src="phaser-renderer.js?v=2"></script>
-    <script src="game.js?v=phaser4-1"></script>
+    <script src="phaser-ui.js?v=1"></script>
+    <script src="game.js?v=native-phaser-1"></script>
   </body>
 </html>

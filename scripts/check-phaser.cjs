@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { chromium } = require('playwright');
 (async () => {
-  const browser = await chromium.launch({headless: true});
+  const browser = await chromium.launch({headless: true, args: process.platform === 'darwin' ? ['--use-gl=angle','--use-angle=metal'] : []});
   try {
     const page = await browser.newPage({viewport: {width: 540, height: 940}});
     const errors = [];
@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { const a=window.__scollTest; a.setSave({...a.getSave(), essence:{feral:100,bloom:100,arcane:100}}); });
     await click(270, 741);
     await page.evaluate(() => window.advanceTime(3000));
-    assert.equal((await read()).essence.feral, 90);
+    assert.equal((await read()).essence.feral, 80); // Tier 1 summon now costs 20 essence.
     assert.equal((await read()).activeParty.length, 1);
     const member = (await read()).activeParty[0];
     await page.evaluate(id => window.__scollTest.toggleCreatureInParty(id), member);
@@ -57,7 +57,7 @@ const { chromium } = require('playwright');
     await shot('combat');
     assert.equal((await read()).mode, 'combat');
     assert((await read()).combat.projectiles.length > 0);
-    assert(await page.evaluate(() => window.scrollMonstersGame.scene.getScene('ScrollMonsters').children.list.some(object => object.type === 'Image' && object.visible)), 'native Phaser images render the scene');
+    assert(await page.evaluate(() => window.scrollMonstersGame.scene.getScene('ScrollMonsters').children.list.some(object => object.type === 'Container' && object.list.some(child => child.type === 'Image' && child.visible))), 'native Phaser images render the scene');
     await page.evaluate(() => window.__scollTest.clearCombat());
     assert.equal((await read()).mode, 'result'); await shot('result');
     await click(270, 715); assert.equal((await read()).mode, 'combat');

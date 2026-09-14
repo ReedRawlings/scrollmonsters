@@ -4,7 +4,8 @@
   "scripts": {
     "build": "node scripts/build-music.cjs",
     "dev": "python3 scripts/serve.py",
-    "test:phaser": "node scripts/check-phaser.cjs"
+    "test:phaser": "node scripts/check-phaser.cjs",
+    "test:ui": "node scripts/check-native-ui.cjs"
   },
   "dependencies": {
     "phaser": "4.2.1"

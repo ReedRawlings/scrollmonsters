@@ -1,11 +1,16 @@
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
-(async()=>{const browser=await chromium.launch({headless:true});try{
+(async()=>{const browser=await chromium.launch({headless:true,args:process.platform==='darwin'?['--use-gl=angle','--use-angle=metal']:[]});try{
 const page=await browser.newPage({viewport:{width:540,height:900}}),errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
-await page.addInitScript(()=>{window.paintedText=[];const fill=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(t,...args){window.paintedText.push(String(t));return fill.call(this,t,...args)}});
+
 await page.goto(process.env.GAME_URL||'http://127.0.0.1:5198/');await page.waitForFunction(()=>window.__scollTest);await page.evaluate(()=>document.fonts.ready);
-const click=async(x,y)=>{await page.evaluate(()=>window.paintedText=[]);const b=await page.locator('canvas').first().boundingBox();await page.mouse.click(b.x+x*b.width/540,b.y+y*b.height/900);await page.waitForTimeout(150)};
-const texts=()=>page.evaluate(()=>[...new Set(window.paintedText)]);
+const click=async(x,y)=>{const b=await page.locator('canvas').first().boundingBox();await page.mouse.click(b.x+x*b.width/540,b.y+y*b.height/900);await page.waitForTimeout(150)};
+const texts=()=>page.evaluate(()=>{
+  const labels=[];
+  const visit=object=>{if(!object.visible)return;if(object.type==='Text')labels.push(object.getData('label'));if(object.list)object.list.forEach(visit);};
+  scrollMonstersGame.scene.getScene('ScrollMonsters').children.list.forEach(visit);
+  return [...new Set(labels)];
+});
 await page.evaluate(()=>{window.__scollTest.setSave({});window.__scollTest.setMode('bestiary')});
 await click(130,827);assert((await texts()).includes('No Feral creatures unlocked yet'));assert(!(await texts()).includes('Bat'));
 fs.mkdirSync('output/collection-ui',{recursive:true});await page.screenshot({path:'output/collection-ui/empty.png'});

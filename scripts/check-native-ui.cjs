@@ -1,0 +1,98 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {chromium} = require('playwright');
+const url = process.env.GAME_URL || 'http://localhost:5199';
+(async () => {
+  const browser = await chromium.launch({headless:true,args:process.platform==='darwin'?['--use-gl=angle','--use-angle=metal']:[]});
+  try {
+    const page = await browser.newPage({viewport:{width:540,height:940}}), errors=[];
+    page.on('pageerror',error=>errors.push(String(error)));
+    page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+    await page.addInitScript(()=>window.__vt_pending=true);
+    await page.goto(url); await page.waitForFunction(()=>window.__phaserReady);
+    await page.evaluate(()=>{
+      window.nativeObjects=()=>{
+        const objects=[];
+        const visit=object=>{objects.push(object);if(object.list) object.list.forEach(visit);};
+        window.scrollMonstersGame.scene.getScene('ScrollMonsters').children.list.forEach(visit);
+        return objects;
+      };
+    });
+    fs.mkdirSync('output/native-ui',{recursive:true});
+    const click = async(x,y)=>{const r=await page.locator('#game').boundingBox();await page.mouse.click(r.x+x*r.width/540,r.y+y*r.height/900);};
+    const position=async(x,y)=>{const r=await page.locator('#game').boundingBox();return {x:r.x+x*r.width/540,y:r.y+y*r.height/900};};
+    const read=()=>page.evaluate(()=>JSON.parse(window.render_game_to_text()));
+    assert.equal((await read()).engine.renderer,'WebGL');
+    const types=await page.evaluate(()=>[...new Set(window.nativeObjects().map(o=>o.type))]);
+    assert(types.includes('Text')&&types.includes('NineSlice')&&types.includes('WoodButton'));
+    assert(!types.includes('CanvasArtwork'));
+    await page.evaluate(()=>window.testButton=window.nativeObjects().find(o=>o.type==='WoodButton'&&o.label.getData('label')==='BEGIN JOURNEY'));
+    const p=await position(270,700);
+    await page.mouse.move(p.x,p.y);await page.mouse.down();await page.waitForTimeout(85);
+    assert(await page.evaluate(()=>window.testButton.content.scaleX<1),'button has a native press tween');
+    await page.locator('#game').screenshot({path:'output/native-ui/button-pressed.png'});
+    const away=await position(20,850);await page.mouse.move(away.x,away.y);await page.mouse.up();await page.waitForTimeout(180);
+    assert.equal((await read()).mode,'title','dragging off cancels activation');
+    assert.equal(await page.evaluate(()=>window.testButton.content.scaleX),1);
+    await page.evaluate(()=>window.advanceTime(100));
+    assert(await page.evaluate(()=>window.testButton===window.nativeObjects().find(o=>o.type==='WoodButton'&&o.label.getData('label')==='BEGIN JOURNEY')),'button persists across updates');
+    await click(270,700);assert.equal((await read()).mode,'map');
+    await page.evaluate(()=>{window.__scollTest.setSave({});window.__scollTest.setMode('bestiary');});
+    await click(270,741);assert.equal((await read()).essence.feral,0);assert.equal((await read()).ownedCreatures.length,0);
+    await page.evaluate(()=>window.__scollTest.setSave({essence:{feral:100,bloom:100,arcane:100}}));
+    await click(270,741);await page.evaluate(()=>window.advanceTime(900));
+    assert.equal((await read()).essence.feral,80);
+    assert(await page.evaluate(()=>{
+      window.reveal=window.nativeObjects().find(o=>o.revealToken);
+      return !!window.reveal && window.scrollMonstersGame.scene.getScene('ScrollMonsters').tweens.getTweensOf(window.reveal).length>0;
+    }),'summon reveal is driven by a Phaser tween');
+    await page.waitForTimeout(120);
+    await page.locator('#game').screenshot({path:'output/native-ui/reveal.png'});
+    await page.waitForTimeout(350);
+    assert(Math.abs(await page.evaluate(()=>window.reveal.scaleX)-1)<0.001);
+    await page.evaluate(()=>window.advanceTime(1200));
+    await click(130,827);
+    await page.locator('#game').screenshot({path:'output/native-ui/collection.png'});
+    // Native labels, not canvas draw interception, expose visible UI text.
+    assert(await page.evaluate(()=>window.nativeObjects().some(o=>o.type==='Text'&&o.getData('label')==='ACTIVE PARTY')));
+    await page.evaluate(()=>{window.__scollTest.setSave({unlockedStage:5,completed:[1,2,3,4]});window.__scollTest.setMode('map');});
+    await page.locator('#game').screenshot({path:'output/native-ui/map-mask.png'});
+    await page.evaluate(()=>{window.__scollTest.setMode('upgrades');window.advanceTime(100);});
+    const count=await page.evaluate(()=>window.nativeObjects().length);
+    await page.evaluate(()=>{for(let i=0;i<100;i++)window.advanceTime(16.67);});
+    assert(await page.evaluate(()=>window.nativeObjects().length)<=count+10,'retained UI does not grow every frame');
+    for(let i=0;i<8;i++)await page.evaluate(()=>{window.__scollTest.setMode('title');window.__scollTest.setMode('upgrades');});
+    await page.locator('#game').screenshot({path:'output/native-ui/upgrades.png'});
+    await page.keyboard.press('f');await page.waitForFunction(()=>!!document.fullscreenElement);
+    await page.keyboard.press('f');await page.waitForFunction(()=>!document.fullscreenElement);
+    await page.evaluate(()=>{window.__scollTest.setSave({gold:123});window.__scollTest.setMode('title');});
+    const sample=()=>page.evaluate(()=>new Promise(resolve=>scrollMonstersGame.renderer.snapshotPixel(270,100,c=>resolve([c.r,c.g,c.b]))));
+    const backdrop=await sample();
+    await click(270,794);
+    const dimmed=await sample();
+    assert(dimmed[0]>0&&dimmed[0]<backdrop[0],'modal dims its backdrop without replacing it with opaque black');
+    await page.locator('#game').screenshot({path:'output/native-ui/reset-dialog.png'});
+    await click(270,700); assert.equal((await read()).mode,'title','modal blocks underlying buttons');
+    await click(155,535);assert.equal((await read()).bankedGold,123,'cancel preserves progress');
+    await click(270,794);
+    await Promise.all([page.waitForEvent('load'),click(380,535)]);
+    await page.waitForFunction(()=>window.__phaserReady);
+    assert.equal((await read()).bankedGold,0,'confirmed native reset clears progress');
+    const reduced=await browser.newPage({reducedMotion:'reduce'});
+    reduced.on('pageerror',error=>errors.push(String(error)));
+    await reduced.goto(url);await reduced.waitForFunction(()=>window.__phaserReady);
+    await reduced.evaluate(()=>{window.__scollTest.setSave({essence:{feral:100}});window.__scollTest.setMode('bestiary');});
+    const r=await reduced.locator('#game').boundingBox();
+    await reduced.mouse.click(r.x+270*r.width/540,r.y+741*r.height/900);
+    await reduced.evaluate(()=>window.advanceTime(200));
+    assert(await reduced.evaluate(()=>{
+      let reveal;
+      const visit=o=>{if(o.revealToken)reveal=o;if(o.list)o.list.forEach(visit);};
+      scrollMonstersGame.scene.scenes[0].children.list.forEach(visit);
+      return reveal?.scaleX===1 && !scrollMonstersGame.scene.scenes[0].tweens.getTweensOf(reveal).length;
+    }),'reduced motion skips the reveal animation');
+    await reduced.close();
+    assert.deepEqual(errors,[]);
+    console.log('PASS native Phaser UI: WebGL, retained panels/buttons, press/reveal tweens, disabled controls, canceled clicks, collection, masks, screen lifecycle and fullscreen');
+  } finally { await browser.close(); }
+})().catch(error=>{console.error(error);process.exitCode=1;});

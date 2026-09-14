@@ -48,15 +48,33 @@ from `vendor/`, so the existing Python server and static deployment still work
 without a CDN or a bundler. `package.json` and `package-lock.json` pin the matching
 npm package; the vendored distribution includes Phaser's MIT license.
 
-`ScrollMonstersScene` in `game.js` owns the frame lifecycle. `phaser-renderer.js`
-turns image and spritesheet draws into pooled native Phaser Images and texture
-frames. Custom Canvas Game Objects preserve text, wood UI, gradients, and nested
-clipping. This deliberately uses **Phaser's Canvas renderer**, not WebGL. Gameplay,
-collision rules, music, pointer gestures, the 540×900 coordinate system, and save
-storage remain compatible. The existing CSS controls the portrait fit.
+`ScrollMonstersScene` in `game.js` loads textures, the pixel font, and audio through
+Phaser and runs the unchanged combat simulation. The browser uses **Phaser's
+WebGL renderer**. `phaser-ui.js` provides reusable `WoodPanel` and `WoodButton`
+containers, native nine-slice backgrounds, Text, Graphics, images, and masked
+containers. The former Canvas drawing adapter has been removed.
 
-Run `GAME_URL=http://localhost:5173 npm run test:phaser` with the server running
-and Playwright installed. It checks screen navigation, upgrades, summoning, party
-changes, mouse/touch aiming, all ten stages, victory/defeat, save reload, the
-upgrade prototype, and the real Phaser loop. Screenshots are in `output/phaser/`.
-The Node-only simulation entry remains available for the existing VM checks.
+Screens retain their objects between updates. Buttons use Phaser hit areas and
+pointer events with hover/press feedback, disabled states, and drag cancellation.
+Grouped cards can animate as a unit; summon reveals and results use native tweens.
+The progress-reset confirmation is also a native modal. Reduced-motion preferences
+skip decorative tweens. Phaser's Scale Manager handles portrait fit and fullscreen;
+CSS supplies the outer safe-area layout. The Sound Manager owns music and effects.
+
+Save storage and gameplay rules are unchanged. The Node simulation entry has no
+renderer and remains available for logic tests.
+
+With the local server running and Playwright installed:
+
+```sh
+GAME_URL=http://localhost:5173 npm run test:phaser
+GAME_URL=http://localhost:5173 npm run test:ui
+GAME_URL=http://localhost:5173 node scripts/check-collection-ui.cjs
+```
+
+These check gameplay, all ten stages, upgrades, summoning/collection, mouse/touch
+input, saves, native component lifecycle, tweens, disabled/canceled controls,
+reset confirmation, reduced motion, and fullscreen. Screenshots are written to
+`output/phaser/`, `output/native-ui/`, and `output/collection-ui/`. The browser
+checks select Chromium's Metal backend on macOS because the default headless
+backend can report WebGL as unsupported.

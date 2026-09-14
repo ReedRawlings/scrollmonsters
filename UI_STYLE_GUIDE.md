@@ -7,7 +7,7 @@ This guide records the approved menu direction and the implementation details th
 - Use the Ninja Adventure **Theme Wood** family for menus.
 - Keep the visual language warm, simple, and readable. Do not combine it with Dragon Regalia, Theme Mix, Bonus, or unrelated frame sets.
 - Build hierarchy through spacing, scale, and one appropriate surface per region. Do not stack decorative frames or add background art behind a nine-slice.
-- Preserve native pixel shapes. Scale raster art at whole-number multiples with canvas smoothing disabled.
+- Preserve native pixel shapes. Scale raster art at whole-number multiples with Phaser pixel-art filtering enabled.
 - The production Bestiary and `ui-previews/bestiary-concepts.html?variant=warm` show the approved composition.
 
 ## Shared source of truth
@@ -18,16 +18,26 @@ This guide records the approved menu direction and the implementation details th
 - Nine-slice borders and scale.
 - Currency-sheet row assignments.
 
-Reusable drawing functions include:
+Native components live in `phaser-ui.js`: `WoodPanel`, `WoodButton`, and the retained `NativeView` display tree. The game-facing helpers include:
 
-- `drawWood`: general nine-slice rendering.
+- `drawWood`: native Phaser NineSlice inside a reusable WoodPanel container.
 - `drawPanel`: standard menu surface.
-- `drawButton`: standard enabled/disabled menu button.
+- `drawButton`: native interactive WoodButton with enabled/disabled and pressed states.
 - `drawCurrencyIcon`: gold and affinity icons from the shared currency atlas.
 - `drawBestiaryButton`: approved button-state pattern.
-- `drawMenuTab`: shared selected/unselected tab rendering with integer typography; `drawBestiaryTab` supplies the Bestiary layout.
+- `drawMenuTab`: shared selected/unselected tab rendering with integer typography.
 
-New menus should call these helpers or extract them into a shared UI module. Do not copy their pixel math into another screen.
+New menus should compose these native components. Group a card's background, text,
+artwork, and controls with `beginGroup`/`endGroup` so the entire card can move or
+animate together. Use Phaser pointer events and hit areas, not a manual click-target
+list. Reconcile native objects instead of destroying and recreating controls each
+frame, which interrupts tweens and pointer state. Do not restore Canvas draw-call
+adapters or custom Canvas render methods.
+
+Buttons press to 96% scale and recover on release or cancellation. Summon reveal
+and result-card transitions use Phaser tweens; respect reduced-motion preferences.
+The font has narrow spaces, so native labels use Unicode thin spaces for display
+and retain the original label as Phaser data for UI inspection.
 
 ## Asset roles
 
