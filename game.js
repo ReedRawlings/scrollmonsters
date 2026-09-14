@@ -1,8 +1,9 @@
 (() => {
   "use strict";
 
-  const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d");
+  function createGame(scene = null) {
+  const canvas = scene ? scene.game.canvas : document.getElementById("game");
+  const ctx = scene ? window.createPhaserRenderer(scene) : canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   const WIDTH = canvas.width;
   const HEIGHT = canvas.height;
@@ -2109,6 +2110,7 @@
     uiTargets = [];
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "bestiary") drawBestiary(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
+    ctx.endFrame?.();
   }
 
   function canvasPoint(event) {
@@ -2207,6 +2209,7 @@
   });
 
   window.render_game_to_text = () => JSON.stringify({
+    engine: scene ? { name: "Phaser", version: Phaser.VERSION, renderer: "Canvas", scene: scene.sys.settings.key } : null,
     audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music && !music.paused },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
@@ -2261,11 +2264,31 @@
   document.fonts?.load('16px "NinjaPixel"').then(() => render());
   render();
   if (!window.__vt_pending) {
-    let previous = performance.now();
-    function loop(now) {
-      const dt = Math.min(0.05, (now - previous) / 1000);
-      previous = now; update(dt); render(); requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
+    // Phaser supplies delta in milliseconds; simulation remains in seconds.
+    scene?.events.on('update', (_time, delta) => { update(Math.min(0.05, delta / 1000)); render(); });
   }
+  return { render };
+  }
+
+  // The standalone simulation path lets the existing Node checks run without a
+  // DOM or GPU. Browser entry points always load Phaser before this file.
+  if (!window.Phaser) { createGame(); return; }
+  class ScrollMonstersScene extends Phaser.Scene {
+    constructor() { super('ScrollMonsters'); }
+    create() {
+      createGame(this);
+      window.__phaserReady = true;
+    }
+  }
+  window.scrollMonstersGame = new Phaser.Game({
+    type: Phaser.CANVAS,
+    canvas: document.getElementById('game'),
+    width: 540, height: 900,
+    transparent: false, backgroundColor: '#79b867',
+    pixelArt: true, roundPixels: false,
+    audio: { noAudio: true }, // Existing music selection and unlock rules are retained.
+    scale: { mode: Phaser.Scale.NONE, autoRound: false },
+    scene: [ScrollMonstersScene],
+    banner: false
+  });
 })();

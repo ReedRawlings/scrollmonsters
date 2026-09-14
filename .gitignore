@@ -3,3 +3,5 @@
 
 # Local UI prototypes and preview artifacts.
 /ui-previews/
+
+/node_modules/

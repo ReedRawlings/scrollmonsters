@@ -1,0 +1,48 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({headless: true});
+  try {
+    const page = await browser.newPage({viewport: {width: 540, height: 940}});
+    const errors = [];
+    page.on('pageerror', error => errors.push(String(error)));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.addInitScript(() => { window.__vt_pending = true; });
+    await page.goto(process.env.GAME_URL || 'http://localhost:5199');
+    await page.waitForFunction(() => window.__phaserReady);
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForFunction(() => [...document.images].every(image => image.complete));
+    await page.waitForTimeout(1000);
+    fs.mkdirSync('output/phaser', {recursive: true});
+    const read = () => page.evaluate(() => JSON.parse(window.render_game_to_text()));
+    const shot = async name => { await page.waitForTimeout(80); await page.locator('#game').screenshot({path: `output/phaser/${name}.png`}); };
+    const click = async (x, y) => { const r = await page.locator('#game').boundingBox(); await page.mouse.click(r.x + x * r.width / 540, r.y + y * r.height / 900); };
+    assert.equal((await read()).engine.version, '4.2.1');
+    assert.equal(await page.locator('canvas').count(), 1);
+    await shot('title');
+    await click(270, 700); assert.equal((await read()).mode, 'map');
+    await shot('map');
+    await click(390, 730); assert.equal((await read()).mode, 'upgrades');
+    await page.evaluate(() => window.__scollTest.setSave({gold:1000, unlockedStage:10}));
+    await shot('upgrades');
+    await page.evaluate(() => { window.__scollTest.setMode('bestiary'); });
+    await shot('bestiary');
+    await page.evaluate(() => { window.__scollTest.startStage(1); window.advanceTime(1500); });
+    await shot('combat');
+    assert.equal((await read()).mode, 'combat');
+    assert((await read()).combat.projectiles.length > 0);
+    assert(await page.evaluate(() => window.scrollMonstersGame.scene.getScene('ScrollMonsters').children.list.some(object => object.type === 'Image' && object.visible)), 'native Phaser images render the scene');
+    await page.evaluate(() => window.__scollTest.clearCombat());
+    assert.equal((await read()).mode, 'result'); await shot('result');
+    const save = await page.evaluate(() => window.__scollTest.getSave());
+    await page.reload(); await page.waitForFunction(() => window.__phaserReady);
+    assert.deepEqual(await page.evaluate(() => window.__scollTest.getSave()), save);
+    await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(150);
+    const rect = await page.locator('#game').boundingBox();
+    assert(rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= 390 && rect.y + rect.height <= 844, JSON.stringify(rect));
+    await shot('mobile');
+    assert.deepEqual(errors, []);
+    console.log('PASS Phaser 4.2.1: native sprites, all screens, gameplay, victory, saves and mobile sizing; no browser errors');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });
