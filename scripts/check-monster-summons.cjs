@@ -19,7 +19,7 @@ const { chromium } = require('playwright');
     const expected=before.ownedCreatures.includes(id)?(before.fragments[id]||0)+1:0;
     if((after.fragments[id]||0)!==expected)throw Error('Incorrect duplicate fragment award');
    }
-   const s=a.getSave(); results.push({count,owned:s.ownedCreatures.length,fragments:Object.values(s.fragments),remaining:a.summonPool(affinity,tier).length,spent:100000-s.essence[affinity],cost:[0,10,100,1000][tier]});
+   const s=a.getSave(); results.push({count,owned:s.ownedCreatures.length,fragments:Object.values(s.fragments),remaining:a.summonPool(affinity,tier).length,spent:100000-s.essence[affinity],cost:[0,20,200,2000][tier]});
    const before=JSON.stringify(a.getSave()); a.summonCreature(affinity,tier); if(JSON.stringify(a.getSave())!==before)throw Error('Completed pool charged currency');
   }
   const c=catalog.find(c=>c.name==='Tengu');
@@ -49,7 +49,7 @@ const { chromium } = require('playwright');
  assert.equal(state.combat.companions[0].shiny,true);
  await page.screenshot({path:'output/monster-summons/combat.png'});
  fs.writeFileSync('output/monster-summons/state.json',JSON.stringify(state,null,2));
- await page.evaluate(()=>{const a=window.__scollTest;a.setSave({essence:{arcane:100}});a.setMode('bestiary')});
+ await page.evaluate(()=>{const a=window.__scollTest;a.setSave({essence:{arcane:200}});a.setMode('bestiary')});
  await page.mouse.click(380,700);
  const summoned=await page.evaluate(()=>window.__scollTest.getSave());
  assert.equal(summoned.essence.arcane,0);assert.equal(summoned.ownedCreatures.length,1);

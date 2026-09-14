@@ -59,6 +59,9 @@
     natureTiles: "assets/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetNature.png",
     earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
     groundTrap: "assets/SoggySocks Combat FX/PNG/ground_trap_sheet.png",
+    bambooProjectile: "assets/SoggySocks Nature FX/PNG/proj_nature_2_sheet.png",
+    fishProjectile: "assets/SoggySocks Water FX/PNG/impact_water_sheet.png",
+    moleImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_2_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
     playerWalk: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Walk.png",
     playerAttack: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Attack.png",
@@ -570,7 +573,8 @@
     mossbud: { id: "mossbud", name: "Mossbud", affinityId: "bloom", petType: "healer", density: [0.08, 0.10, 0.10, 0.25, 0.50, 0.15, 0.35, 0.25, 0.12, 0.30] },
     tinmin: { id: "tinmin", name: "Tinmin", affinityId: "arcane", petType: "aoe", density: [0.04, 0.05, 0.05, 0.10, 0.08, 0.15, 0.15, 0.25, 0.25, 0.35] }
   });
-  const creatureDefs = Object.freeze(monsterCatalog.map(c => ({ ...c, role: { striker: "Striker", healer: "Healer", aoe: "Area" }[c.petType], captureCost: [0,10,100,1000][c.tier], description: "Duplicates grant shiny fragments." })));
+  const summonCosts = Object.freeze([0, 20, 200, 2000]);
+  const creatureDefs = Object.freeze(monsterCatalog.map(c => ({ ...c, role: { striker: "Striker", healer: "Healer", aoe: "Area" }[c.petType], captureCost: summonCosts[c.tier], description: "Duplicates grant shiny fragments." })));
   const creatureById = id => creatureDefs.find(creature => creature.id === id);
   const petDisplayNames = Object.fromEntries(creatureDefs.map(creature => [creature.id, creature.name]));
 
@@ -618,8 +622,9 @@
   }
 
   const typeUpgradeIds = new Set(["strikerPower", "strikerSpeed", "strikerDouble", "strikerCritChance", "strikerCritDamage", "healerCritChance", "healerCritDamage", "aoeCritChance", "aoeCritDamage"]);
-  const upgradeType = definition => typeUpgradeIds.has(definition.id) ? creatureById(definition.recruit)?.affinityId : null;
-  const ownsUpgradeType = definition => state.save.ownedCreatures.some(id => creatureById(id)?.affinityId === upgradeType(definition));
+  const upgradeBranchAffinity = Object.freeze({ STRIKER: "feral", HEALER: "bloom", AOE: "arcane" });
+  const upgradeType = definition => typeUpgradeIds.has(definition.id) ? upgradeBranchAffinity[definition.branch] : null;
+  const ownsUpgradeType = definition => !!upgradeType(definition) && state.save.ownedCreatures.some(id => creatureById(id)?.affinityId === upgradeType(definition));
 
   const balanceModel = Object.freeze({
     offenseShare: 0.35,
@@ -1073,6 +1078,25 @@
     }
   }
 
+  const bloomAttacks = Object.freeze({
+    "bloom-bamboo": { damage: 3, range: 240, cooldown: 2, speed: 300, sheet: "bambooProjectile", frames: 4 },
+    "bloom-fish": { damage: 1, range: 480, cooldown: 1, speed: 420, sheet: "fishProjectile", frames: 8 },
+    "bloom-mole": { damage: 1, range: 480, cooldown: 1, sheet: "moleImpact", frames: 9, targeted: true }
+  });
+  function bloomCreatureAttack(companion, ability) {
+    const target = state.enemies.filter(enemy => enemyVisible(enemy) && Math.hypot(enemy.x-companion.x, enemy.y-companion.y) <= ability.range)
+      .sort((a,b) => Math.hypot(a.x-companion.x,a.y-companion.y)-Math.hypot(b.x-companion.x,b.y-companion.y))[0];
+    if (!target) return false;
+    if (ability.targeted) {
+      state.effects.push({type:"moleImpact",x:target.x,y:target.y,life:.6,maxLife:.6,radius:100});
+      damageEnemy(target, ability.damage, companion.creatureId);
+    } else {
+      shoot(companion.x,companion.y,target.x,target.y,true,ability.damage,ability.speed,companion.creatureId);
+      Object.assign(state.projectiles[state.projectiles.length-1],{maxDistance:ability.range,distance:0});
+    }
+    companion.pulse=.25;
+    return true;
+  }
   function updateCompanions(dt) {
     for (const [index, companion] of state.companions.entries()) {
       companion.x = state.party.x;
@@ -1081,6 +1105,11 @@
       companion.timer -= dt;
       companion.pulse = Math.max(0, companion.pulse - dt);
       if (companion.timer > 0) continue;
+      const bloomAbility = bloomAttacks[companion.creatureId];
+      if (bloomAbility) {
+        if (bloomCreatureAttack(companion,bloomAbility)) companion.timer=bloomAbility.cooldown;
+        continue;
+      }
       if (companion.type === "striker") {
         if (fangletTarget(companion)) {
           const isFeral = creatureById(companion.creatureId)?.affinityId === "feral";
@@ -1338,6 +1367,10 @@
     for (const projectile of [...state.projectiles]) {
       const oldX = projectile.x, oldY = projectile.y;
       projectile.age = (projectile.age || 0) + dt;
+      if (projectile.maxDistance !== undefined) {
+        projectile.distance += Math.hypot(projectile.vx,projectile.vy)*dt;
+        if (projectile.distance > projectile.maxDistance) { state.projectiles.splice(state.projectiles.indexOf(projectile),1); continue; }
+      }
       projectile.x += projectile.vx * dt;
       projectile.y += projectile.vy * dt;
       let hit = false;
@@ -1572,14 +1605,8 @@
   }
 
   function drawBestiaryBackground() {
-    ctx.fillStyle = UI_THEME.colors.field;
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.fillStyle = UI_THEME.colors.path;
-    ctx.fillRect(57, 0, 426, HEIGHT);
-    ctx.fillStyle = UI_THEME.colors.speck;
-    for (let y = 0; y < HEIGHT; y += 24) for (let x = 0; x < WIDTH; x += 24) {
-      if ((x / 24 + y / 24) % 3 === 0) ctx.fillRect(x + 3, y + 6, 3, 3);
-    }
   }
 
   function drawCurrencyIcon(currencyId, x, y, size = 30, alpha = 1) {
@@ -1722,7 +1749,7 @@
 
   const summonPool = (affinityId,tier) => monsterCatalog.filter(c => c.affinityId === affinityId && c.tier === tier && (state.save.fragments[c.id] || 0) < 5);
   function summonCreature(affinityId,tier) {
-    const pool = summonPool(affinityId,tier), cost = [0,10,100,1000][tier];
+    const pool = summonPool(affinityId,tier), cost = summonCosts[tier];
     if (!pool.length || !cost || state.save.essence[affinityId] < cost) return null;
     const creature = pool[Math.floor(Math.random()*pool.length)];
     state.save.essence[affinityId] -= cost;
@@ -1801,10 +1828,6 @@
 
   }
 
-  function drawBestiaryTab(affinityId, x, selected) {
-    drawMenuTab(affinityDefs[affinityId].name.toUpperCase(), x, 237, 162, 42, selected, () => { bestiaryAffinity = affinityId; bestiaryPage = 0; });
-  }
-
   function drawSummonBestiary() {
     const colors = UI_THEME.colors, now = state.animationTime;
     const elapsed = summonPresentation ? (now - summonPresentation.start) * 1000 : 0;
@@ -1813,7 +1836,7 @@
     const progress = summonPresentation ? Math.min(1, elapsed / (reduced ? 180 : duration)) : 0;
     const revealAt = [0, .48, .60, .66][bestiaryTier];
     const busy = !!summonPresentation && progress < 1;
-    ctx.fillStyle = colors.field; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    drawBestiaryBackground();
     drawWood("woodPanel", 15, 15, 510, 72);
     drawText("BESTIARY", 33, 51, 30, colors.title);
     affinityOrder.forEach((id,index) => {
@@ -1824,7 +1847,7 @@
     drawWood("woodPanel",18,163,504,617);
     [1,2,3].forEach((tier,index)=>{
       const x=34+index*160;
-      drawBestiaryButton(`Tier ${tier} · ${[0,10,100,1000][tier]}`,x,183,152,48,tier===bestiaryTier?"selected":"normal",busy?null:()=>{bestiaryTier=tier;summonPresentation=null;});
+      drawBestiaryButton(`Tier ${tier} · ${summonCosts[tier]}`,x,183,152,48,tier===bestiaryTier?"selected":"normal",busy?null:()=>{bestiaryTier=tier;summonPresentation=null;});
     });
     ctx.save();
     ctx.fillStyle="#30221a";ctx.fillRect(34,245,472,414);
@@ -1858,7 +1881,7 @@
     ctx.restore();
     const message=summonPresentation?(progress<revealAt?"Gathering essence…":summonPresentation.message):"";
     drawText(message,270,687,18,colors.text,"center");
-    const cost=[0,10,100,1000][bestiaryTier],complete=!summonPool(bestiaryAffinity,bestiaryTier).length;
+    const cost=summonCosts[bestiaryTier],complete=!summonPool(bestiaryAffinity,bestiaryTier).length;
     const affordable=state.save.essence[bestiaryAffinity]>=cost;
     const label=busy?"SUMMONING…":complete?"POOL COMPLETE":!affordable?"NOT ENOUGH ESSENCE":`SUMMON${summonPresentation?" AGAIN":""} · ${cost} ${affinityDefs[bestiaryAffinity].short}`;
     drawBestiaryButton(label,34,719,472,44,busy||complete||!affordable?"locked":"normal",busy||complete||!affordable?null:()=>{
@@ -1891,13 +1914,21 @@
       else drawText("EMPTY", x + 68, 176, 15, UI_THEME.colors.muted, "center");
     }
 
-    affinityOrder.forEach((affinityId, index) => drawBestiaryTab(affinityId, 18 + index * 171, affinityId === bestiaryAffinity));
+    affinityOrder.forEach((affinityId, index) => drawBestiaryButton(
+      affinityDefs[affinityId].name,18+index*171,237,162,44,
+      affinityId===bestiaryAffinity?"selected":"normal",
+      ()=>{bestiaryAffinity=affinityId;bestiaryPage=0;}
+    ));
 
-    [1,2,3].forEach((tier,index) => drawMenuTab(`TIER ${tier}`,18+index*171,291,162,36,bestiaryTier===tier,()=>{bestiaryTier=tier;bestiaryPage=0;}));
-    const roster = creatureDefs.filter(c => c.affinityId === bestiaryAffinity && c.tier === bestiaryTier);
-    const pages = Math.max(1, Math.ceil(roster.length / 3));
-    roster.slice(bestiaryPage*3,bestiaryPage*3+3).forEach((creature,index)=>{
-      const y=339+index*112, owned=hasRecruit(creature.id), active=state.save.activeParty.includes(creature.id);
+    const roster = creatureDefs.filter(c => c.affinityId === bestiaryAffinity && hasRecruit(c.id));
+    const pageSize = 4, pages = Math.max(1, Math.ceil(roster.length / pageSize));
+    bestiaryPage = Math.min(bestiaryPage, pages - 1);
+    if (!roster.length) {
+      drawText(`No ${affinityDefs[bestiaryAffinity].name} creatures unlocked yet`,270,463,18,UI_THEME.colors.text,"center");
+      drawText("Summon to discover your first companion",270,497,15,UI_THEME.colors.muted,"center");
+    }
+    roster.slice(bestiaryPage*pageSize,bestiaryPage*pageSize+pageSize).forEach((creature,index)=>{
+      const y=295+index*110, owned=hasRecruit(creature.id), active=state.save.activeParty.includes(creature.id);
       drawWood(owned ? "woodPanel" : "woodDisabled",18,y,504,102);
       drawPet(creature.id,63,y+50,48,owned?1:0.35);
       drawText(creature.name,99,y+24,18,UI_THEME.colors.text);
@@ -1908,15 +1939,13 @@
         state.save.shinyCreatures=state.save.shinyCreatures.includes(creature.id)?state.save.shinyCreatures.filter(id=>id!==creature.id):[...state.save.shinyCreatures,creature.id];writeSave();
       }:null);
     });
-    drawBestiaryButton("<",18,684,60,34,"normal",()=>{bestiaryPage=(bestiaryPage+pages-1)%pages;});
-    drawText(`${bestiaryPage+1}/${pages}`,108,701,15);
-    drawBestiaryButton(">",144,684,60,34,"normal",()=>{bestiaryPage=(bestiaryPage+1)%pages;});
-    const pool=summonPool(bestiaryAffinity,bestiaryTier), cost=[0,10,100,1000][bestiaryTier];
-    drawBestiaryButton(pool.length?`SUMMON ${cost}`:"COMPLETE",222,684,300,42,pool.length && state.save.essence[bestiaryAffinity]>=cost?"normal":"locked",()=>{bestiaryView="summon";summonPresentation=null;});
-
-    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 758, 15, UI_THEME.colors.title, "center");
-    drawText("Choose up to three creatures for your active party", WIDTH / 2, 792, 15, UI_THEME.colors.muted, "center");
-    drawBestiaryButton("BACK TO MAP", 99, 819, 342, 42, "normal", () => setMode("map"));
+    drawBestiaryButton("<",174,740,60,34,pages>1?"normal":"locked",pages>1?()=>{bestiaryPage=(bestiaryPage+pages-1)%pages;}:null);
+    drawText(`${bestiaryPage+1}/${pages}`,270,757,15,UI_THEME.colors.text,"center");
+    drawBestiaryButton(">",306,740,60,34,pages>1?"normal":"locked",pages>1?()=>{bestiaryPage=(bestiaryPage+1)%pages;}:null);
+    if (state.toastTimer > 0) drawText(state.toast, WIDTH / 2, 788, 15, UI_THEME.colors.title, "center");
+    drawBestiaryButton("SUMMON",18,805,244,44,"normal",()=>{bestiaryView="summon";summonPresentation=null;});
+    drawBestiaryButton("BACK TO MAP",278,805,244,44,"normal",()=>setMode("map"));
+    drawText("Choose up to three creatures for your active party",270,875,15,UI_THEME.colors.muted,"center");
   }
 
   function rankRequirementText(definition) {
@@ -2117,7 +2146,10 @@
       drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
     }
     for (const projectile of state.projectiles) {
-      if ((projectile.source === "player" || projectile.source === "boulderBuster")) {
+      const bloomAbility = bloomAttacks[projectile.source];
+      if (bloomAbility) {
+        drawSheetFrame(bloomAbility.sheet,projectile.x,projectile.y,Math.floor(projectile.age*12)%bloomAbility.frames,bloomAbility.frames,200,Math.atan2(projectile.vy,projectile.vx));
+      } else if ((projectile.source === "player" || projectile.source === "boulderBuster")) {
         const frame = Math.floor(projectile.age * 12) % 4;
         const rotation = Math.atan2(projectile.vy, projectile.vx);
         if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 200, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 6);
@@ -2130,6 +2162,8 @@
       } else if (effect.type === "groundTrap") {
         const frame = Math.min(9, Math.floor((1 - effect.life / effect.maxLife) * 10));
         drawSheetFrame("groundTrap", effect.x, effect.y, frame, 10, 300);
+      } else if (effect.type === "moleImpact") {
+        drawSheetFrame("moleImpact",effect.x,effect.y,Math.min(8,Math.floor((1-effect.life/effect.maxLife)*9)),9,200,0,alpha);
       } else if (effect.type === "earthImpact") {
         const frame = Math.min(7, Math.floor((1 - effect.life / effect.maxLife) * 8));
         if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2, alpha);

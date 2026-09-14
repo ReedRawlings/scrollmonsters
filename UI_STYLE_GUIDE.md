@@ -189,3 +189,7 @@ Use `nine_path_bg.png` (4px slices, 2x) inside the orange frames of the overworl
 ## Combat sprite scale — September 14
 
 The player, companions, and regular monsters render at 32×32 (16px frames at 2x) using `COMBAT_SPRITE_SIZE`. Boss and menu portrait sizes retain their existing values. Player/companion collision radii are 12px; regular enemy radii are basic 11px, ranged 12px, armored 15px. Enemy health bars follow those radii. Player shots originate 12px below the center. Terrain, camera, HUD and encounter spawn rates retain their existing settings.
+
+## Collection and summon layout — September 14
+
+Both Bestiary views use a solid black full-page backdrop. Collection affinity selectors use normal/selected Wood buttons, not tabs. The collection lists only owned creatures of the selected affinity across all tiers, four rows per page; there are no collection tier filters. Empty affinities show a short unlock prompt without revealing creature names. Center pagination above side-by-side Summon and Back to Map buttons at y=805, matching the summon view's footer. The collection Summon button opens the summon view regardless of essence balance; tier selection and affordability belong to that view.

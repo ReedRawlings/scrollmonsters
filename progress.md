@@ -669,3 +669,22 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Preserved concurrent summoning-screen changes arriving in game.js and verified their latest UI under Phaser.
 
 - Fixed summoned/owned creature facing: portraits and party sprites now use south-facing column 0. Kept enemy entry-edge mapping separate so spawn directions remain correct.
+
+## Fix shared type ownership gates
+- Replaced lookup of removed legacy creature IDs with explicit STRIKER→feral, HEALER→bloom, AOE→arcane mapping for shared nodes. Unknown types cannot pass ownership accidentally.
+- Verified each type accepts a matching owned creature, rejects missing/wrong ownership, and still enforces Double Attack prerequisites. Individual creature ability gates remain separate. Syntax passes; local only.
+
+- Summon prices increased to 20 / 200 / 2,000 matching essence. Centralized summonCosts for tier labels, affordability, transactions and creature metadata; updated summon-check expectations.
+
+## September 14 — collection and summon UI cleanup
+
+- Replaced both Bestiary backdrop styles with solid black. Collection affinity filters now use Wood buttons, removed collection tier filters, and show only owned creatures across tiers (four per page).
+- Centered pagination above side-by-side Summon and Back to Map buttons. Summon navigation remains available with no essence; empty collections provide a discovery prompt.
+- Passed `scripts/check-collection-ui.cjs`: hidden locked names, all-tier ownership filtering, empty states, page wrapping/reset, active-party toggle, summon navigation and real transaction, return to map, and no browser errors. Inspected populated collection and summon screenshots under `output/collection-ui/`; ran the Mac-compatible web-game harness. Preserved existing uncommitted summoning and pricing changes.
+
+## Tier 1 Bloom abilities
+- Bamboo: Nature proj_nature_2, 1 damage, 240px targeting/travel range, 2s cooldown. Fish: Water impact_water used as traveling projectile, 1 damage, 480px range, 1s cooldown. Mole: Earth impact_earth_2 at target, 1 damage, 480px range, 1s cooldown. Distances/damage provisional.
+- These three creature IDs now attack instead of inheriting the healer behavior; shinies retain the same ability. Effects use full strip frame counts (4/8/9). Projectile travel limits enforced, no cooldown consumed without a target.
+- Browser checks passed attacks, damage, ranges and cooldowns with no page errors; screenshot inspected and game harness run. Local only.
+
+- Bamboo base attack damage increased from 1 to 3; medium range and 2-second cooldown unchanged.
