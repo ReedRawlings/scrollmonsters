@@ -46,6 +46,7 @@
     groundTrap: "assets/SoggySocks Combat FX/PNG/ground_trap_sheet.png",
     bambooProjectile: "assets/SoggySocks Nature FX/PNG/proj_nature_2_sheet.png",
     fishProjectile: "assets/SoggySocks Water FX/PNG/impact_water_sheet.png",
+    burrowShadow: "assets/Ninja Adventure - Asset Pack/Actor/Characters/Shadow.png",
     moleImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_2_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
     playerWalk: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Walk.png",
@@ -503,7 +504,7 @@
       bossHpMultiplier: number === 1 ? 1 : 0.8,
       // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
-      hpScale: [1, 1.495, 2, 3, 3, 3, 4, 7, 7, 7][index],
+      hpScale: [1, 1.495, 2, 3, 4, 5, 6, 7, 8, 9][index],
       bossHpScale: [28, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
       damageScale: 0.855 + (number - 1) * 0.25 + (number - 1) ** 2 * 0.025,
       boss: true,
@@ -521,11 +522,37 @@
         { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
         { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }]
   };
-  const stageBossDamage = stage => stage.number === 1 ? 3 : Math.max(1, Math.round(5 * stage.damageScale));
+  const tierOneEnemyStats = {
+    "feral-bat": { type: "basic", baseHp: 2, baseDamage: 1 },
+    "feral-beast": { type: "armored", baseHp: 3, baseDamage: 2 },
+    "feral-lizard": { type: "basic", baseHp: 2, baseDamage: 2 },
+    "bloom-bamboo": { type: "basic", baseHp: 1, baseDamage: 1 },
+    "bloom-fish": { type: "ranged", baseHp: 1, baseDamage: 1 },
+    "bloom-mole": { type: "armored", baseHp: 2, baseDamage: 1 },
+    "arcane-eye": { type: "ranged", baseHp: 1, baseDamage: 1 },
+    "arcane-flam": { type: "ranged", baseHp: 1, baseDamage: 2 },
+    "arcane-lantern": { type: "ranged", baseHp: 2, baseDamage: 1 },
+    "arcane-mouse": { type: "basic", baseHp: 1, baseDamage: 1 },
+    "arcane-owl": { type: "ranged", baseHp: 2, baseDamage: 2 }
+  };
+  const laterStageLineups = {
+    4: ["feral-lizard", "bloom-fish", "arcane-eye"],
+    5: ["feral-beast", "bloom-mole", "arcane-flam"],
+    6: ["feral-bat", "bloom-bamboo", "arcane-lantern"],
+    7: ["feral-lizard", "bloom-mole", "arcane-mouse"],
+    8: ["feral-beast", "bloom-fish", "arcane-owl"],
+    9: ["feral-bat", "bloom-mole", "arcane-eye"],
+    10: ["feral-lizard", "bloom-bamboo", "arcane-flam"]
+  };
+  for (const [stage, ids] of Object.entries(laterStageLineups)) {
+    stageRosters[stage] = ids.map((id,index) => ({ id, chance: index === 0 ? .4 : .3, ...tierOneEnemyStats[id] }));
+  }
+  const stageBossCreature = { 3: "feral-bat", 5: "feral-beast", 6: "bloom-mole", 7: "feral-lizard", 8: "arcane-owl", 9: "arcane-lantern", 10: "feral-beast" };
+  const stageBossDamage = stage => stage.number === 1 ? 3 : stage.number === 2 ? 5 : Math.max(1, Math.round(5 * stage.damageScale));
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
-      hp: precise((openingBat ? 2 : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
+      hp: stage.number === 2 && entry.id === "feral-beast" ? 6 : precise((openingBat ? 2 : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
       damage: openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
     };
   }
@@ -683,7 +710,7 @@
       ? stageRosters[stageNumber].reduce((total, entry) => total + rosterStats(entry, stage).hp / stage.hpMultiplier * entry.chance, 0)
       : health.reduce((total, value, index) => total + value * weights[index], 0);
     const bossMultiplier = stage.majorBoss ? 1.5 : 1;
-    const bossHealth = precise(Math.round(28 * stage.bossHpScale * bossMultiplier) * stage.bossHpMultiplier);
+    const bossHealth = stage.number === 2 ? 40 : precise(Math.round(28 * stage.bossHpScale * bossMultiplier) * stage.bossHpMultiplier);
     const regularDemand = averageRegularHealth / stage.spawnRate;
     const bossDemand = bossHealth / balanceModel.bossDamageWindow;
     return stage.hpMultiplier * balanceModel.safetyFactor * Math.max(regularDemand, bossDemand);
@@ -705,7 +732,7 @@
     const partyDps = effectivePlayerDps + fangletDps;
     return { stage: stageNumber, basicDamage: Math.max(1, Math.round(stageConfigs[stageNumber - 1].damageScale)), armoredDamage: Math.max(1, Math.round(2 * stageConfigs[stageNumber - 1].damageScale)), bossDamage: stageBossDamage(stageConfigs[stageNumber - 1]), hpMultiplier: stageNumber === 1 ? 1 : 2, gold, upgrades: offense.upgrades, effectivePlayerDps, fangletDps, partyDps,
       basicHp: Math.round(stageConfigs[stageNumber - 1].hpScale),
-      bossHp: precise(Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) * stageConfigs[stageNumber - 1].bossHpMultiplier) };
+      bossHp: stageNumber === 2 ? 40 : precise(Math.round(28 * stageConfigs[stageNumber - 1].bossHpScale * (stageNumber === 5 || stageNumber === 10 ? 1.5 : 1)) * stageConfigs[stageNumber - 1].bossHpMultiplier) };
   }
   const captureDefs = creatureDefs.map(creature => ({
     id: `capture${creature.id[0].toUpperCase()}${creature.id.slice(1)}`,
@@ -903,13 +930,14 @@
     const species = rosterCreature ? Object.values(speciesDefs).find(species => species.affinityId === rosterCreature.affinityId).id : type === "boss" ? (state.stage.number === 3 ? "fanglet" : null) : rollSpecies(state.stage.number, speciesRoll, openingStage && state.stageTime < 15);
     const openingFanglet = openingStage && species === "fanglet";
     const stats = rosterEntry && rosterStats(rosterEntry, state.stage);
-    const hp = stats ? stats.hp : precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
+    const hp = type === "boss" && state.stage.number === 2 ? 40 : stats ? stats.hp : precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
     const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
     const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
-    const pool = monsterCatalog.filter(c => c.tier === Math.min(3, Math.ceil(state.stage.number / 4)) && (!species || c.affinityId === speciesDefs[species].affinityId));
-    const monsterId = rosterEntry?.id || (type === "boss" && state.stage.number === 3 ? "feral-bat" : pool[Math.floor(Math.random() * pool.length)].id);
+    const pool = monsterCatalog.filter(c => c.tier === 1 && (!species || c.affinityId === speciesDefs[species].affinityId));
+    const monsterId = rosterEntry?.id || (type === "boss" && stageBossCreature[state.stage.number] ? stageBossCreature[state.stage.number] : pool[Math.floor(Math.random() * pool.length)].id);
     state.enemies.push({
       monsterId,
+      underground: monsterId === "bloom-mole", emerging: 0,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: type === "boss" ? stageBossDamage(state.stage) : stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
@@ -932,7 +960,7 @@
     else state.save.essence[currency] -= amount;
   };
   const essenceYield = stage => 1 + Math.floor((stage - 1) / 3);
-  const enemyVisible = enemy => enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
+  const enemyVisible = enemy => !enemy.underground && !(enemy.emerging > 0) && enemy.x >= 0 && enemy.x <= WIDTH && enemy.y >= 126 && enemy.y <= HEIGHT - 96;
 
   function nearestEnemy(fromX = state.party.x, fromY = state.party.y, includeTreasure = false) {
     const targets = includeTreasure && state.treasure && !state.treasure.open ? [...state.enemies, state.treasure] : state.enemies;
@@ -1042,6 +1070,7 @@
   }
 
   function damageEnemy(enemy, amount, source = "player") {
+    if (enemy.underground || enemy.emerging > 0) return;
     if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
     if (amount > 0) {
       if (source === "bloom-mole" && enemy.hp === enemy.maxHp) enemy.stunRemaining = rank("rockBurst") * 0.2;
@@ -1329,14 +1358,24 @@
     for (const enemy of [...state.enemies]) {
       if (enemy.stunRemaining > 0) { enemy.stunRemaining = Math.max(0, enemy.stunRemaining - dt); continue; }
       // Enemies steer toward the fixed party independently of decorative terrain scroll.
-      const targetBody = nearestPartyBody(enemy.x, enemy.y);
+      const rangedOwl = enemy.monsterId === "arcane-owl";
+      const targetBody = rangedOwl ? partyBodies()[0] : nearestPartyBody(enemy.x, enemy.y);
+      if (enemy.emerging > 0) { enemy.emerging = Math.max(0,enemy.emerging-dt); continue; }
       const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
-      const stopDistance = enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
-      const travel = Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
+      const stopDistance = rangedOwl ? 300 : enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
+      const travel = rangedOwl && distance < 280 ? -Math.min(enemy.speed * dt,300-distance) : Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
+      if (rangedOwl) { enemy.x=clamp(enemy.x,20,WIDTH-20);enemy.y=clamp(enemy.y,146,HEIGHT-116); }
+      if (enemy.underground) {
+        if (Math.hypot(enemy.x-targetBody.x,enemy.y-targetBody.y)<=240) {
+          enemy.underground=false;enemy.emerging=.45;
+          state.effects.push({type:"moleImpact",x:enemy.x,y:enemy.y,life:.6,maxLife:.6,radius:100});
+        }
+        continue;
+      }
       const touchingParty = Math.hypot(enemy.x - targetBody.x, enemy.y - targetBody.y) <= enemy.r + targetBody.r + 1;
       if (enemyVisible(enemy)) { enemy.attackTimer -= dt; enemy.meleeTimer -= dt; }
       if (((enemy.type === "ranged" && !touchingParty) || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && enemy.attackTimer <= 0) {
@@ -1469,6 +1508,11 @@
   }
 
   function drawMonster(enemy) {
+    if (enemy.underground) {
+      const shadow=assets.burrowShadow;
+      if(shadow?.naturalWidth)view.image(shadow,Math.round(enemy.x-18),Math.round(enemy.y-9),36,18,{alpha:.8});
+      return;
+    }
     if (enemy.demonCyclop) {
       const { animation, frame } = demonAnimation(enemy);
       if (!drawSheetFrame(animation === "hit" ? "demonHit" : "demonWalk", enemy.x, enemy.y, frame, animation === "hit" ? 3 : 6, 100)) drawSprite("boss", enemy.x, enemy.y, 92);
@@ -1476,7 +1520,7 @@
     }
     const sheet = enemy.monsterId || monsterSheets[enemy.type];
     const size = enemy.type === "boss" ? 92 : COMBAT_SPRITE_SIZE;
-    if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y, monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size)) {
+    if (!sheet || !drawGridFrame(sheet, enemy.x, enemy.y + Math.round((enemy.emerging || 0) / .45 * 12), monsterColumns[enemy.edge] ?? 1, 4, Math.floor(state.animationTime * 8) % 4, 4, size, size, enemy.emerging > 0 ? 1 - enemy.emerging / .45 : 1)) {
       drawSprite(enemy.type, enemy.x, enemy.y, size);
     }
   }
@@ -1624,7 +1668,7 @@
     drawWood("woodBackground",28,460,484,198,4,2);
     const roster = stageRosters[stage.number];
     if (roster) {
-      const bossHp = precise(Math.round(28 * stage.bossHpScale) * stage.hpMultiplier * stage.bossHpMultiplier);
+      const bossHp = stage.number === 2 ? 40 : precise(Math.round(28 * stage.bossHpScale * (stage.majorBoss ? 1.5 : 1)) * stage.hpMultiplier * stage.bossHpMultiplier);
       const bossDamage = stageBossDamage(stage);
       const drawRosterEntry = (entry, x, compact) => {
         const creature = creatureById(entry.id), stats = rosterStats(entry, stage);
@@ -1643,9 +1687,9 @@
         drawText(`ATK ${bossDamage}`,432,635,15,colors.text,"center");
       } else {
         view.rect(44,615,452,1, colors.muted);
-        if(stage.number===3) drawPet("feral-bat",62,637,32);
+        if(stageBossCreature[stage.number]) drawPet(stageBossCreature[stage.number],62,637,32);
         else drawSheetFrame("demonWalk",62,637,0,6,40);
-        drawText(stage.number===3?"Bat Boss":"Demon Cyclop",88,640,15,colors.text);
+        drawText(stageBossCreature[stage.number]?`${creatureById(stageBossCreature[stage.number]).name} Boss`:"Demon Cyclop",88,640,15,colors.text);
         drawText(`HP ${bossHp} / ATK ${bossDamage}`,490,640,15,colors.text,"right");
       }
     } else {
@@ -1664,7 +1708,7 @@
         drawText(`DMG ${openingFanglet ? 2 : damageRange}`,x,571,15,colors.text,"center");
       });
       const bossName=stage.number===3?"Feral boss":[1,2,4].includes(stage.number)?"Demon Cyclop":"Boss";
-      const bossHp=precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
+      const bossHp=stage.number===2?40:precise(Math.round(28*stage.bossHpScale*(stage.majorBoss?1.5:1))*stage.hpMultiplier*stage.bossHpMultiplier);
       drawText(`${bossName}: HP ${bossHp} / DMG ${stageBossDamage(stage)}`,36,638,15,colors.text);
       drawText(`Other monsters: HP ${hpRange} / DMG ${damageRange}`,36,608,15,colors.text);
     }
@@ -2053,6 +2097,7 @@
     }
     for (const enemy of state.enemies) {
       drawMonster(enemy);
+      if (enemy.underground || enemy.emerging > 0) continue;
       view.rect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2, 5, "#371c27");
       view.rect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5, enemy.type === "boss" ? "#ffb347" : "#ff6b5c");
     }
@@ -2215,7 +2260,7 @@
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, underground: !!enemy.underground, emerging: enemy.emerging || 0, preferredRange: enemy.monsterId === "arcane-owl" ? 300 : null, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: (projectile.source === "player" || projectile.source === "boulderBuster") ? Math.floor(projectile.age * 12) % 4 : null })),
       weather: weatherType(),
       particles: { total: state.particles.length, counts: state.particles.reduce((counts, p) => { counts[p.kind] = (counts[p.kind] || 0) + 1; return counts; }, {}) },

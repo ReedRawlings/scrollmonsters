@@ -722,3 +722,16 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Updated both offense projection formulas to match live combat. Syntax, all six rank interval/cost checks, and Bloom combat regression checks passed.
 
 - Map 1 Bat attack reduced to 1 and boss attack to 3. Shared stat calculations keep map previews and combat aligned; later maps retain prior attack values.
+
+- Stage 2 Beast set to exactly 6 HP; Stage 2 boss set to 40 HP / 5 ATK. Updated combat and map/balance readouts; other stages unchanged.
+
+## Tier 1 stage rosters through Stage 10
+- Preserved Stages 1–3; explicit three-creature rosters for Stages 4–10 rotate Feral/Bloom/Arcane at 40/30/30%. All eleven Tier 1 species now appear across the campaign. Later HP scaling rises 3→9, with existing stage attack scaling.
+- Catalog-based bosses use explicit Tier 1 identities; special Demon Cyclop bosses and boss stats retained. Map cards show actual creature HP/ATK; corrected major-boss preview multiplier.
+- check-stage-rosters.cjs passed 100 regular spawns per stage, exact combat/preview stats, probability sums, Tier 1 regular/boss catalog entries, and Stage 2 boss regression. Uses Metal flags required by current Phaser WebGL renderer. Stage 4 map screenshot inspected. Local only.
+
+## Enemy Owl and Mole behavior
+- Confirmed all 11 base Tier 1 creatures are represented across Stages 1–10; higher tiers excluded.
+- Owl enemies hold ~300px from player, retreat below 280px, stay within visible bounds and fire ranged attacks.
+- Mole enemies move underground using the existing Character Shadow asset, emerge at 240px from the nearest party member with moleImpact earth animation and 0.45s rise, then attack normally. Burrow/emergence suppress targeting, damage, health bars and attacks.
+- check-enemy-behaviors.cjs passes Owl range/firing and Mole underground immunity, emergence and surface damage; screenshot inspected with no page errors. Local only.
