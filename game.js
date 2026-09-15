@@ -612,7 +612,7 @@
     baseCost === 10 ? tenGoldRankCosts.slice(0, ranks)
       : Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
-  const damageRankCosts = abilityRankCosts(10, 10);
+  const damageRankCosts = [5, 10, 15, 20, 25, 50, 75, 100, 125, 150];
 
   const upgradeDefs = [
     { id: "power", name: "Damage +1", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [] },
@@ -654,7 +654,7 @@
   }
 
   upgradeDefs.push(
-    { id: "bloomHealth", name: "Health", branch: "HEALER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `+5 Health per rank (+${5 * (r + 1)} total)`, requires: [] },
+    { id: "bloomHealth", name: "Health", branch: "HEALER", max: 10, costs: damageRankCosts, effect: r => `+5 Health per rank (+${5 * (r + 1)} total)`, requires: [] },
     { id: "bloom", name: "Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), effect: r => `10% chance: +${r + 1} Health when hitting an enemy`, requires: ["bloomHealth"], partyAffinity: "bloom" },
     { id: "flush", name: "Flush", branch: "HEALER", max: 5, costs: abilityRankCosts(50, 5), effect: r => `10% chance: +${3 * (r + 1)} Health when hitting an enemy`, requires: ["bloom"], partyAffinity: "bloom" },
     { id: "razorLeaf", name: "Razor Leaf", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Bamboo attacks pierce ${r + 1} extra enem${r ? "ies" : "y"}`, requires: [] },
