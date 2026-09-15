@@ -1049,7 +1049,7 @@
     const owner = source === "strikerFollowup" ? "striker" : source;
     const result = friendly ? criticalAmount(owner, damage) : { amount: damage, critical: false };
     damage = result.amount;
-    state.projectiles.push({ critical: result.critical, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0, ...(source === "player" ? {maxDistance:playerAttackRange(),distance:0,originX:x,originY:y} : {}) });
+    state.projectiles.push({ critical: result.critical, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0, ...(!friendly ? {maxDistance:ABILITY_RANGES.medium,distance:0} : source === "player" ? {maxDistance:playerAttackRange(),distance:0,originX:x,originY:y} : {}) });
   }
 
   function firePlayerVolley() {
@@ -1532,8 +1532,8 @@
       const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = isBoss;
-      const stopDistance = isBoss ? enemy.r + targetBody.r : enemy.underground ? 220 : rangedOwl ? 300 : enemy.r + targetBody.r;
-      const travel = rangedOwl && distance < 280 ? -Math.min(enemy.speed * dt,300-distance) : Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
+      const stopDistance = isBoss ? enemy.r + targetBody.r : enemy.underground ? 220 : rangedOwl ? ABILITY_RANGES.medium : enemy.r + targetBody.r;
+      const travel = rangedOwl && distance < ABILITY_RANGES.medium - 20 ? -Math.min(enemy.speed * dt,ABILITY_RANGES.medium-distance) : Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
       if (rangedOwl) { enemy.x=clamp(enemy.x,20,WIDTH-20);enemy.y=clamp(enemy.y,146,HEIGHT-116); }
@@ -1546,8 +1546,8 @@
       }
       const touchingParty = Math.hypot(enemy.x - targetBody.x, enemy.y - targetBody.y) <= enemy.r + targetBody.r + 1;
       if (enemyVisible(enemy)) { enemy.attackTimer -= dt; enemy.meleeTimer -= dt; }
-      if (((enemy.type === "ranged" && !touchingParty) || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && enemy.attackTimer <= 0) {
-        shoot(enemy.x, enemy.y - enemy.r, targetBody.x, targetBody.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type);
+      if (((enemy.type === "ranged" && !touchingParty) || (enemy.type === "boss" && !meleeBoss)) && enemyVisible(enemy) && Math.hypot(enemy.x-targetBody.x, enemy.y-targetBody.y) <= ABILITY_RANGES.medium + 1e-8 && enemy.attackTimer <= 0) {
+        shoot(enemy.x, enemy.y, targetBody.x, targetBody.y, false, enemy.damage, enemy.type === "boss" ? 220 : 185, enemy.type);
         enemy.attackTimer = enemy.attackCooldown;
       }
       if (meleeBoss && touchingParty && enemy.attackTimer <= 0) {
@@ -2457,7 +2457,7 @@
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossDefeated ? "loot" : state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
-      enemies: state.enemies.map(enemy => ({ type: enemy.type, underground: !!enemy.underground, emerging: enemy.emerging || 0, preferredRange: enemy.monsterId === "arcane-owl" ? 300 : null, burn: enemy.burn ? {remaining:precise(enemy.burn.remaining),nextTick:precise(enemy.burn.nextTick)} : null, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
+      enemies: state.enemies.map(enemy => ({ type: enemy.type, underground: !!enemy.underground, emerging: enemy.emerging || 0, attackRange: enemy.type === "ranged" ? ABILITY_RANGES.medium : null, preferredRange: enemy.monsterId === "arcane-owl" ? ABILITY_RANGES.medium : null, burn: enemy.burn ? {remaining:precise(enemy.burn.remaining),nextTick:precise(enemy.burn.nextTick)} : null, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: (projectile.source === "player" || projectile.source === "boulderBuster") ? Math.floor(projectile.age * 12) % 4 : null })),
       weather: weatherType(),
       particles: { total: state.particles.length, counts: state.particles.reduce((counts, p) => { counts[p.kind] = (counts[p.kind] || 0) + 1; return counts; }, {}) },

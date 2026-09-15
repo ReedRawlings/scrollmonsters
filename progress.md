@@ -896,3 +896,7 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Stage 3 regular Beast HP reduced from 12 to 8, Bat from 8 to 6 using final-HP roster overrides shared by preview and spawning.
 - Stage 4 replaces Eye with Bamboo at the same 30% spawn chance. Other regular enemies and bosses retain their existing stats.
 - Browser roster checks passed 100 spawns on each stage plus explicit requested HP/lineup assertions; stage 4 preview visually inspected. Syntax/whitespace checks passed and skill client smoke check executed.
+
+## September 15 — enemy medium-range cap
+
+- Owl preferred distance reduced from 300 to medium (216px), retreat threshold 196px. All enemy ranged attacks require a target within medium range; hostile projectiles originate at the enemy center and expire after 216px of travel. Companion ranges unchanged. Local changes; testing left to user.
