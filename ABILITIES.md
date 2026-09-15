@@ -48,13 +48,15 @@ Verified against the current code and browser behavior; these predate the Feral 
 | Creature | Attack | Damage | Interval | Radius |
 | --- | --- | ---: | ---: | ---: |
 | Bamboo / BambooYellow | Leaf projectile, 300 px/s | 3 | 2 s | 480 px |
-| Fish / FishRed | Water projectile, 420 px/s | 1 | 1 s | 240 px |
+| Fish / FishRed | Water impact directly on target | 1 | 1 s | 240 px |
 | Mole / Mole2 | Targeted earth impact | 1 | 1 s | 240 px |
 
 Bloom's custom radii have not been reassigned to the shared range categories. Arcane Tier 1 individual abilities remain undefined.
 
 ## Beast upgrade: Follow-Up Slash
 
-Replaces Follow-Up Bite. One rank costs 30 Feral essence and requires owning Beast. Each kill from a normal Beast slash independently has a fixed 20% chance to grant another slash. Resolve the first arc fully, then aim each earned slash at the nearest surviving enemy within 120 px. Bonus slashes retain the 90° arc and damage scaling, but cannot trigger further bonus slashes. No target means no bonus attack; boss victory ends attacks immediately.
+Replaces Follow-Up Bite. Five ranks cost 30/41/55/74/100 Feral essence and require owning Beast. Each kill from a normal Beast slash independently has a 20/40/60/80/100% chance to grant another slash at ranks 1–5. Resolve the first arc fully, then aim each earned slash at the nearest surviving enemy within 120 px. Bonus slashes retain the 90° arc and damage scaling, but cannot trigger further bonus slashes. No target means no bonus attack; boss victory ends attacks immediately.
 
 The linked Mending Slash upgrade replaces Mending Bite and heals the party by 1 HP per rank for each bonus-slash hit, capped at maximum health. It requires Beast and Follow-Up Slash. Base and shiny Beast behave identically.
+
+Attack artwork renders at 2× its previous size; damage, hitboxes, ranges, and cooldowns are unchanged. Fish applies its hit immediately and plays the water animation on the target, preserving Water Burst shield-on-kill behavior.

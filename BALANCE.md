@@ -348,6 +348,14 @@ Regular enemies now use explicit monster weights, independent of the legacy affi
 
 Beast uses armored movement and higher HP. Bat and Bamboo use basic movement. Stage 1/2 bosses remain Demon Cyclop; Stage 3's Feral boss now consistently uses Bat artwork, with existing boss stats and reward. All regular roster monsters qualify for matching affinity essence: Bat/Beast → Feral, Bamboo → Bloom. Existing drops remain 30%, guaranteed by the fifth dry affinity kill, with one essence per drop in stages 1–3. No separate tier-based essence currency or drop rate was introduced.
 
+## Stage 3 first-clear essence bonus
+
+The stage 3 boss awards its extra 15 Feral essence only on the first clear. Replays still award normal boss gold and essence earned from regular enemies. Other stages’ boss rewards are unchanged.
+
+## September 14 — gentler late-stage health curve
+
+Stage 1 boss has 20 HP. Stages 5–10 regular HP scales are now 3.5/4/4.5/5/5.5/6, halving growth after stage 4; existing rounding and ×2 multiplier apply. Boss health grows 15% per stage from stage 4's 148.8 HP, with existing rounding: 171.2/196.8/225.6/260.8/299.2/344 HP. Smoothing raises stage 6–7 bosses relative to the old uneven curve while lowering stage 5 and 8–10. Damage and spawn rates are unchanged. User approved direct production tuning without broad testing.
+
 ## September 14 — player progression adjustments
 
 - Bloom: 10% chance per damaging enemy hit for +1 Health/rank, with Bloom in the active party. Flush independently rolls 10% per hit for +3 Health/rank.
@@ -355,3 +363,11 @@ Beast uses armored movement and higher HP. Bat and Bamboo use basic movement. St
 - Essence Finder: connected to Golden Echo, same rank costs, +10% relative essence drop chance/rank on Tier 1 creatures (30/33/36/39/42/45%). Existing fifth-dry-kill guarantee and boss rewards remain.
 - Party Bond: 50G once a full three-companion party has been assembled for the first time; unlock persists after roster changes. Its purchased +5 damage bonus no longer requires a healer to be active.
 - Stage 6 Mole crosses the burrow-emergence threshold before stopping. Boulder Buster is verified for both destructible rock sizes.
+
+## September 14 — 10G ability rank pricing
+
+All abilities starting at 10 gold now cost 10/15/20/25/30/60/90/120/150/200G by rank. Five-rank abilities use 10/15/20/25/30G. Existing rank caps and purchased ranks are unchanged; other starting prices retain their current scaling.
+
+## September 14 — Golden Echo and Party Bond
+
+Golden Echo now has five ranks, granting +5% battle gold per rank (+25% maximum), retaining its 15G starting cost and existing price scaling. Party Bond grants +3 attack damage to the player and every attacking companion, including Feral, Bloom, and Arcane attacks. Its 50G price and permanent full-party unlock are unchanged.

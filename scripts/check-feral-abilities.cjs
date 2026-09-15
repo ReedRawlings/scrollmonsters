@@ -3,7 +3,7 @@ const {chromium}=require('playwright'),fs=require('fs'),assert=require('node:ass
  const page=await browser.newPage({viewport:{width:540,height:940}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)errors.push(r.url()+': '+r.status())});
  await page.addInitScript(()=>window.__vt_pending=true);
- await page.route('**/game.js*',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync('game.js','utf8').replace('window.__scollTest = {','window.__scollTest = { abilityTest:()=>({state,feralAttacks,feralCreatureAttack,updateBurn,updateCompanions,firePlayerVolley,updateCombat,bloomAttacks,bloomCreatureAttack,render}),')}));
+ await page.route('**/game.js*',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync('game.js','utf8').replace('window.__scollTest = {','window.__scollTest = { abilityTest:()=>({upgradeDefs,attemptUpgrade,damageEnemy,state,feralAttacks,feralCreatureAttack,updateBurn,updateCompanions,firePlayerVolley,updateCombat,bloomAttacks,bloomCreatureAttack,render}),')}));
  await page.goto(process.env.GAME_URL||'http://localhost:5185');await page.waitForFunction(()=>window.__scollTest);
  const report=await page.evaluate(()=>{
  const a=__scollTest;a.setSave({unlockedStage:10,ownedCreatures:['feral-bat','feral-beast','feral-lizard'],activeParty:['feral-bat','feral-beast','feral-lizard']});a.startStage(1);
@@ -16,8 +16,17 @@ const {chromium}=require('playwright'),fs=require('fs'),assert=require('node:ass
  }
  const beast={creatureId:'feral-beast',x:270,y:410};s.enemies=[enemy(320,410),enemy(340,430),enemy(270,490),enemy(391,410)];t.feralCreatureAttack(beast,t.feralAttacks['feral-beast']);check(s.enemies.map(e=>e.hp).join(',')==='97,97,100,100','slash arc/range');
  // Bonus slash retargets behind Beast after a kill, but cannot chain.
+ const slashUpgrade=t.upgradeDefs.find(d=>d.id==='strikerFollowup');
+ check(slashUpgrade.max===5 && slashUpgrade.costs.join(',')==='30,41,55,74,100','five ranks and original costs');
+ s.save.essence.feral=1000;
+ for(let n=1;n<=5;n++){t.attemptUpgrade(slashUpgrade);check(s.save.upgrades.strikerFollowup===n,'purchase rank '+n);}
+ t.attemptUpgrade(slashUpgrade);check(s.save.upgrades.strikerFollowup===5,'rank cap');s.save.upgrades={};
  const originalRandom=Math.random;
  try {
+  for(let rank=1;rank<=5;rank++) {
+   s.save.upgrades={strikerFollowup:rank};s.effects=[];s.enemies=[enemy(320,410),enemy(220,410)];s.enemies[0].hp=3;
+   Math.random=()=>rank*.2-.001;t.feralCreatureAttack(beast,t.feralAttacks['feral-beast']);check(s.enemies[0].hp===97,'rank proc '+rank);
+  }
   s.save.upgrades={strikerFollowup:1,strikerFollowupHeal:1};s.party.hp=5;
   s.effects=[];s.enemies=[enemy(320,410),enemy(220,410),enemy(270,490)];
   s.enemies[0].hp=s.enemies[1].hp=3;
@@ -37,6 +46,13 @@ const {chromium}=require('playwright'),fs=require('fs'),assert=require('node:ass
  s.projectiles=[];s.enemies=[enemy(270,603)];t.firePlayerVolley();for(let i=0;i<20;i++)t.updateCombat(1/60);check(s.enemies[0].hp===100,'player hit beyond 152');
  s.projectiles=[];s.enemies=[enemy(270,602)];t.firePlayerVolley();for(let i=0;i<20;i++)t.updateCombat(1/60);check(s.enemies[0].hp===99,'player boundary hit');
  for(const [id,ability] of Object.entries(t.bloomAttacks)){s.projectiles=[];s.enemies=[enemy(270,300)];check(t.bloomCreatureAttack({creatureId:id,x:270,y:410},ability),'Bloom attack '+id);if(ability.targeted)check(s.enemies[0].hp===99,'Mole direct damage');else {check(s.projectiles[0].source===id,'Bloom projectile');for(let i=0;i<30;i++)t.updateCombat(1/60);check(s.enemies[0].hp===100-ability.damage,'Bloom damage '+id);}}
+ a.setSave({unlockedStage:10});
+ for(let run=0;run<2;run++) {
+  a.startStage(3);s.enemies=[];a.spawnEnemy('boss','north');const boss=s.enemies[0];t.damageEnemy(boss,boss.hp);
+  check(s.mode==='result' && s.save.completed.includes(3),'stage 3 completion');
+  check(s.save.essence.feral===15,'first-clear-only FE on run '+run);
+ }
+ a.setSave({unlockedStage:10,ownedCreatures:['feral-bat','feral-beast','feral-lizard'],activeParty:['feral-bat','feral-beast','feral-lizard']});
  a.startStage(1);s.enemies=[enemy(270,320)];s.save.shinyCreatures=['feral-bat','feral-beast','feral-lizard'];
  for(const c of s.companions)c.timer=0;
  t.updateCompanions(0);

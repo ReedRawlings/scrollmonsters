@@ -771,6 +771,27 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Bloom node now has a fixed 50% chance per positive-damage enemy hit to heal its existing +1 HP/rank. Updated node text. Flush retains its separate existing healing behavior.
 - Deterministic checks pass for triggering below 0.5, not triggering at 0.5, unchanged healing amount, independent Flush healing, and existing Bloom combat regressions.
 
+## September 14 — restore slash ranks and first-clear stage 3 bonus
+
+- Follow-Up Slash restored to five ranks: 20/40/60/80/100% proc chance and original 30/41/55/74/100 Feral essence costs. Beast ownership and non-chaining bonus attacks remain.
+- Stage 3's bonus 15 Feral essence is awarded only while stage 3 is not yet in completed; normal boss victory records completion and banks the reward together. Repeat clears retain normal gold and regular-enemy essence.
+- Browser assertions pass purchases through all five ranks, rank cap, proc scaling, and first/repeat stage 3 boss victories with exactly 15 total bonus FE. Existing ability regression passes. Updated ABILITIES.md and BALANCE.md.
+
+## September 14 — stage 1 health swap
+
+- Set stage 1 Bamboo to 2 HP and Bat to 1 HP; opening Bat calculation now respects roster base HP. Stage 2 Bat retains its existing 4 HP.
+- Syntax check passed; skipped gameplay tests at user's request. Pushed only this change as 96e691c to production-connected main, preserving existing uncommitted work.
+
+## September 14 — stage 1 boss health
+
+- Lowered stage 1 boss HP from 28 to 20 through the shared boss scale table. Syntax check passed; no broad tests requested. Pushed c11cb9c to main.
+- Reviewed later-stage scaling: regular HP uses a hand-set multiplier table; boss HP uses a separate hand-set table. Existing calculate-dps/simulate-economy scripts retain legacy companion/model assumptions. Proposed halving regular scale growth after stage 4 and 15% per-stage boss growth; waiting on tuning preference.
+
+## September 14 — approved late-stage health tuning
+
+- Halved regular HP scale growth after stage 4 and applied 15% compounded boss HP growth from stage 4. Stage 5–10 bosses: 171.2/196.8/225.6/260.8/299.2/344 HP. Smoothing increases stage 6–7 versus the old dip.
+- Syntax and configuration arithmetic checked; skipped broad tests per user. Pushed only tuning changes in ad3bc36, preserving pre-existing uncommitted edits. Await human playtesting before further tuning.
+
 ## September 14 — player progression and stage 6 Mole
 
 - Bloom now triggers at 10% per hit; healing amount/rank unchanged. Reach connects to Damage and adds 10% player range/rank (152 → 228px, five ranks), including targeting, projectile travel, and collision range. Essence Finder connects to Golden Echo: five ranks of +10% relative Tier 1 essence chance (30% → 45%); pity and boss rewards unchanged. Both new nodes provisionally start at 10 gold with standard 35% cost scaling.
@@ -780,7 +801,23 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - check-player-expansion.cjs and check-bloom-nodes.cjs pass range/prerequisites, Tier 1-only drop boost, milestone persistence, boss emergence/damage, rock bursts, and 10% proc boundaries.
 - check-player-expansion-browser.cjs passed native purchases, Party Bond unlock/save reload, and stage 6 emergence with no page/asset errors. Inspected Reach, Essence Finder, Party Bond, and the surfaced Mole screenshots in output/player-expansion. Required game client also ran; native browser screenshots provide visual verification because its WebGL buffer capture is black on this Mac.
 
-## September 14 — Flush production release
+## September 14 — shared Demon Cyclop boss roster
 
-- Flush now independently rolls a 10% on-hit heal, preserving +3 HP/rank. Bloom remains 10% with +1 HP/rank. Both retain the Bloom party requirement.
-- Node/combat regression checks and production music build passed. Releasing this task’s progression updates; separate pending Feral edits remain local.
+- All stages except stage 3 now use stage 1’s Demon Cyclop. Stage 3 retains Bat. Removed other boss creature assignments and random creature fallback for bosses, preventing accidental Mole burrowing or Owl movement. Stage-specific stats and rewards remain. Changes local; verification left to user per request.
+
+## September 14 — music toggle
+
+- Added a global upper-right music toggle using the existing Sing/SingDisabled icons, with musicEnabled persisted in the save. Music pauses/resumes independently of sound effects and remains off through screen/track changes. Moved nearby currency/auto-target controls to avoid overlap. Local changes; testing left to user per preference.
+
+## September 14 — larger attack artwork and targeted Fish attack
+
+- Doubled rendered attack projectile/impact/ability sizes with a shared visual scale; combat damage, collision radii, ranges, and timing preserved.
+- Fish now deals its hit directly to its selected target and plays the eight-frame water impact there, following the target while alive. No Fish projectile is spawned. Water Burst still receives the Fish kill source. Testing left to user per preference; local changes only.
+
+## September 14 — explicit cheap-ability cost curve
+
+- Interpreted “6090” as separate 60/90 entries. All current base-10G abilities now use 10/15/20/25/30/60/90/120/150/200 by rank; shorter abilities use the prefix. Other base costs and rank caps are unchanged. Local edit; testing left to user.
+
+## September 14 — gold ranks and party-wide damage
+
+- Golden Echo: five ranks at +5% gold/rank, existing 15G base. Party Bond: +3 damage for player and all companion attack paths (Feral hits/bonus slashes, Bloom projectiles/targeted hits, Arcane blasts), applied once before critical multipliers where applicable. Updated node copy and player DPS projection. Local changes; testing left to user.

@@ -2,6 +2,7 @@
   "use strict";
 
   const WIDTH = 540, HEIGHT = 900;
+  const ATTACK_VISUAL_SCALE = 2;
   // Shared menu styling. Keep these values aligned with UI_STYLE_GUIDE.md.
   const UI_THEME = Object.freeze({
     colors: Object.freeze({
@@ -20,6 +21,8 @@
   });
 
   const assetPaths = {
+    musicOn: "assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/Job & Action/Sing.png",
+    musicOff: "assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/Job & Action/SingDisabled.png",
     burnStatus: "assets/abilities/statusfx_burn_sheet.png",
     lizardImpact: "assets/abilities/impact_fire_sheet.png",
     beastSlash: "assets/abilities/slash_1_sheet.png",
@@ -49,7 +52,7 @@
     earthProjectile: "assets/SoggySocks Earth FX/PNG/proj_earth_1_sheet.png",
     groundTrap: "assets/SoggySocks Combat FX/PNG/ground_trap_sheet.png",
     bambooProjectile: "assets/SoggySocks Nature FX/PNG/proj_nature_2_sheet.png",
-    fishProjectile: "assets/SoggySocks Water FX/PNG/impact_water_sheet.png",
+    fishImpact: "assets/SoggySocks Water FX/PNG/impact_water_sheet.png",
     burrowShadow: "assets/Ninja Adventure - Asset Pack/Actor/Characters/Shadow.png",
     moleImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_2_sheet.png",
     earthImpact: "assets/SoggySocks Earth FX/PNG/impact_earth_3_sheet.png",
@@ -487,7 +490,22 @@
       music?.destroy(); music = null; currentTrack = track;
       if (track && scene.cache.audio.exists(`music:${track}`)) music = scene.sound.add(`music:${track}`, {loop:true,volume:0.3});
     }
-    if (audioUnlocked && music && !music.isPlaying) music.play();
+    if (state.save.musicEnabled === false) {
+      if (music?.isPlaying) music.pause();
+    } else if (audioUnlocked && music && !music.isPlaying) {
+      if (music.isPaused) music.resume(); else music.play();
+    }
+  }
+  function toggleMusic() {
+    state.save.musicEnabled = state.save.musicEnabled === false;
+    writeSave();
+    setMusic(currentTrack || menuTrack);
+  }
+  function drawMusicToggle() {
+    const enabled = state.save.musicEnabled !== false;
+    const button = drawBestiaryButton("", 482, 8, 48, 44, "normal", toggleMusic);
+    button.setData("label", enabled ? "Turn music off" : "Turn music on");
+    drawSprite(enabled ? "musicOn" : "musicOff", 506, 30, 32);
   }
   function unlockAudio() {
     audioUnlocked = true;
@@ -553,7 +571,7 @@
   for (const [stage, ids] of Object.entries(laterStageLineups)) {
     stageRosters[stage] = ids.map((id,index) => ({ id, chance: index === 0 ? .4 : .3, ...tierOneEnemyStats[id] }));
   }
-  const stageBossCreature = { 3: "feral-bat", 5: "feral-beast", 6: "bloom-mole", 7: "feral-lizard", 8: "arcane-owl", 9: "arcane-lantern", 10: "feral-beast" };
+  const stageBossCreature = { 3: "feral-bat" };
   const stageBossDamage = stage => stage.number === 1 ? 3 : stage.number === 2 ? 5 : Math.max(1, Math.round(5 * stage.damageScale));
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
@@ -588,9 +606,11 @@
   const creatureById = id => creatureDefs.find(creature => creature.id === id);
   const petDisplayNames = Object.fromEntries(creatureDefs.map(creature => [creature.id, creature.name]));
 
-  // Every ability compounds from its own starting price; rank 1 uses exponent zero.
+  // Abilities starting at 10G use the explicit progression; other bases compound.
+  const tenGoldRankCosts = Object.freeze([10, 15, 20, 25, 30, 60, 90, 120, 150, 200]);
   const abilityRankCosts = (baseCost, ranks) =>
-    Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
+    baseCost === 10 ? tenGoldRankCosts.slice(0, ranks)
+      : Array.from({ length: ranks }, (_, index) => Math.round(baseCost * 1.35 ** index));
 
   const damageRankCosts = abilityRankCosts(10, 10);
 
@@ -599,13 +619,13 @@
     { id: "speed", name: "Quick Hands", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: rank => `Fire interval -${2 * (rank + 1)}%`, requires: ["power"] },
     { id: "multishot", name: "Split Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% second shot chance`, requires: ["speed"] },
     { id: "health", name: "Health +5", branch: "PLAYER", max: 10, costs: damageRankCosts, effect: rank => `+5 health → ${15 + rank * 5} HP`, requires: ["power"] },
-    { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 3, costs: abilityRankCosts(15, 3), effect: rank => `Battle gold +${10 * (rank + 1)}%`, requires: ["power"] },
+    { id: "magnet", name: "Golden Echo", branch: "PLAYER", max: 5, costs: abilityRankCosts(15, 5), effect: rank => `Battle gold +${5 * (rank + 1)}%`, requires: ["power"] },
     { id: "autoTarget", name: "Hunter's Eye", branch: "PLAYER", max: 1, costs: abilityRankCosts(25, 1), effect: () => "Unlock Space auto-target toggle", requires: ["magnet"] },
     { id: "strikerPower", name: "Feral Focus", branch: "STRIKER", max: 10, costs: damageRankCosts, effect: rank => `+1 damage (${2 + rank + partyDamageBonus()} total)`, requires: [], recruit: "striker" },
     { id: "strikerSpeed", name: "Feral Rhythm", branch: "STRIKER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Attack cooldown -${15 * (rank + 1)}%`, requires: ["strikerPower"], recruit: "striker" },
     { id: "healPower", name: "Kind Bloom", branch: "HEALER", max: 3, costs: abilityRankCosts(20, 3), effect: rank => `+1 healing → ${3 + rank} HP`, requires: [], recruit: "healer" },
     { id: "healSpeed", name: "Bloom Rhythm", branch: "HEALER", max: 2, costs: abilityRankCosts(25, 2), effect: rank => `Heal cooldown -${15 * (rank + 1)}%`, requires: ["healPower"], recruit: "healer" },
-    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 10, costs: abilityRankCosts(25, 10), effect: rank => `+1 damage (${4 + rank} total)`, requires: [], recruit: "aoe" },
+    { id: "aoePower", name: "Nova Heart", branch: "AOE", max: 10, costs: abilityRankCosts(25, 10), effect: rank => `+1 damage (${4 + rank + partyDamageBonus()} total)`, requires: [], recruit: "aoe" },
     { id: "aoeRadius", name: "Wide Nova", branch: "AOE", max: 2, costs: abilityRankCosts(30, 2), effect: rank => `AOE radius +${22 * (rank + 1)}px`, requires: ["aoePower"], recruit: "aoe" }
   ];
 
@@ -614,7 +634,7 @@
     { id: "essenceFinder", name: "Essence Finder", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `Tier 1 essence drop chance +${10 * (r + 1)}% (${Math.round(30 * (1 + .1 * (r + 1)))}% total)`, requires: ["magnet"] },
     { id: "power3", name: "Damage +3", branch: "PLAYER", max: 5, costs: abilityRankCosts(50, 5), effect: level => `+3 player damage per rank (+${3 * (level + 1)} total)`, requires: ["power"], requiredRanks: { power: 5 } },
     { id: "boulderBuster", name: "Boulder Buster", branch: "PLAYER", max: 5, costs: abilityRankCosts(40, 5), effect: level => `Destroyed rocks fire ${level + 1} player projectile${level ? "s" : ""} in random directions`, requires: ["rockBreaker"] },
-    { id: "partyBond", name: "Party Bond", branch: "PLAYER", fullPartyRequired: true, max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
+    { id: "partyBond", name: "Party Bond", branch: "PLAYER", fullPartyRequired: true, max: 1, costs: [50], requires: [], effect: () => "+3 damage to every party member" },
     { id: "strikerDouble", name: "Double Attack", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% chance for all Feral creatures to attack twice`, requires: ["strikerSpeed"], recruit: "striker" },
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
@@ -622,7 +642,7 @@
     { id: "deepBloom", name: "Deep Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), currency: "bloom", effect: rank => `${20 * (rank + 1)}% double heal below half HP`, requires: [], recruit: "healer" },
     { id: "bloomShield", name: "Bloom Guard", branch: "HEALER", max: 1, costs: [200], currency: "bloom", effect: () => "Deep Bloom: block next hit; 2s cooldown", requires: ["deepBloom"], requiredRanks: { deepBloom: 5 }, recruit: "healer" },
     { id: "travelSpeed", name: "Trail Pace", branch: "PLAYER", max: 10, costs: abilityRankCosts(20, 10), effect: rank => `Travel & spawns +${5 * (rank + 1)}%`, requires: ["magnet"] },
-    { id: "strikerFollowup", name: "Follow-Up Slash", branch: "STRIKER", max: 1, costs: [30], currency: "feral", effect: () => "Beast slash kills have a 20% chance for a bonus slash (no chaining)", requires: [], recruit: "feral-beast" },
+    { id: "strikerFollowup", name: "Follow-Up Slash", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", effect: rank => `Beast slash kills have a ${20 * (rank + 1)}% chance for a bonus slash (no chaining)`, requires: [], recruit: "feral-beast" },
     { id: "strikerFollowupHeal", name: "Mending Slash", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", effect: rank => `Bonus slash hits heal for ${rank + 1} HP`, requires: ["strikerFollowup"], requiredRanks: { strikerFollowup: 1 }, recruit: "feral-beast" },
   );
 
@@ -681,7 +701,7 @@
   const shotChance = level => Math.min(10, Math.max(0, level || 0)) / 10;
   const expectedProjectiles = upgrades => 1 + shotChance(upgrades.multishot) * (1 + shotChance(upgrades.tripleSpark));
 
-  function playerDpsFor(upgrades, flatBonus = upgrades.partyBond ? 5 : 0) {
+  function playerDpsFor(upgrades, flatBonus = upgrades.partyBond ? 3 : 0) {
     const damage = 1 + (upgrades.power || 0) + flatBonus;
     const projectiles = expectedProjectiles(upgrades);
     const interval = 1 - (upgrades.speed || 0) * 0.02;
@@ -764,7 +784,7 @@
   };
 
   const emptyAffinityMap = () => Object.fromEntries(affinityOrder.map(id => [id, 0]));
-  const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], fullPartyReached: false, upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
+  const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], fullPartyReached: false, musicEnabled: true, upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
   function mergeHealthRanks(upgrades) {
     const result = { ...upgrades };
     if (result.vitality !== undefined || result.fortitude !== undefined) {
@@ -814,7 +834,7 @@
   };
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
-  const partyDamageBonus = () => rank("partyBond") > 0 ? 5 : 0;
+  const partyDamageBonus = () => rank("partyBond") > 0 ? 3 : 0;
   const playerAttackRange = () => ABILITY_RANGES.short * (1 + rank("playerRange") * 0.1);
   const playerDamage = () => 1 + rank("power") + 3 * rank("power3") + partyDamageBonus();
   const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
@@ -946,10 +966,10 @@
     const openingFanglet = openingStage && species === "fanglet";
     const stats = rosterEntry && rosterStats(rosterEntry, state.stage);
     const hp = type === "boss" && state.stage.number === 2 ? 40 : stats ? stats.hp : precise((openingFanglet ? 2 : Math.round(base.hp * hpScale * bossFactor)) * state.stage.hpMultiplier * (type === "boss" ? state.stage.bossHpMultiplier : 1));
-    const demonCyclop = type === "boss" && [1, 2, 4].includes(state.stage.number);
+    const demonCyclop = type === "boss" && state.stage.number !== 3;
     const spawn = spawnPoint(base.radius, demonCyclop ? "north" : forcedEdge);
     const pool = monsterCatalog.filter(c => c.tier === 1 && (!species || c.affinityId === speciesDefs[species].affinityId));
-    const monsterId = rosterEntry?.id || (type === "boss" && stageBossCreature[state.stage.number] ? stageBossCreature[state.stage.number] : pool[Math.floor(Math.random() * pool.length)].id);
+    const monsterId = type === "boss" ? (stageBossCreature[state.stage.number] || null) : (rosterEntry?.id || pool[Math.floor(Math.random() * pool.length)].id);
     state.enemies.push({
       monsterId,
       underground: monsterId === "bloom-mole", emerging: 0,
@@ -1020,7 +1040,7 @@
   }
 
   function awardGold(value) {
-    state.runGold = precise(state.runGold + value * (1 + rank("magnet") * 0.1));
+    state.runGold = precise(state.runGold + value * (1 + rank("magnet") * 0.05));
   }
 
   function awardEssence(affinityId, amount) {
@@ -1052,7 +1072,7 @@
         9: { feral: 2 * essenceYield(9) },
         10: { arcane: 20 }
       }[state.stage.number];
-      if (enemy.type === "boss" && bossRewards) {
+      if (enemy.type === "boss" && bossRewards && (state.stage.number !== 3 || !state.save.completed.includes(3))) {
         for (const [affinityId, amount] of Object.entries(bossRewards)) awardEssence(affinityId, amount);
       }
     }
@@ -1103,7 +1123,7 @@
       state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("strikerFollowupHeal")));
     }
     const playerImpact = source === "player" || source === "boulderBuster";
-    if (source !== "striker" && source !== "strikerFollowup" && !feralAttacks[source] && source !== "burn") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
+    if (source !== "striker" && source !== "strikerFollowup" && !feralAttacks[source] && source !== "burn" && source !== "bloom-fish") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (source === "bloom-fish") state.party.shield = Number(state.party.shield || 0) + rank("waterBurst");
       if (enemy.type === "boss") state.bossDefeated = true;
@@ -1132,9 +1152,9 @@
     let bonusSlashes = 0;
     for (const enemy of victims) {
       if (state.mode !== "combat") break;
-      const hit = criticalAmount("striker",ability.damage+rank("strikerPower"));
+      const hit = criticalAmount("striker",ability.damage+rank("strikerPower")+partyDamageBonus());
       damageEnemy(enemy,hit.amount,followup ? "strikerFollowup" : companion.creatureId);
-      if (!followup && companion.creatureId === "feral-beast" && rank("strikerFollowup") > 0 && enemy.hp <= 0 && state.mode === "combat" && Math.random() < 0.2) bonusSlashes++;
+      if (!followup && companion.creatureId === "feral-beast" && rank("strikerFollowup") > 0 && enemy.hp <= 0 && state.mode === "combat" && Math.random() < Math.min(5, rank("strikerFollowup")) * 0.2) bonusSlashes++;
       if (ability.burnChance && state.enemies.includes(enemy) && Math.random() < ability.burnChance) enemy.burn = { remaining:2, nextTick:1 };
     }
     // Resolve the original arc first, then retarget each earned, non-chaining slash.
@@ -1155,7 +1175,7 @@
 
   const bloomAttacks = Object.freeze({
     "bloom-bamboo": { damage: 3, range: 480, cooldown: 2, speed: 300, sheet: "bambooProjectile", frames: 4 },
-    "bloom-fish": { damage: 1, range: 240, cooldown: 1, speed: 420, sheet: "fishProjectile", frames: 8 },
+    "bloom-fish": { damage: 1, range: 240, cooldown: 1, sheet: "fishImpact", frames: 8, targeted: true },
     "bloom-mole": { damage: 1, range: 240, cooldown: 1, sheet: "moleImpact", frames: 9, targeted: true }
   });
   function bloomCreatureAttack(companion, ability) {
@@ -1163,10 +1183,10 @@
       .sort((a,b) => Math.hypot(a.x-companion.x,a.y-companion.y)-Math.hypot(b.x-companion.x,b.y-companion.y))[0];
     if (!target) return false;
     if (ability.targeted) {
-      state.effects.push({type:"moleImpact",x:target.x,y:target.y,life:.6,maxLife:.6,radius:100});
-      damageEnemy(target, ability.damage, companion.creatureId);
+      state.effects.push({type:"bloomAbility",sheet:ability.sheet,frames:ability.frames,target,x:target.x,y:target.y,life:.6,maxLife:.6,size:200,rotation:0});
+      damageEnemy(target, ability.damage + partyDamageBonus(), companion.creatureId);
     } else {
-      shoot(companion.x,companion.y,target.x,target.y,true,ability.damage,ability.speed,companion.creatureId);
+      shoot(companion.x,companion.y,target.x,target.y,true,ability.damage + partyDamageBonus(),ability.speed,companion.creatureId);
       Object.assign(state.projectiles[state.projectiles.length-1],{maxDistance:ability.range,distance:0,pierceRemaining:companion.creatureId === "bloom-bamboo" ? rank("razorLeaf") : 0,hitEnemies:new Set()});
     }
     companion.pulse=.25;
@@ -1217,7 +1237,7 @@
         const target = nearestEnemy(companion.x, companion.y);
         if (target) {
           const radius = 70 + rank("aoeRadius") * 22;
-          const blast = criticalAmount("aoe", 3 + rank("aoePower"));
+          const blast = criticalAmount("aoe", 3 + rank("aoePower") + partyDamageBonus());
           state.enemies.filter(enemy => Math.hypot(enemy.x - target.x, enemy.y - target.y) <= radius).forEach(enemy => damageEnemy(enemy, blast.amount));
           state.effects.push({ type: "aoe", x: target.x, y: target.y, life: 0.55, maxLife: 0.55, radius });
         }
@@ -1525,7 +1545,7 @@
 
     state.effects.forEach(effect => {
       effect.life -= dt;
-      if (effect.type === "groundTrap" && state.enemies.includes(effect.target)) {
+      if ((effect.type === "groundTrap" || effect.type === "bloomAbility") && state.enemies.includes(effect.target)) {
         effect.x = effect.target.x; effect.y = effect.target.y;
       }
     });
@@ -1679,8 +1699,8 @@
       drawCurrencyIcon(affinityId, x, 76, 24);
       drawText(formatAmount(state.save.essence[affinityId]), x + 19, 76, 17, affinityDefs[affinityId].color, "left", false);
     });
-    drawCurrencyIcon("gold", 420, 35, 28);
-    drawText(formatAmount(state.save.gold), 441, 35, 20, "#ffe17d");
+    drawCurrencyIcon("gold", 344, 35, 28);
+    drawText(formatAmount(state.save.gold), 365, 35, 20, "#ffe17d");
   }
 
   const affinityWalletText = () => affinityOrder.map(id => `${affinityDefs[id].short} ${formatAmount(state.save.essence[id])}`).join("  •  ");
@@ -1851,8 +1871,8 @@
     drawWood("woodPanel", 15, 15, 510, 72);
     drawText("BESTIARY", 33, 51, 30, colors.title);
     affinityOrder.forEach((id,index) => {
-      const x=273+index*87; drawCurrencyIcon(id,x,51,30);
-      drawText(formatAmount(state.save.essence[id]),x+21,51,18,colors[id],"left",false);
+      const x=273+index*87; drawCurrencyIcon(id,x,66,24);
+      drawText(formatAmount(state.save.essence[id]),x+17,66,16,colors[id],"left",false);
       drawBestiaryButton(affinityDefs[id].name,18+index*171,103,162,44,id===bestiaryAffinity?"selected":"normal",busy?null:()=>{bestiaryAffinity=id;summonPresentation=null;});
     });
     view.beginGroup("summon-card");
@@ -1912,8 +1932,8 @@
     drawText("BESTIARY", 33, 51, 30, UI_THEME.colors.title);
     affinityOrder.forEach((affinityId, index) => {
       const x = 273 + index * 87;
-      drawCurrencyIcon(affinityId, x, 51, 30);
-      drawText(formatAmount(state.save.essence[affinityId]), x + 21, 51, 18, affinityDefs[affinityId].color, "left", false);
+      drawCurrencyIcon(affinityId, x, 66, 24);
+      drawText(formatAmount(state.save.essence[affinityId]), x + 17, 66, 16, affinityDefs[affinityId].color, "left", false);
     });
 
     drawWood("woodPanel", 18, 99, 504, 126);
@@ -2016,8 +2036,8 @@
     drawPanel(0, 0, WIDTH, 104);
     drawBestiaryButton("< MAP", 16, 16, 120, 48, "normal", () => setMode("map"));
     drawText("UPGRADES", 154, 39, 30, colors.title);
-    drawCurrencyIcon("gold", 418, 39, 30);
-    drawText(formatAmount(state.save.gold), 506, 39, 18, colors.accent, "right", false);
+    drawCurrencyIcon("gold", 378, 39, 30);
+    drawText(formatAmount(state.save.gold), 472, 39, 18, colors.accent, "right", false);
     affinityOrder.forEach((id, index) => {
       const x = 62 + index * 166;
       drawCurrencyIcon(id, x, 82, 20);
@@ -2161,28 +2181,28 @@
     for (const projectile of state.projectiles) {
       const bloomAbility = bloomAttacks[projectile.source];
       if (bloomAbility) {
-        drawSheetFrame(bloomAbility.sheet,projectile.x,projectile.y,Math.floor(projectile.age*12)%bloomAbility.frames,bloomAbility.frames,200,Math.atan2(projectile.vy,projectile.vx));
+        drawSheetFrame(bloomAbility.sheet,projectile.x,projectile.y,Math.floor(projectile.age*12)%bloomAbility.frames,bloomAbility.frames,200 * ATTACK_VISUAL_SCALE,Math.atan2(projectile.vy,projectile.vx));
       } else if ((projectile.source === "player" || projectile.source === "boulderBuster")) {
         const frame = Math.floor(projectile.age * 12) % 4;
         const rotation = Math.atan2(projectile.vy, projectile.vx);
-        if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 200, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 6);
-      } else drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3);
+        if (!drawSheetFrame("earthProjectile", projectile.x, projectile.y, frame, 4, 200 * ATTACK_VISUAL_SCALE, rotation)) drawSprite("playerShot", projectile.x, projectile.y, projectile.r * 6 * ATTACK_VISUAL_SCALE);
+      } else drawSprite(projectile.friendly ? "playerShot" : "enemyShot", projectile.x, projectile.y, projectile.r * 3 * ATTACK_VISUAL_SCALE);
     }
     for (const effect of state.effects) {
       const alpha = clamp(effect.life / effect.maxLife, 0, 1);
-      if (effect.type === "feralAbility") {
-        drawSheetFrame(effect.sheet,effect.x,effect.y,Math.min(effect.frames-1,Math.floor((1-effect.life/effect.maxLife)*effect.frames)),effect.frames,effect.size,effect.rotation,alpha);
+      if (effect.type === "feralAbility" || effect.type === "bloomAbility") {
+        drawSheetFrame(effect.sheet,effect.x,effect.y,Math.min(effect.frames-1,Math.floor((1-effect.life/effect.maxLife)*effect.frames)),effect.frames,effect.size * ATTACK_VISUAL_SCALE,effect.rotation,alpha);
       } else if (effect.type === "aoe") {
-        view.circle(effect.x,effect.y,effect.radius*(1.1-alpha*0.1),null,`rgba(185,124,255,${alpha})`,7);
+        view.circle(effect.x,effect.y,effect.radius*(1.1-alpha*0.1) * ATTACK_VISUAL_SCALE,null,`rgba(185,124,255,${alpha})`,7);
       } else if (effect.type === "groundTrap") {
         const frame = Math.min(9, Math.floor((1 - effect.life / effect.maxLife) * 10));
-        drawSheetFrame("groundTrap", effect.x, effect.y, frame, 10, 300);
+        drawSheetFrame("groundTrap", effect.x, effect.y, frame, 10, 300 * ATTACK_VISUAL_SCALE);
       } else if (effect.type === "moleImpact") {
-        drawSheetFrame("moleImpact",effect.x,effect.y,Math.min(8,Math.floor((1-effect.life/effect.maxLife)*9)),9,200,0,alpha);
+        drawSheetFrame("moleImpact",effect.x,effect.y,Math.min(8,Math.floor((1-effect.life/effect.maxLife)*9)),9,200 * ATTACK_VISUAL_SCALE,0,alpha);
       } else if (effect.type === "earthImpact") {
         const frame = Math.min(7, Math.floor((1 - effect.life / effect.maxLife) * 8));
-        if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2, alpha);
-      } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2, alpha);
+        if (!drawSheetFrame("earthImpact", effect.x, effect.y, frame, 8, 100 * ATTACK_VISUAL_SCALE, 0, alpha)) drawSprite("impact", effect.x, effect.y, effect.radius * 2 * ATTACK_VISUAL_SCALE, alpha);
+      } else drawSprite(effect.type === "heal" ? "heal" : "impact", effect.x, effect.y, effect.radius * 2 * (effect.type === "heal" ? 1 : ATTACK_VISUAL_SCALE), alpha);
     }
     drawParticles(false);
     if (!state.save.autoTargetEnabled || !autoTargetUnlocked()) drawSprite("crosshair", state.mouse.x, state.mouse.y, 34);
@@ -2209,8 +2229,8 @@
       drawText(formatAmount(state.save.essence[affinityId] + state.runEssence[affinityId]), x + 20, 74, 18, "#fff");
     });
     const autoOn = autoTargetUnlocked() && state.save.autoTargetEnabled;
-    drawSprite(autoOn ? "autoAttackBook" : "autoAttackBookDisabled", 484, 60, 48);
-    if (autoTargetUnlocked()) view.hitArea(460,36,48,48,toggleAutoTarget,"auto-target");
+    drawSprite(autoOn ? "autoAttackBook" : "autoAttackBookDisabled", 500, 80, 40);
+    if (autoTargetUnlocked()) view.hitArea(480,60,40,40,toggleAutoTarget,"auto-target");
 
   }
 
@@ -2236,6 +2256,7 @@
     if (!view) return;
     view.begin(state.mode + (state.mode==="bestiary"?`:${bestiaryView}`:""));
     if (state.mode === "title") drawTitle(); else if (state.mode === "map") drawMap(); else if (state.mode === "bestiary") drawBestiary(); else if (state.mode === "upgrades") drawUpgrades(); else if (state.mode === "combat") drawCombat(); else if (state.mode === "result") drawResult();
+    drawMusicToggle();
     if(resetConfirmation) view.confirmation('RESET PROGRESS?',[
       'Gold, essence, creatures and upgrades',
       'will be erased. This cannot be undone.'
@@ -2309,7 +2330,7 @@
 
   window.render_game_to_text = () => JSON.stringify({
     engine: scene ? { name: "Phaser", version: Phaser.VERSION, renderer: "WebGL", ui: "native", scene: scene.sys.settings.key } : null,
-    audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music?.isPlaying },
+    audio: { enabled: state.save.musicEnabled !== false, track: currentTrack, unlocked: audioUnlocked, playing: !!music?.isPlaying },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCharges: Number(state.party.shield || 0), shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), attackRange: playerAttackRange(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
