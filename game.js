@@ -577,13 +577,17 @@
   for (const [stage, ids] of Object.entries(laterStageLineups)) {
     stageRosters[stage] = ids.map((id,index) => ({ id, chance: index === 0 ? .4 : .3, ...tierOneEnemyStats[id] }));
   }
+  for (const entry of stageRosters[8]) {
+    if (entry.id === "arcane-owl") entry.damageOverride = 4;
+    if (entry.id === "bloom-fish") entry.damageOverride = 6;
+  }
   const stageBossCreature = { 3: "feral-bat" };
   const stageBossDamage = stage => stage.number === 1 ? 3 : stage.number === 2 ? 5 : Math.max(1, Math.round(5 * stage.damageScale));
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
       hp: entry.hpOverride ?? (stage.number === 2 && entry.id === "feral-beast" ? 4 : stage.number === 2 && entry.id === "feral-bat" ? 3 : precise((openingBat ? entry.baseHp : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier)),
-      damage: openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
+      damage: entry.damageOverride ?? (openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale)))
     };
   }
   function pickStageMonster(stageNumber, roll, forcedType = null) {

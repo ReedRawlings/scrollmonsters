@@ -900,3 +900,7 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## September 15 — enemy medium-range cap
 
 - Owl preferred distance reduced from 300 to medium (216px), retreat threshold 196px. All enemy ranged attacks require a target within medium range; hostile projectiles originate at the enemy center and expire after 216px of travel. Companion ranges unchanged. Local changes; testing left to user.
+
+## September 15 — stage 8 enemy damage
+
+- Set final stage 8 Owl damage to 4 and Fish damage to 6 via roster damage overrides. Other stages and companion damage unchanged. Local edit.
