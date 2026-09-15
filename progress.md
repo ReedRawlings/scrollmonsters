@@ -770,3 +770,17 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Bloom node now has a fixed 50% chance per positive-damage enemy hit to heal its existing +1 HP/rank. Updated node text. Flush retains its separate existing healing behavior.
 - Deterministic checks pass for triggering below 0.5, not triggering at 0.5, unchanged healing amount, independent Flush healing, and existing Bloom combat regressions.
+
+## September 14 — player progression and stage 6 Mole
+
+- Bloom now triggers at 10% per hit; healing amount/rank unchanged. Reach connects to Damage and adds 10% player range/rank (152 → 228px, five ranks), including targeting, projectile travel, and collision range. Essence Finder connects to Golden Echo: five ranks of +10% relative Tier 1 essence chance (30% → 45%); pity and boss rewards unchanged. Both new nodes provisionally start at 10 gold with standard 35% cost scaling.
+- Party Bond now unlocks permanently after filling three companion slots once, costs 50G, and no longer depends on a healer for its purchased damage bonus. Milestone persisted on summon/slot changes and recovered from existing full-party or Party Bond saves.
+- Stage 6 Mole was stopping at 240px, the exact emergence threshold, leaving floating-point cases underground. Burrowing enemies now approach to 220px and reliably cross the emergence threshold.
+- Boulder Buster already handles every destructible obstacle rock, both small and medium. Added tests exercising actual rock destruction and bursts for both sizes; vase/crate props remain separate.
+- check-player-expansion.cjs and check-bloom-nodes.cjs pass range/prerequisites, Tier 1-only drop boost, milestone persistence, boss emergence/damage, rock bursts, and 10% proc boundaries.
+- check-player-expansion-browser.cjs passed native purchases, Party Bond unlock/save reload, and stage 6 emergence with no page/asset errors. Inspected Reach, Essence Finder, Party Bond, and the surfaced Mole screenshots in output/player-expansion. Required game client also ran; native browser screenshots provide visual verification because its WebGL buffer capture is black on this Mac.
+
+## September 14 — Flush production release
+
+- Flush now independently rolls a 10% on-hit heal, preserving +3 HP/rank. Bloom remains 10% with +1 HP/rank. Both retain the Bloom party requirement.
+- Node/combat regression checks and production music build passed. Releasing this task’s progression updates; separate pending Feral edits remain local.

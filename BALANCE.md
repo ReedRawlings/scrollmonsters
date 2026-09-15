@@ -347,3 +347,11 @@ Regular enemies now use explicit monster weights, independent of the legacy affi
 | 3 | Bamboo | 4 | 1 |
 
 Beast uses armored movement and higher HP. Bat and Bamboo use basic movement. Stage 1/2 bosses remain Demon Cyclop; Stage 3's Feral boss now consistently uses Bat artwork, with existing boss stats and reward. All regular roster monsters qualify for matching affinity essence: Bat/Beast → Feral, Bamboo → Bloom. Existing drops remain 30%, guaranteed by the fifth dry affinity kill, with one essence per drop in stages 1–3. No separate tier-based essence currency or drop rate was introduced.
+
+## September 14 — player progression adjustments
+
+- Bloom: 10% chance per damaging enemy hit for +1 Health/rank, with Bloom in the active party. Flush independently rolls 10% per hit for +3 Health/rank.
+- Reach: connected to Damage, five ranks at +10% base player range each (152/167.2/182.4/197.6/212.8/228px). Starts at 10G; rank costs 10/14/18/25/33G.
+- Essence Finder: connected to Golden Echo, same rank costs, +10% relative essence drop chance/rank on Tier 1 creatures (30/33/36/39/42/45%). Existing fifth-dry-kill guarantee and boss rewards remain.
+- Party Bond: 50G once a full three-companion party has been assembled for the first time; unlock persists after roster changes. Its purchased +5 damage bonus no longer requires a healer to be active.
+- Stage 6 Mole crosses the burrow-emergence threshold before stopping. Boulder Buster is verified for both destructible rock sizes.

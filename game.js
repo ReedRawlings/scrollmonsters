@@ -89,6 +89,7 @@
     { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
   ];
   const nodeIconPaths = {
+    playerRange: "Spell/BookWind", essenceFinder: "Job & Action/Harvest",
     bloomHealth: "Spell/Heal", bloom: "Spell/BookPlant", flush: "Spell/Heal", razorLeaf: "Spell/BookPlant", waterBurst: "Items & Weapon/Armor", rockBurst: "Spell/BookRock",
     power: "Spell/BookRock", speed: "Items & Weapon/Boot", multishot: "Spell/BookFire",
     power3: "Spell/BookRock", boulderBuster: "Job & Action/Mine", health: "Spell/Heal", rockBreaker: "Job & Action/Mine", tripleSpark: "Spell/BookThunder",
@@ -609,9 +610,11 @@
   ];
 
   upgradeDefs.push(
+    { id: "playerRange", name: "Reach", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `Player attack range +${10 * (r + 1)}%`, requires: ["power"] },
+    { id: "essenceFinder", name: "Essence Finder", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `Tier 1 essence drop chance +${10 * (r + 1)}% (${Math.round(30 * (1 + .1 * (r + 1)))}% total)`, requires: ["magnet"] },
     { id: "power3", name: "Damage +3", branch: "PLAYER", max: 5, costs: abilityRankCosts(50, 5), effect: level => `+3 player damage per rank (+${3 * (level + 1)} total)`, requires: ["power"], requiredRanks: { power: 5 } },
     { id: "boulderBuster", name: "Boulder Buster", branch: "PLAYER", max: 5, costs: abilityRankCosts(40, 5), effect: level => `Destroyed rocks fire ${level + 1} player projectile${level ? "s" : ""} in random directions`, requires: ["rockBreaker"] },
-    { id: "partyBond", name: "Party Bond", branch: "PLAYER", recruit: "healer", max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
+    { id: "partyBond", name: "Party Bond", branch: "PLAYER", fullPartyRequired: true, max: 1, costs: [50], requires: [], effect: () => "+5 player & Fangle damage" },
     { id: "strikerDouble", name: "Double Attack", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% chance for all Feral creatures to attack twice`, requires: ["strikerSpeed"], recruit: "striker" },
     { id: "strikerTriple", name: "Triple Bite", branch: "STRIKER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third bite on double`, requires: ["strikerDouble"], requiredRanks: { strikerDouble: 5 }, recruit: "striker" },
     { id: "tripleSpark", name: "Triple Spark", branch: "PLAYER", max: 10, costs: abilityRankCosts(30, 10), effect: rank => `${10 * (rank + 1)}% third shot on split`, requires: ["multishot"], requiredRanks: { multishot: 5 } },
@@ -632,8 +635,8 @@
 
   upgradeDefs.push(
     { id: "bloomHealth", name: "Health", branch: "HEALER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `+5 Health per rank (+${5 * (r + 1)} total)`, requires: [] },
-    { id: "bloom", name: "Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), effect: r => `50% chance: +${r + 1} Health when hitting an enemy`, requires: ["bloomHealth"], partyAffinity: "bloom" },
-    { id: "flush", name: "Flush", branch: "HEALER", max: 5, costs: abilityRankCosts(50, 5), effect: r => `+${3 * (r + 1)} Health when hitting an enemy`, requires: ["bloom"], partyAffinity: "bloom" },
+    { id: "bloom", name: "Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), effect: r => `10% chance: +${r + 1} Health when hitting an enemy`, requires: ["bloomHealth"], partyAffinity: "bloom" },
+    { id: "flush", name: "Flush", branch: "HEALER", max: 5, costs: abilityRankCosts(50, 5), effect: r => `10% chance: +${3 * (r + 1)} Health when hitting an enemy`, requires: ["bloom"], partyAffinity: "bloom" },
     { id: "razorLeaf", name: "Razor Leaf", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Bamboo attacks pierce ${r + 1} extra enem${r ? "ies" : "y"}`, requires: [] },
     { id: "waterBurst", name: "Water Burst", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Fish kills grant ${r + 1} shield${r ? "s" : ""}`, requires: [] },
     { id: "rockBurst", name: "Rock Burst", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), currency: "bloom", effect: r => `Mole hits stun full-health enemies for ${((r + 1) * 0.2).toFixed(1)}s`, requires: [] }
@@ -755,13 +758,13 @@
   const playerAttackDuration = 0.24;
   const upgradeBranchDefinitions = () => {
     const branch = ["PLAYER", "STRIKER", "HEALER", "AOE"][upgradeBranch];
-    if (branch === "PLAYER") return ["power", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "PLAYER") return ["power", "playerRange", "essenceFinder", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
     if (branch === "HEALER") return ["bloomHealth", "bloom", "flush", "razorLeaf", "waterBurst", "rockBurst"].map(id => upgradeDefs.find(def => def.id === id));
     return upgradeDefs.filter(definition => definition.branch === branch);
   };
 
   const emptyAffinityMap = () => Object.fromEntries(affinityOrder.map(id => [id, 0]));
-  const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
+  const defaultSave = () => ({ saveVersion: 2, fragments: {}, shinyCreatures: [], gold: 0, essence: emptyAffinityMap(), essencePity: emptyAffinityMap(), completed: [], unlockedStage: 1, ownedCreatures: [], activeParty: [], fullPartyReached: false, upgrades: {}, autoTargetEnabled: false, stage4TreasureAttempted: false });
   function mergeHealthRanks(upgrades) {
     const result = { ...upgrades };
     if (result.vitality !== undefined || result.fortitude !== undefined) {
@@ -785,6 +788,7 @@
         essencePity: { ...fresh.essencePity, ...(parsed.essencePity || {}) },
         ownedCreatures: [...new Set(parsed.ownedCreatures || [])].filter(id => creatureById(id)),
         activeParty: [...new Set(parsed.activeParty || [])].filter(id => creatureById(id) && (parsed.ownedCreatures || []).includes(id)).slice(0, 3),
+        fullPartyReached: !!parsed.fullPartyReached || (parsed.activeParty || []).filter(id => creatureById(id) && (parsed.ownedCreatures || []).includes(id)).length >= 3 || !!parsed.upgrades?.partyBond,
         upgrades: mergeHealthRanks(parsed.upgrades || {})
       };
     } catch {
@@ -803,10 +807,15 @@
   const rank = id => state.save.upgrades[id] || 0;
   const hasRecruit = id => state.save.ownedCreatures.includes(id);
   const isActiveCreature = id => state.save.activeParty.some(member => member === id || creatureById(member)?.petType === id);
-  const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
+  const hasReachedFullParty = () => state.save.fullPartyReached || state.save.activeParty.length >= 3;
+  const writeSave = () => {
+    state.save.fullPartyReached = !!hasReachedFullParty();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state.save));
+  };
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const travelMultiplier = () => 1 + rank("travelSpeed") * 0.05;
-  const partyDamageBonus = () => isActiveCreature("healer") && rank("partyBond") > 0 ? 5 : 0;
+  const partyDamageBonus = () => rank("partyBond") > 0 ? 5 : 0;
+  const playerAttackRange = () => ABILITY_RANGES.short * (1 + rank("playerRange") * 0.1);
   const playerDamage = () => 1 + rank("power") + 3 * rank("power3") + partyDamageBonus();
   const strikerDamage = () => 1 + rank("strikerPower") + partyDamageBonus();
   const playerFireInterval = () => 1 - rank("speed") * 0.02;
@@ -987,12 +996,12 @@
     const owner = source === "strikerFollowup" ? "striker" : source;
     const result = friendly ? criticalAmount(owner, damage) : { amount: damage, critical: false };
     damage = result.amount;
-    state.projectiles.push({ critical: result.critical, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0, ...(source === "player" ? {maxDistance:ABILITY_RANGES.short,distance:0,originX:x,originY:y} : {}) });
+    state.projectiles.push({ critical: result.critical, x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: source === "boss" ? 8 : 6, friendly, damage, source, age: 0, ...(source === "player" ? {maxDistance:playerAttackRange(),distance:0,originX:x,originY:y} : {}) });
   }
 
   function firePlayerVolley() {
     state.playerAttackStartedAt = state.animationTime;
-    const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy(state.party.x, state.party.y, true, ABILITY_RANGES.short) : null;
+    const target = state.save.autoTargetEnabled && autoTargetUnlocked() ? nearestEnemy(state.party.x, state.party.y, true, playerAttackRange()) : null;
     const targetX = target?.x ?? state.mouse.x;
     const targetY = target?.y ?? state.mouse.y;
     const count = playerProjectiles();
@@ -1018,6 +1027,8 @@
     state.runEssence[affinityId] += amount;
   }
 
+  const essenceDropChance = enemy => 0.3 * (1 + (creatureById(enemy.monsterId)?.tier === 1 ? rank("essenceFinder") * 0.1 : 0));
+
   function removeEnemy(enemy, reward = false) {
     const index = state.enemies.indexOf(enemy);
     if (index < 0) return;
@@ -1028,7 +1039,7 @@
       if (enemy.species && enemy.type !== "boss") {
         const affinityId = speciesDefs[enemy.species].affinityId;
         state.save.essencePity[affinityId] += 1;
-        if (Math.random() < 0.3 || state.save.essencePity[affinityId] >= 5) {
+        if (Math.random() < essenceDropChance(enemy) || state.save.essencePity[affinityId] >= 5) {
           awardEssence(affinityId, essenceYield(state.stage.number));
           state.save.essencePity[affinityId] = 0;
         }
@@ -1081,8 +1092,9 @@
     if (amount > 0) {
       if (source === "bloom-mole" && enemy.hp === enemy.maxHp) enemy.stunRemaining = rank("rockBurst") * 0.2;
       if (hasPartyAffinity("bloom")) {
-        const bloomHealing = rank("bloom") > 0 && Math.random() < 0.5 ? rank("bloom") : 0;
-        state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + bloomHealing + 3 * rank("flush")));
+        const bloomHealing = rank("bloom") > 0 && Math.random() < 0.1 ? rank("bloom") : 0;
+        const flushHealing = rank("flush") > 0 && Math.random() < 0.1 ? 3 * rank("flush") : 0;
+        state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + bloomHealing + flushHealing));
       }
     }
     enemy.hp = precise(enemy.hp - amount);
@@ -1422,7 +1434,7 @@
       const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
       const distance = Math.hypot(dx, dy);
       const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
-      const stopDistance = rangedOwl ? 300 : enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
+      const stopDistance = enemy.underground ? 220 : rangedOwl ? 300 : enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
       const travel = rangedOwl && distance < 280 ? -Math.min(enemy.speed * dt,300-distance) : Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
@@ -1496,7 +1508,7 @@
         }
       }
       if (projectile.friendly) {
-        const enemy = state.enemies.find(candidate => !projectile.hitEnemies?.has(candidate) && (projectile.source !== "player" || Math.hypot(candidate.x-projectile.originX,candidate.y-projectile.originY) <= ABILITY_RANGES.short) && enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
+        const enemy = state.enemies.find(candidate => !projectile.hitEnemies?.has(candidate) && (projectile.source !== "player" || Math.hypot(candidate.x-projectile.originX,candidate.y-projectile.originY) <= projectile.maxDistance) && enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
         if (enemy) {
           damageEnemy(enemy, projectile.damage, projectile.source);
           if (state.mode !== "combat") return;
@@ -1791,6 +1803,7 @@
     if (!hasRecruit(creatureId)) return;
     const creature = creatureById(creatureId);
     if (isActiveCreature(creatureId)) {
+      state.save.fullPartyReached = !!hasReachedFullParty();
       pendingPartyCreature = null;
       state.save.activeParty = state.save.activeParty.filter(id => id !== creatureId);
       state.toast = `${creature.name} moved to reserves`;
@@ -1956,7 +1969,7 @@
   }
 
   function upgradeUnlocked(definition) {
-    return (!definition.partyAffinity || hasPartyAffinity(definition.partyAffinity)) && (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
+    return (!definition.fullPartyRequired || hasReachedFullParty()) && (!definition.partyAffinity || hasPartyAffinity(definition.partyAffinity)) && (upgradeType(definition) ? ownsUpgradeType(definition) : (!definition.recruit || hasRecruit(definition.recruit))) && definition.requires.every(id => rank(id) >= (definition.requiredRanks?.[id] || 1));
   }
 
   const treeView = { x: 0, y: 0, zoom: 1 };
@@ -1970,6 +1983,7 @@
     if (upgradeBranch === 0) {
       // The central damage node anchors four spokes; outer nodes continue each path.
       const positions = {
+        playerRange: [380, 490], essenceFinder: [482, 260],
         power3: [160, 490], boulderBuster: [270, 610], power: [270, 370], health: [270, 260], speed: [160, 370],
         multishot: [58, 370], tripleSpark: [58, 490],
         rockBreaker: [270, 490], magnet: [380, 370], travelSpeed: [482, 370],
@@ -2060,6 +2074,7 @@
       if (def.partyAffinity) description = `Bloom Required. ${description}`;
       if (!unlocked) {
         const requirements = def.requires.map(id => `${upgradeDefs.find(d => d.id === id)?.name || id} ${def.requiredRanks?.[id] || 1}`);
+        if (def.fullPartyRequired && !hasReachedFullParty()) requirements.unshift("Fill all three party slots once");
         if (def.partyAffinity && !hasPartyAffinity(def.partyAffinity)) requirements.unshift("Bloom Required");
         if (upgradeType(def) && !ownsUpgradeType(def)) requirements.unshift(`Summon a ${affinityDefs[upgradeType(def)].name} creature`);
         else if (!upgradeType(def) && def.recruit && !hasRecruit(def.recruit)) requirements.unshift(`Recruit ${petDisplayNames[def.recruit]}`);
@@ -2235,7 +2250,7 @@
     if (!upgradeUnlocked(definition)) {
       if (definition.partyAffinity && !hasPartyAffinity(definition.partyAffinity)) state.toast = "Bloom Required";
       else if (upgradeType(definition) && !ownsUpgradeType(definition)) state.toast = `Summon a ${affinityDefs[upgradeType(definition)].name} creature first`;
-      else if (definition.id === "partyBond") state.toast = "Recruit Buttermant first";
+      else if (definition.id === "partyBond") state.toast = "Fill all three party slots once";
       else if (definition.requiredRanks) state.toast = rankRequirementText(definition);
       else if (definition.recruit) state.toast = `Recruit ${petDisplayNames[definition.recruit]} first`;
       else state.toast = "Purchase the prerequisite first";
@@ -2297,7 +2312,7 @@
     audio: { track: currentTrack, unlocked: audioUnlocked, playing: !!music?.isPlaying },
     coordinateSystem: "origin top-left; x east; y south; canvas 540x900", mode: state.mode, selectedStage: state.selectedStage,
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
-    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCharges: Number(state.party.shield || 0), shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
+    party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCharges: Number(state.party.shield || 0), shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), attackRange: playerAttackRange(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
       direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
