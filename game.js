@@ -510,7 +510,7 @@
       // Durability accelerates as the party gains damage, extra shots, and companions.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
       hpScale: [1, 1.495, 2, 3, 4, 5, 6, 7, 8, 9][index],
-      bossHpScale: [28, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
+      bossHpScale: [20, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
       damageScale: 0.855 + (number - 1) * 0.25 + (number - 1) ** 2 * 0.025,
       boss: true,
       majorBoss: number === 5 || number === 10
