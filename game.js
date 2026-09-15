@@ -601,7 +601,7 @@
     mossbud: { id: "mossbud", name: "Mossbud", affinityId: "bloom", petType: "healer", density: [0.08, 0.10, 0.10, 0.25, 0.50, 0.15, 0.35, 0.25, 0.12, 0.30] },
     tinmin: { id: "tinmin", name: "Tinmin", affinityId: "arcane", petType: "aoe", density: [0.04, 0.05, 0.05, 0.10, 0.08, 0.15, 0.15, 0.25, 0.25, 0.35] }
   });
-  const summonCosts = Object.freeze([0, 20, 200, 2000]);
+  const summonCosts = Object.freeze([0, 30, 300, 3000]);
   const creatureDefs = Object.freeze(monsterCatalog.map(c => ({ ...c, role: { striker: "Striker", healer: "Healer", aoe: "Area" }[c.petType], captureCost: summonCosts[c.tier], description: "Duplicates grant shiny fragments." })));
   const creatureById = id => creatureDefs.find(creature => creature.id === id);
   const petDisplayNames = Object.fromEntries(creatureDefs.map(creature => [creature.id, creature.name]));
@@ -1795,7 +1795,14 @@
     view.endGroup();
   }
 
-  const summonPool = (affinityId,tier) => monsterCatalog.filter(c => c.affinityId === affinityId && c.tier === tier && (state.save.fragments[c.id] || 0) < 5);
+  const summonPool = (affinityId,tier) => {
+    const pool = monsterCatalog.filter(c => c.affinityId === affinityId && c.tier === tier && (state.save.fragments[c.id] || 0) < 5);
+    const firstFeralTierOne = affinityId === "feral" && tier === 1 && !state.save.ownedCreatures.some(id => {
+      const creature = creatureById(id);
+      return creature?.affinityId === "feral" && creature.tier === 1;
+    });
+    return firstFeralTierOne ? pool.filter(c => c.id === "feral-bat") : pool;
+  };
   function summonCreature(affinityId,tier) {
     const pool = summonPool(affinityId,tier), cost = summonCosts[tier];
     if (!pool.length || !cost || state.save.essence[affinityId] < cost) return null;

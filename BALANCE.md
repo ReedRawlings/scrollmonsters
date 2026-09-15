@@ -371,3 +371,7 @@ All abilities starting at 10 gold now cost 10/15/20/25/30/60/90/120/150/200G by 
 ## September 14 — Golden Echo and Party Bond
 
 Golden Echo now has five ranks, granting +5% battle gold per rank (+25% maximum), retaining its 15G starting cost and existing price scaling. Party Bond grants +3 attack damage to the player and every attacking companion, including Feral, Bloom, and Arcane attacks. Its 50G price and permanent full-party unlock are unchanged.
+
+## September 14 — summon prices and starter Bat
+
+Tier 1/2/3 summons cost 30/300/3000 matching essence. The first Tier 1 Feral summon is guaranteed Bat when no Tier 1 Feral creature is owned; subsequent summons use the normal pool. Higher tiers retain their own tier pools.

@@ -821,3 +821,7 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## September 14 — gold ranks and party-wide damage
 
 - Golden Echo: five ranks at +5% gold/rank, existing 15G base. Party Bond: +3 damage for player and all companion attack paths (Feral hits/bonus slashes, Bloom projectiles/targeted hits, Arcane blasts), applied once before critical multipliers where applicable. Updated node copy and player DPS projection. Local changes; testing left to user.
+
+## September 14 — summon costs and guaranteed Bat
+
+- Updated shared summon prices to 30/300/3000 essence, affecting purchasing and tier labels. First Tier 1 Feral pool contains only Bat until a Tier 1 Feral is owned; ownership persists the consumed guarantee. Failed purchases do not consume it. Existing Feral collections and higher-tier pools remain intact. Local changes; testing left to user.
