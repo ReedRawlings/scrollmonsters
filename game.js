@@ -957,7 +957,7 @@
       basic: { hp: 1, speed: openingStage ? 92 : 32, damage: 1, cooldown: 99, radius: 11 },
       ranged: { hp: 2, speed: 28, damage: 1, cooldown: 2.7, radius: 12 },
       armored: { hp: 3, speed: openingStage ? 70 : 24, damage: 2, cooldown: 99, radius: 15 },
-      boss: { hp: 28, speed: state.stage.number <= 5 ? 72 : 28, damage: 5, cooldown: 2.4, radius: 42 }
+      boss: { hp: 28, speed: 72, damage: 5, cooldown: 2.4, radius: 42 }
     }[type];
     const bossFactor = type === "boss" ? (state.stage.majorBoss ? 1.5 : 1) : 1;
     const hpScale = type === "boss" ? state.stage.bossHpScale : state.stage.hpScale;
@@ -973,7 +973,7 @@
     const monsterId = type === "boss" ? (stageBossCreature[state.stage.number] || null) : (rosterEntry?.id || pool[Math.floor(Math.random() * pool.length)].id);
     state.enemies.push({
       monsterId,
-      underground: monsterId === "bloom-mole", emerging: 0,
+      underground: type !== "boss" && monsterId === "bloom-mole", emerging: 0,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: type === "boss" ? stageBossDamage(state.stage) : stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
       gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
@@ -1462,13 +1462,14 @@
       if (!state.enemies.includes(enemy)) continue;
       if (enemy.stunRemaining > 0) { enemy.stunRemaining = Math.max(0, enemy.stunRemaining - dt); continue; }
       // Enemies steer toward the fixed party independently of decorative terrain scroll.
-      const rangedOwl = enemy.monsterId === "arcane-owl";
-      const targetBody = rangedOwl ? partyBodies()[0] : nearestPartyBody(enemy.x, enemy.y);
+      const isBoss = enemy.type === "boss";
+      const rangedOwl = !isBoss && enemy.monsterId === "arcane-owl";
+      const targetBody = isBoss || rangedOwl ? partyBodies()[0] : nearestPartyBody(enemy.x, enemy.y);
       if (enemy.emerging > 0) { enemy.emerging = Math.max(0,enemy.emerging-dt); continue; }
       const dx = targetBody.x - enemy.x, dy = targetBody.y - enemy.y;
       const distance = Math.hypot(dx, dy);
-      const meleeBoss = enemy.type === "boss" && state.stage.number <= 5;
-      const stopDistance = enemy.underground ? 220 : rangedOwl ? 300 : enemy.type === "boss" ? (meleeBoss ? enemy.r + targetBody.r : 240) : enemy.r + targetBody.r;
+      const meleeBoss = isBoss;
+      const stopDistance = isBoss ? enemy.r + targetBody.r : enemy.underground ? 220 : rangedOwl ? 300 : enemy.r + targetBody.r;
       const travel = rangedOwl && distance < 280 ? -Math.min(enemy.speed * dt,300-distance) : Math.min(enemy.speed * dt, Math.max(0, distance - stopDistance));
       enemy.x += dx / Math.max(1, distance) * travel;
       enemy.y += dy / Math.max(1, distance) * travel;
