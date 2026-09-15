@@ -548,8 +548,8 @@
     2: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
         { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
         { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }],
-    3: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, baseDamage: 2 },
-        { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, baseDamage: 2 },
+    3: [{ id: "feral-beast", chance: 0.2, type: "armored", baseHp: 3, hpOverride: 8, baseDamage: 2 },
+        { id: "feral-bat", chance: 0.5, type: "basic", baseHp: 2, hpOverride: 6, baseDamage: 2 },
         { id: "bloom-bamboo", chance: 0.3, type: "basic", baseHp: 1, baseDamage: 1 }]
   };
   const tierOneEnemyStats = {
@@ -566,7 +566,7 @@
     "arcane-owl": { type: "ranged", baseHp: 2, baseDamage: 2 }
   };
   const laterStageLineups = {
-    4: ["feral-lizard", "bloom-fish", "arcane-eye"],
+    4: ["feral-lizard", "bloom-fish", "bloom-bamboo"],
     5: ["feral-beast", "bloom-mole", "arcane-flam"],
     6: ["feral-bat", "bloom-bamboo", "arcane-lantern"],
     7: ["feral-lizard", "bloom-mole", "arcane-mouse"],
@@ -582,7 +582,7 @@
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
-      hp: stage.number === 2 && entry.id === "feral-beast" ? 4 : stage.number === 2 && entry.id === "feral-bat" ? 3 : precise((openingBat ? entry.baseHp : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier),
+      hp: entry.hpOverride ?? (stage.number === 2 && entry.id === "feral-beast" ? 4 : stage.number === 2 && entry.id === "feral-bat" ? 3 : precise((openingBat ? entry.baseHp : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier)),
       damage: openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale))
     };
   }
