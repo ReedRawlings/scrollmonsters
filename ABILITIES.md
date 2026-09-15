@@ -59,4 +59,10 @@ Replaces Follow-Up Bite. Five ranks cost 30/41/55/74/100 Feral essence and requi
 
 The linked Mending Slash upgrade replaces Mending Bite and heals the party by 1 HP per rank for each bonus-slash hit, capped at maximum health. It requires Beast and Follow-Up Slash. Base and shiny Beast behave identically.
 
-Attack artwork renders at 2× its previous size; damage, hitboxes, ranges, and cooldowns are unchanged. Fish applies its hit immediately and plays the water animation on the target, preserving Water Burst shield-on-kill behavior.
+Attack artwork renders at exactly 4× its original source pixels (roughly 96×96 visible art for a 24×24 effect); damage, hitboxes, ranges, and cooldowns are unchanged. Fish applies its hit immediately and plays the water animation on the target, preserving Water Burst shield-on-kill behavior.
+
+## Starter — Cyclops Cat
+
+- Joins the tutorial and becomes the player's first owned, equipped creature upon tutorial completion. Can be moved to reserves and equipped from the collection afterward.
+- Single nearest-enemy slash: exactly **1 damage**, **120 px melee range**, **1 second cooldown**. No critical hits, extra attacks, damage/range/speed bonuses, or on-hit upgrade benefits. It appears under Feral in the bestiary for party management, but has no gameplay affinity or upgrade tree.
+- Uses the bundled `Actor/Animals/CatCyclop/SpriteSheet.png` (two 16 × 16 frames) and `FX/SlashFx/Slash/SpriteSheet.png` (four slash frames) from Ninja Adventure.

@@ -825,3 +825,68 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## September 14 — summon costs and guaranteed Bat
 
 - Updated shared summon prices to 30/300/3000 essence, affecting purchasing and tier labels. First Tier 1 Feral pool contains only Bat until a Tier 1 Feral is owned; ownership persists the consumed guarantee. Failed purchases do not consume it. Existing Feral collections and higher-tier pools remain intact. Local changes; testing left to user.
+
+## September 14 — attack size correction and Cyclop approach
+
+- Reduced visual scaling from 2× to 1.25× original dimensions (2× width/height had quadrupled area).
+- Fixed the missed stage-based AI rule: Demon Cyclop now uses melee approach/contact attacks on every stage, with the same base speed of 72 as stage 1. Previously stages 6+ stopped at 240px and used speed 28 despite the changed boss identity. HP, damage, cooldown and rewards unchanged.
+
+- Removed the fractional attack multiplier after user correction, restoring original render sizes. Inspected PNG headers: all eight main attack sheets use 100×100 frames; visible art occupies only part of those frames. Existing Beast size 240 remains a separate pre-existing fractional scale to address when choosing per-effect integer sizes.
+
+## September 14 — native 4× ability pixels
+
+- All sprite-based attack/status/heal visuals now render at exactly four times their source frame dimensions, replacing mixed per-effect display sizes. Roughly 24×24 visible art becomes roughly 96×96; the 100×100 padded cells render at 400×400 without stretching the artwork to fill the padding. Frame alignment remains intact. Procedural AOE rings retain their gameplay radius. No combat-stat changes; local only.
+
+## September 14 — accessible base upgrade prices
+
+- Player Damage +1, player Health +5, Feral Focus, and Bloom Health now share prices 5/10/15/20/25/50/75/100/125/150 gold. Bloom Health expanded from five to ten ranks to use the full sequence; per-rank effects unchanged.
+- Syntax and focused price/rank checks passed. Pushed only these two definition changes as 1e504d3; preserved existing unrelated local work. No broad test suite per user preference.
+
+## September 14 — stage 2 enemy health
+
+- Set final stage 2 Beast HP to 4 and Bat HP to 3 in shared rosterStats, used by combat and stage projections. Other stages and creatures unchanged. Local edit.
+
+## September 14 — currency loot and victory presentation
+
+- Essence rewards spawn matching Feral/Bloom/Arcane rows from Coin2-Sheet.png using gold's pop, spin, and homing animation. Failed essence rolls spawn no essence coins; guaranteed/boss rewards do.
+- Boss defeat stops combat and waits at least 1.2 seconds plus completion of coin collection before banking rewards once and showing results. Result background uses shared dark wood menu styling.
+- Focused browser checks passed missed/pity essence drops, boss gold/essence animation delay, result transition, and exactly-once banking. Inspected four-color loot and result screenshots. No broad suite run per user preference.
+
+## September 14 — all bosses pursue the player
+
+- Bosses now target the player explicitly, close to melee distance regardless of stage/artwork, and cannot inherit regular Owl standoff or Mole spawn burrowing. Removed the stage-based ranged-boss movement fallback.
+- Focused browser checks passed all ten stage bosses reaching the player and dealing melee damage without ranged projectiles; inspected screenshot. Stage 6/8 also checked with Mole/Owl artwork.
+- Scaling audit: stage 3 average regular HP 7.6 vs stage 4 8.4; roster changes offset the scale increase. Average hit damage 2.4 vs 2.8. Expected regular spawn counts about 30 vs 34, increasing to 60 by stage 10 at Trail Pace rank zero. Trail Pace adds 5% scenery/prop speed and spawn frequency per rank, not player movement or a shorter stage timer. No tuning changes made to these systems.
+
+## September 14 — one essence pickup per reward
+
+- Corrected essence visuals to spawn one colored coin per award instead of one per essence unit. Full bundle amounts still credit once; zero awards show no coin. Gold remains unchanged.
+- Syntax and focused checks passed bundle sizes 1/2/3/4/15/20 and zero. No broad test suite per user preference.
+
+## September 14 — regular enemies award exactly one essence
+
+- Corrected the earlier misunderstanding: each successful regular-enemy essence drop now credits exactly 1 essence on every stage, rather than stage-scaled bundles of 1/2/3/4. One coin remains the visual. Drop chance and pity logic remain the same; separately defined boss bonus rewards are unchanged.
+- Syntax check passed. Publishing only the reward-amount change.
+
+## September 15 — new-player tutorial
+
+- Added a separate tutorial before stage 1 for fresh saves: paused mouse/thumb aiming overlay with Begin, ten bats at 1 HP / 1 damage, no vases, rocks, treasure, or boss.
+- Ten kills grant a total wallet of 10 gold, preserve stage 1 as the campaign starting point, and save an upgrade guidance step. Failed attempts can restart without banking partial rewards.
+- The guided map disables stage selection, Bestiary, Play, and music; Upgrades blinks using the existing focus selector. Opening it selects the Player branch and Damage +1, then restores normal navigation.
+- Existing saves with progress skip onboarding. Tutorial guidance survives reloads.
+- Fixed a browser audio unlock race exposed by transitions: music tracks are created only after audio unlock, avoiding queued operations on destroyed HTML audio sounds.
+- `node scripts/check-tutorial.cjs` passed mouse and touch combat, exact enemy stats/count, no destructibles, gold reward, reload, map restrictions, first damage purchase, and entry into normal stage 1, with no page errors. Screenshots of intro, combat, map, and upgrade focus visually inspected.
+- `node --check game.js` and `git diff --check` passed. The skill client ran; its WebGL canvas capture was blank, so native Playwright canvas screenshots supplied visual QA (with a headed client follow-up).
+
+## September 15 — Cyclops Cat starter companion
+
+- Found and integrated Ninja Adventure's `Actor/Animals/CatCyclop` two-frame sprite and four-frame `FX/SlashFx/Slash` animation.
+- Cat accompanies the tutorial, then is permanently awarded and auto-equipped as the first creature. It is a neutral starter in the collection, can enter reserves and be equipped again, and survives save reloads. Summon pools stay unchanged.
+- Dedicated attack path uses exactly 1 damage, 120px melee range and a one-second cooldown, bypassing critical hits, party damage, speed ranks, extra attacks and on-hit upgrade effects.
+- Mouse and touch tutorial regression passed, including ownership/equipment after reload and entering stage 1 with the cat. Focused combat checks verify actual damage under upgrades, melee range boundary and fixed cooldown. Slash and collection screenshots visually inspected; syntax/whitespace checks passed.
+- Skill browser client also executed with macOS graphics adaptation; native Playwright screenshots provide reliable WebGL visual captures.
+
+## September 15 — tutorial production release
+
+- Cyclops Cat now appears only in the Feral collection tab for equip/remove controls; its gameplay affinity remains neutral and its dedicated fixed-stat attack is unchanged.
+- Confirmed the cat follows the normal companion formation. Focused checks passed Feral-only visibility, fixed damage/range/cooldown, equip/remove/reload, and full mouse/touch tutorial completion. Production music build, syntax and whitespace checks passed.
