@@ -904,3 +904,8 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## September 15 — stage 8 enemy damage
 
 - Set final stage 8 Owl damage to 4 and Fish damage to 6 via roster damage overrides. Other stages and companion damage unchanged. Local edit.
+
+## September 15 — +10 Health extensions and late-floor gold
+
+- Player and Bloom each gain Health +10, five ranks, connected after their +5 Health node (requires one rank). Provisional 30G base, standard price scaling. Both contribute +10 HP/rank to shared max health. Player extension sits above Health and is accessible by panning; Bloom extension occupies its middle row.
+- Floors 8–10 enemies now award base 2 gold, including bosses, with Golden Echo applied normally. Other floors retain 1 gold. Local edits; testing left to user.

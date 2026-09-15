@@ -94,6 +94,7 @@
     { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
   ];
   const nodeIconPaths = {
+    health10: "Spell/Heal", bloomHealth10: "Spell/Heal",
     playerRange: "Spell/BookWind", essenceFinder: "Job & Action/Harvest",
     bloomHealth: "Spell/Heal", bloom: "Spell/BookPlant", flush: "Spell/Heal", razorLeaf: "Spell/BookPlant", waterBurst: "Items & Weapon/Armor", rockBurst: "Spell/BookRock",
     power: "Spell/BookRock", speed: "Items & Weapon/Boot", multishot: "Spell/BookFire",
@@ -666,6 +667,8 @@
   }
 
   upgradeDefs.push(
+    { id: "health10", name: "Health +10", branch: "PLAYER", max: 5, costs: abilityRankCosts(30, 5), effect: r => `+10 Health per rank (+${10 * (r + 1)} total)`, requires: ["health"] },
+    { id: "bloomHealth10", name: "Health +10", branch: "HEALER", max: 5, costs: abilityRankCosts(30, 5), effect: r => `+10 Health per rank (+${10 * (r + 1)} total)`, requires: ["bloomHealth"] },
     { id: "bloomHealth", name: "Health", branch: "HEALER", max: 10, costs: damageRankCosts, effect: r => `+5 Health per rank (+${5 * (r + 1)} total)`, requires: [] },
     { id: "bloom", name: "Bloom", branch: "HEALER", max: 5, costs: abilityRankCosts(20, 5), effect: r => `10% chance: +${r + 1} Health when hitting an enemy`, requires: ["bloomHealth"], partyAffinity: "bloom" },
     { id: "flush", name: "Flush", branch: "HEALER", max: 5, costs: abilityRankCosts(50, 5), effect: r => `10% chance: +${3 * (r + 1)} Health when hitting an enemy`, requires: ["bloom"], partyAffinity: "bloom" },
@@ -790,8 +793,8 @@
   const playerAttackDuration = 0.24;
   const upgradeBranchDefinitions = () => {
     const branch = ["PLAYER", "STRIKER", "HEALER", "AOE"][upgradeBranch];
-    if (branch === "PLAYER") return ["power", "playerRange", "essenceFinder", "power3", "boulderBuster", "speed", "multishot", "health", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
-    if (branch === "HEALER") return ["bloomHealth", "bloom", "flush", "razorLeaf", "waterBurst", "rockBurst"].map(id => upgradeDefs.find(def => def.id === id));
+    if (branch === "PLAYER") return ["power", "playerRange", "essenceFinder", "power3", "boulderBuster", "speed", "multishot", "health", "health10", "rockBreaker", "tripleSpark", "playerCritChance", "playerCritDamage", "magnet", "autoTarget", "travelSpeed", "partyBond"].map(id => upgradeDefs.find(definition => definition.id === id));
+    if (branch === "HEALER") return ["bloomHealth", "bloom", "flush", "razorLeaf", "waterBurst", "rockBurst", "bloomHealth10"].map(id => upgradeDefs.find(def => def.id === id));
     return upgradeDefs.filter(definition => definition.branch === branch);
   };
 
@@ -857,7 +860,7 @@
     return 2 + (rank(thirdId) > 0 && Math.random() < shotChance(rank(thirdId)) ? 1 : 0);
   };
   const playerProjectiles = () => rollAttackCount("multishot", "tripleSpark");
-  const maxPartyHealth = () => 10 + (rank("health") + rank("bloomHealth")) * 5;
+  const maxPartyHealth = () => 10 + (rank("health") + rank("bloomHealth")) * 5 + (rank("health10") + rank("bloomHealth10")) * 10;
   const autoTargetUnlocked = () => rank("autoTarget") > 0;
 
   function setMode(mode) {
@@ -1012,7 +1015,7 @@
       underground: type !== "boss" && monsterId === "bloom-mole", emerging: 0,
       type, species, affinityId: species ? speciesDefs[species].affinityId : null, demonCyclop, edge: spawn.edge, x: spawn.x, y: spawn.y, r: base.radius,
       hp, maxHp: hp, speed: base.speed * 1.4 * (type === "boss" ? 1 : 1.2), damage: type === "boss" ? stageBossDamage(state.stage) : stats ? stats.damage : openingFanglet ? 2 : Math.max(1, Math.round(base.damage * state.stage.damageScale)),
-      gold: 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
+      gold: state.stage.number >= 8 && state.stage.number <= 10 ? 2 : 1, meleeTimer: 0, meleeCooldown: 1.5, attackTimer: base.cooldown,
       attackCooldown: base.cooldown
     });
   }
@@ -2115,7 +2118,7 @@
     if (upgradeBranch === 0) {
       // The central damage node anchors four spokes; outer nodes continue each path.
       const positions = {
-        playerRange: [380, 490], essenceFinder: [482, 260],
+        health10: [270, 150], playerRange: [380, 490], essenceFinder: [482, 260],
         power3: [160, 490], boulderBuster: [270, 610], power: [270, 370], health: [270, 260], speed: [160, 370],
         multishot: [58, 370], tripleSpark: [58, 490],
         rockBreaker: [270, 490], magnet: [380, 370], travelSpeed: [482, 370],
@@ -2126,7 +2129,7 @@
     }
 
     if (upgradeBranch === 2) {
-      const positions = [[100, 285], [270, 285], [440, 285], [100, 470], [270, 470], [440, 470]];
+      const positions = [[100, 285], [270, 285], [440, 285], [100, 510], [270, 510], [440, 510], [100, 397]];
       return definitions.map((definition, i) => ({ definition, x: positions[i][0], y: positions[i][1] }));
     }
     const depth = def => Math.max(0, ...def.requires.map(id => {
