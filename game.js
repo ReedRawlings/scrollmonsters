@@ -905,6 +905,7 @@
     state.runEssence = emptyAffinityMap();
     state.bossSpawned = false;
     state.bossDefeated = false;
+    state.victoryTimer = 0;
     state.enemies = [];
     state.obstacles = [];
     state.rockSpawnTimer = 0;
@@ -1031,11 +1032,11 @@
     }
   }
 
-  function spawnCoins(x, y, count) {
+  function spawnCoins(x, y, count, currency = "gold") {
     for (let index = 0; index < count; index++) {
       const angle = index * 2.39996;
       const radius = count === 1 ? 0 : 18 + 11 * Math.sqrt(index);
-      state.drops.push({ x, y, age: 0, offsetX: Math.cos(angle) * radius, offsetY: Math.sin(angle) * radius * 0.65, popHeight: 22 + (index % 3) * 5 });
+      state.drops.push({ x, y, currency, age: 0, offsetX: Math.cos(angle) * radius, offsetY: Math.sin(angle) * radius * 0.65, popHeight: 22 + (index % 3) * 5 });
     }
   }
 
@@ -1043,8 +1044,9 @@
     state.runGold = precise(state.runGold + value * (1 + rank("magnet") * 0.05));
   }
 
-  function awardEssence(affinityId, amount) {
+  function awardEssence(affinityId, amount, source) {
     state.runEssence[affinityId] += amount;
+    if (source && amount > 0) spawnCoins(source.x, source.y, amount, affinityId);
   }
 
   const essenceDropChance = enemy => 0.3 * (1 + (creatureById(enemy.monsterId)?.tier === 1 ? rank("essenceFinder") * 0.1 : 0));
@@ -1060,7 +1062,7 @@
         const affinityId = speciesDefs[enemy.species].affinityId;
         state.save.essencePity[affinityId] += 1;
         if (Math.random() < essenceDropChance(enemy) || state.save.essencePity[affinityId] >= 5) {
-          awardEssence(affinityId, essenceYield(state.stage.number));
+          awardEssence(affinityId, essenceYield(state.stage.number), enemy);
           state.save.essencePity[affinityId] = 0;
         }
       }
@@ -1073,7 +1075,7 @@
         10: { arcane: 20 }
       }[state.stage.number];
       if (enemy.type === "boss" && bossRewards && (state.stage.number !== 3 || !state.save.completed.includes(3))) {
-        for (const [affinityId, amount] of Object.entries(bossRewards)) awardEssence(affinityId, amount);
+        for (const [affinityId, amount] of Object.entries(bossRewards)) awardEssence(affinityId, amount, enemy);
       }
     }
   }
@@ -1108,7 +1110,7 @@
 
   function damageEnemy(enemy, amount, source = "player") {
     if (enemy.underground || enemy.emerging > 0) return;
-    if (state.mode !== "combat" || !state.enemies.includes(enemy)) return;
+    if (state.mode !== "combat" || state.bossDefeated || !state.enemies.includes(enemy)) return;
     if (amount > 0) {
       if (source === "bloom-mole" && enemy.hp === enemy.maxHp) enemy.stunRemaining = rank("rockBurst") * 0.2;
       if (hasPartyAffinity("bloom")) {
@@ -1128,7 +1130,7 @@
       if (source === "bloom-fish") state.party.shield = Number(state.party.shield || 0) + rank("waterBurst");
       if (enemy.type === "boss") state.bossDefeated = true;
       removeEnemy(enemy, true);
-      if (enemy.type === "boss") { finishStage(true); return; }
+      if (enemy.type === "boss") { state.victoryTimer = 0; return; }
 
     }
   }
@@ -1248,7 +1250,8 @@
 
   function finishStage(won) {
     if (state.mode !== "combat") return;
-    if (won && !state.bossDefeated) return;
+    if (won && (!state.bossDefeated || state.victoryTimer < 1.2 || state.drops.length)) return;
+    if (!won && state.bossDefeated) return;
     const firstClear = won && !state.save.completed.includes(state.stage.number);
     let newRecruit = null;
     state.save.gold = precise(state.save.gold + state.runGold);
@@ -1391,14 +1394,7 @@
     view.endGroup();
   }
 
-  function updateCombat(dt) {
-    if (state.mode !== "combat") return;
-    state.stageTime += dt;
-    const previousScroll = state.scroll;
-    state.scroll += 24 * travelMultiplier() * dt;
-    const cameraStep = state.scroll - previousScroll;
-    updateParticles(dt, cameraStep);
-    updateVases(dt, cameraStep);
+  function updateCoinDrops(dt, cameraStep = 0) {
     for (const coin of state.drops) {
       coin.age += dt;
       coin.y -= cameraStep;
@@ -1411,6 +1407,24 @@
       }
     }
     state.drops = state.drops.filter(coin => !coin.collected);
+  }
+
+  function updateCombat(dt) {
+    if (state.mode !== "combat") return;
+    if (state.bossDefeated) {
+      state.victoryTimer += dt;
+      updateCoinDrops(dt);
+      updateParticles(dt, 0);
+      finishStage(true);
+      return;
+    }
+    state.stageTime += dt;
+    const previousScroll = state.scroll;
+    state.scroll += 24 * travelMultiplier() * dt;
+    const cameraStep = state.scroll - previousScroll;
+    updateParticles(dt, cameraStep);
+    updateVases(dt, cameraStep);
+    updateCoinDrops(dt, cameraStep);
     for (const rock of state.obstacles) rock.y -= cameraStep;
     state.obstacles = state.obstacles.filter(rock => rock.y + rock.r >= 126);
     if (state.stage.number >= 4) {
@@ -1440,11 +1454,11 @@
       state.fireTimer = playerFireInterval();
     }
     updateCompanions(dt);
-    if (state.mode !== "combat") return;
+    if (state.mode !== "combat" || state.bossDefeated) return;
 
     for (const enemy of [...state.enemies]) {
       updateBurn(enemy,dt);
-      if (state.mode !== "combat") return;
+      if (state.mode !== "combat" || state.bossDefeated) return;
       if (!state.enemies.includes(enemy)) continue;
       if (enemy.stunRemaining > 0) { enemy.stunRemaining = Math.max(0, enemy.stunRemaining - dt); continue; }
       // Enemies steer toward the fixed party independently of decorative terrain scroll.
@@ -1531,7 +1545,7 @@
         const enemy = state.enemies.find(candidate => !projectile.hitEnemies?.has(candidate) && (projectile.source !== "player" || Math.hypot(candidate.x-projectile.originX,candidate.y-projectile.originY) <= projectile.maxDistance) && enemyVisible(candidate) && Math.hypot(projectile.x - candidate.x, projectile.y - candidate.y) < projectile.r + candidate.r);
         if (enemy) {
           damageEnemy(enemy, projectile.damage, projectile.source);
-          if (state.mode !== "combat") return;
+          if (state.mode !== "combat" || state.bossDefeated) return;
           projectile.hitEnemies?.add(enemy);
           if (projectile.pierceRemaining > 0) projectile.pierceRemaining--;
           else hit = true;
@@ -2165,7 +2179,7 @@
       const x = coin.x + coin.offsetX * progress;
       const groundY = coin.y + coin.offsetY * progress;
       view.ellipse(x,groundY+7,7,3,"#59452355");
-      drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, 0, 4, 20);
+      drawGridFrame("coinDrop", x, groundY - 4 * coin.popHeight * progress * (1 - progress), Math.floor(coin.age * 10) % 4, 4, UI_THEME.currencyRows[coin.currency || "gold"], 4, 20);
     }
     drawPlayer(state.party.x, state.party.y, COMBAT_SPRITE_SIZE);
     for (const companion of state.companions) drawPet(companion.creatureId || companion.type, companion.x, companion.y, COMBAT_SPRITE_SIZE);
@@ -2242,7 +2256,8 @@
   }
 
   function drawResult() {
-    drawBackground(); drawRoad();
+    view.rect(0, 0, WIDTH, HEIGHT, UI_THEME.colors.dark);
+    drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
     view.beginGroup('result-card',{preserveMotion:true,enter:true});
     drawPanel(24,130,492,650);
     drawText(state.result.won ? `STAGE ${state.result.stage} CLEAR` : "PARTY DEFEATED", WIDTH / 2, 195, 31, state.result.won ? "#8ce99a" : "#ff7b7b", "center");
@@ -2342,7 +2357,7 @@
     unlockedStage: state.save.unlockedStage, completedStages: state.save.completed,
     party: { x: state.party.x, y: state.party.y, hp: precise(state.party.hp), maxHp: state.party.maxHp, shield: !!state.party.shield, shieldCharges: Number(state.party.shield || 0), shieldCooldown: precise(Math.max(0, (state.party.shieldReadyAt || 0) - state.stageTime)), damage: playerDamage(), attackRange: playerAttackRange(), members: ["player", ...state.save.activeParty], bodies: partyBodies().map(({type,x,y,r}) => ({type,x,y,r})), memberNames: ["Player", ...state.save.activeParty.map(type => petDisplayNames[type])], animation: playerAnimation().animation, animationFrame: playerAnimation().frame },
     combat: state.mode === "combat" ? {
-      direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
+      direction: "north-to-south", scenery: sceneryKey(), movementMode: "centered-scrolling", cameraScroll: Math.round(state.scroll), travelSpeed: 24 * travelMultiplier(), spawnFrequencyMultiplier: travelMultiplier(), stage: state.stage.number, phase: state.bossDefeated ? "loot" : state.bossSpawned ? "boss" : "journey", bossDefeated: state.bossDefeated,
       aim: { x: Math.round(state.mouse.x), y: Math.round(state.mouse.y), mode: state.save.autoTargetEnabled && autoTargetUnlocked() ? "auto-nearest" : "cursor" },
       enemies: state.enemies.map(enemy => ({ type: enemy.type, underground: !!enemy.underground, emerging: enemy.emerging || 0, preferredRange: enemy.monsterId === "arcane-owl" ? 300 : null, burn: enemy.burn ? {remaining:precise(enemy.burn.remaining),nextTick:precise(enemy.burn.nextTick)} : null, species: enemy.species, affinityId: enemy.affinityId, sprite: enemy.demonCyclop ? "DemonCyclop" : enemy.monsterId || enemy.type, animationColumn: monsterColumns[enemy.edge], animationFrame: Math.floor(state.animationTime * 8) % 4, ...(enemy.demonCyclop ? demonAnimation(enemy) : {}), edge: enemy.edge, x: Math.round(enemy.x), y: Math.round(enemy.y), hp: Math.ceil(enemy.hp), maxHp: enemy.maxHp, damage: enemy.damage, gold: enemy.gold, speed: enemy.speed })),
       projectiles: state.projectiles.map(projectile => ({ x: Math.round(projectile.x), y: Math.round(projectile.y), friendly: projectile.friendly, critical: !!projectile.critical, source: projectile.source, damage: projectile.damage, animationFrame: (projectile.source === "player" || projectile.source === "boulderBuster") ? Math.floor(projectile.age * 12) % 4 : null })),
@@ -2352,7 +2367,7 @@
       vases: state.vases.map(vase => ({ x: Math.round(vase.x), y: Math.round(vase.y), hp: vase.hp, radius: vase.r, variant: destructibleVariants[vase.variant ?? 0].id, coinDropChance: 0.25 })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
       companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.creatureId || companion.type], creatureId: companion.creatureId, attackRange: (feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.range, attackCooldown: (feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.cooldown, shiny: state.save.shinyCreatures.includes(companion.creatureId), x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: Math.floor(state.animationTime * 8) % 4 })),
-      coins: state.drops.map(coin => ({ x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
+      coins: state.drops.map(coin => ({ currency: coin.currency || "gold", x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: Object.fromEntries(affinityOrder.map(id => [id, state.save.essence[id] + state.runEssence[id]])), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
