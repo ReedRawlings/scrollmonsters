@@ -1062,7 +1062,7 @@
         const affinityId = speciesDefs[enemy.species].affinityId;
         state.save.essencePity[affinityId] += 1;
         if (Math.random() < essenceDropChance(enemy) || state.save.essencePity[affinityId] >= 5) {
-          awardEssence(affinityId, essenceYield(state.stage.number), enemy);
+          awardEssence(affinityId, 1, enemy);
           state.save.essencePity[affinityId] = 0;
         }
       }
