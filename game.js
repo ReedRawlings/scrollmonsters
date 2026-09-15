@@ -1046,7 +1046,7 @@
 
   function awardEssence(affinityId, amount, source) {
     state.runEssence[affinityId] += amount;
-    if (source && amount > 0) spawnCoins(source.x, source.y, amount, affinityId);
+    if (source && amount > 0) spawnCoins(source.x, source.y, 1, affinityId);
   }
 
   const essenceDropChance = enemy => 0.3 * (1 + (creatureById(enemy.monsterId)?.tier === 1 ? rank("essenceFinder") * 0.1 : 0));
