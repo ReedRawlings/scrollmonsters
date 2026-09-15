@@ -507,10 +507,10 @@
       duration: 30,
       hpMultiplier: number === 1 ? 1 : 2,
       bossHpMultiplier: number === 1 ? 1 : 0.8,
-      // Durability accelerates as the party gains damage, extra shots, and companions.
+      // After stage 4, regular HP scaling gains 0.5 per stage; boss HP grows 15%.
       spawnRate: 1.495 / (1 + (number - 1) * 0.22),
-      hpScale: [1, 1.495, 2, 3, 4, 5, 6, 7, 8, 9][index],
-      bossHpScale: [20, 42, 47, 93, 128, 102, 129, 198, 223, 278][index] / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
+      hpScale: [1, 1.495, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6][index],
+      bossHpScale: (number >= 5 ? 93 * 1.15 ** (number - 4) : [20, 42, 47, 93][index]) / (28 * (number === 5 || number === 10 ? 1.5 : 1)),
       damageScale: 0.855 + (number - 1) * 0.25 + (number - 1) ** 2 * 0.025,
       boss: true,
       majorBoss: number === 5 || number === 10
