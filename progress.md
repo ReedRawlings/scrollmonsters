@@ -909,3 +909,27 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 
 - Player and Bloom each gain Health +10, five ranks, connected after their +5 Health node (requires one rank). Provisional 30G base, standard price scaling. Both contribute +10 HP/rank to shared max health. Player extension sits above Health and is accessible by panning; Bloom extension occupies its middle row.
 - Floors 8–10 enemies now award base 2 gold, including bosses, with Golden Echo applied normally. Other floors retain 1 gold. Local edits; testing left to user.
+
+## September 15 — party banner and late-game progression
+
+- Replaced OVERWORLD title/wide currencies with party portraits, per-member expected direct-hit DPS and total, and compact four-currency wallet. Uses native source sprites; source player idle pose and south-facing animated creature frames. DPS updates with roster/upgrades, includes triple attacks and crits, excludes conditional damage.
+- Added Bat Life Sip → Far Bite and Lizard Kindle → Flame Reach, five ranks each; 30/60 FE starting costs. Kill healing is capped at max HP, burn caps at 100%, range buffs affect actual targeting.
+- Stage 10 now spawns two bosses in separate lanes; final-boss-only victory and stage essence reward prevent early completion/double bonus. Stage 9 +3 damage and stage 10 +2 damage apply to roster and boss stats.
+- check-party-progression.cjs passed rank effects, healing, burn/range, DPS, damage tuning, two bosses and final-only rewards. check-party-banner.cjs passed native banner/tree/boss rendering with no page errors. Inspected output/party-banner screenshots. Required game harness run; separate native browser screenshots used for WebGL QA.
+
+## September 15 — live progression calculator refresh
+
+- Replaced legacy DPS/capture/boss approximations with seeded 60 Hz live combat and actual purchase/summon handlers. Added balanced, offense and range-focused policies, current-save audit, currency ledger checks and matched-loadout diagnostics.
+- Ran 60 campaigns (20 seeds per policy). Stage 8 averages 14.85 / 21.4 / 10.7 attempts; stage 5 about five. Stage 9 campaign results are confounded by upgrades earned during stage-8 failures.
+- Maximum-range diagnostic improves stage-8 clears from 0/60 to 44/60 without extra damage/HP; normal paid range still leaves a substantial spike. Stage 10 two-boss contact pressure and HP increase documented. Analysis and raw outputs are in output/balance-current.
+- Calculator regressions, deterministic replay checks, and all 60 currency ledgers passed. Fixed starter Cat omission in displayed DPS (1 DPS). No encounter balance changes or deployment.
+
+## September 15 — stage 8 health what-if
+
+- Ran 60 matched-seed campaigns with stage 8 Beast 30→26 HP and Owl 20→16 HP in calculator VMs only. Added repeatable simulate-stage8-health.cjs scenario; game tuning unchanged.
+- Stage 8 average attempts: balanced 14.85→15.45, offense 21.4→17.55, range 10.7→8.95. Zero first-try clears; all campaigns eventually clear. Stage 9 remains near one attempt. Estimated incoming HP/sec 35.86→31.08.
+- Verified baseline game hash, exact stage 1–7 campaign histories, requested HP, and unchanged other-stage audits. Mixed balanced result reflects downstream combat/economy/random-path sensitivity; not a reliable improvement for every build. Report: output/balance-stage8-health-minus4/comparison.md.
+
+## September 15 — stage 8 health reduction
+
+- Applied the accepted calculator scenario: stage 8 Beast health 30→26 and Owl health 20→16, through final-HP roster overrides shared by preview and combat. Damage, Fish, bosses and other stages unchanged. Scenario script uses fixed targets to prevent subtracting health again after adoption.

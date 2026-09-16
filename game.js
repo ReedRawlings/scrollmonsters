@@ -21,6 +21,7 @@
   });
 
   const assetPaths = {
+    playerIdle: "assets/Ninja Adventure - Asset Pack/Actor/Characters/EggBoy/SeparateAnim/Idle.png",
     "tutorial-cat": "assets/Ninja Adventure - Asset Pack/Actor/Animals/CatCyclop/SpriteSheet.png",
     catSlash: "assets/Ninja Adventure - Asset Pack/FX/SlashFx/Slash/SpriteSheet.png",
     musicOn: "assets/Ninja Adventure - Asset Pack/Ui/Skill Icon/Job & Action/Sing.png",
@@ -94,6 +95,7 @@
     { id: "discarded-crate", sheet: "abandonedProps", x: 9, y: 11, material: "wood" }
   ];
   const nodeIconPaths = {
+    batLeech: "Spell/Heal", batRange: "Spell/BookWind", lizardBurn: "Spell/BookFire", lizardRange: "Spell/BookWind",
     health10: "Spell/Heal", bloomHealth10: "Spell/Heal",
     playerRange: "Spell/BookWind", essenceFinder: "Job & Action/Harvest",
     bloomHealth: "Spell/Heal", bloom: "Spell/BookPlant", flush: "Spell/Heal", razorLeaf: "Spell/BookPlant", waterBurst: "Items & Weapon/Armor", rockBurst: "Spell/BookRock",
@@ -579,16 +581,19 @@
     stageRosters[stage] = ids.map((id,index) => ({ id, chance: index === 0 ? .4 : .3, ...tierOneEnemyStats[id] }));
   }
   for (const entry of stageRosters[8]) {
+    if (entry.id === "feral-beast") entry.hpOverride = 26;
+    if (entry.id === "arcane-owl") entry.hpOverride = 16;
     if (entry.id === "arcane-owl") entry.damageOverride = 4;
     if (entry.id === "bloom-fish") entry.damageOverride = 6;
   }
   const stageBossCreature = { 3: "feral-bat" };
-  const stageBossDamage = stage => stage.number === 1 ? 3 : stage.number === 2 ? 5 : Math.max(1, Math.round(5 * stage.damageScale));
+  const lateStageDamageBonus = stage => stage.number === 9 ? 3 : stage.number === 10 ? 2 : 0;
+  const stageBossDamage = stage => (stage.number === 1 ? 3 : stage.number === 2 ? 5 : Math.max(1, Math.round(5 * stage.damageScale))) + lateStageDamageBonus(stage);
   function rosterStats(entry, stage) {
     const openingBat = entry.id === "feral-bat" && stage.number <= 2;
     return {
       hp: entry.hpOverride ?? (stage.number === 2 && entry.id === "feral-beast" ? 4 : stage.number === 2 && entry.id === "feral-bat" ? 3 : precise((openingBat ? entry.baseHp : Math.round(entry.baseHp * stage.hpScale)) * stage.hpMultiplier)),
-      damage: entry.damageOverride ?? (openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale)))
+      damage: (entry.damageOverride ?? (openingBat ? (stage.number === 1 ? 1 : 2) : Math.max(1, Math.round(entry.baseDamage * stage.damageScale)))) + lateStageDamageBonus(stage)
     };
   }
   function pickStageMonster(stageNumber, roll, forcedType = null) {
@@ -643,6 +648,10 @@
   ];
 
   upgradeDefs.push(
+    { id: "batLeech", name: "Life Sip", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", recruit: "feral-bat", requires: [], effect: r => `Bat kills heal ${((r + 1) * .2).toFixed(1)} HP` },
+    { id: "batRange", name: "Far Bite", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", recruit: "feral-bat", requires: ["batLeech"], effect: r => `Bat attack range +${(r + 1) * 10}%` },
+    { id: "lizardBurn", name: "Kindle", branch: "STRIKER", max: 5, costs: abilityRankCosts(30, 5), currency: "feral", recruit: "feral-lizard", requires: [], effect: r => `Lizard hits have ${(r + 1) * 20}% burn chance` },
+    { id: "lizardRange", name: "Flame Reach", branch: "STRIKER", max: 5, costs: abilityRankCosts(60, 5), currency: "feral", recruit: "feral-lizard", requires: ["lizardBurn"], effect: r => `Lizard attack range +${(r + 1) * 10}%` },
     { id: "playerRange", name: "Reach", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `Player attack range +${10 * (r + 1)}%`, requires: ["power"] },
     { id: "essenceFinder", name: "Essence Finder", branch: "PLAYER", max: 5, costs: abilityRankCosts(10, 5), effect: r => `Tier 1 essence drop chance +${10 * (r + 1)}% (${Math.round(30 * (1 + .1 * (r + 1)))}% total)`, requires: ["magnet"] },
     { id: "power3", name: "Damage +3", branch: "PLAYER", max: 5, costs: abilityRankCosts(50, 5), effect: level => `+3 player damage per rank (+${3 * (level + 1)} total)`, requires: ["power"], requiredRanks: { power: 5 } },
@@ -1114,7 +1123,7 @@
         9: { feral: 2 * essenceYield(9) },
         10: { arcane: 20 }
       }[state.stage.number];
-      if (enemy.type === "boss" && bossRewards && (state.stage.number !== 3 || !state.save.completed.includes(3))) {
+      if (enemy.type === "boss" && !state.enemies.some(other => other.type === "boss") && bossRewards && (state.stage.number !== 3 || !state.save.completed.includes(3))) {
         for (const [affinityId, amount] of Object.entries(bossRewards)) awardEssence(affinityId, amount, enemy);
       }
     }
@@ -1168,9 +1177,11 @@
     if (source !== "tutorial-cat" && source !== "striker" && source !== "strikerFollowup" && !feralAttacks[source] && source !== "burn" && source !== "bloom-fish") state.effects.push({ type: playerImpact ? "earthImpact" : "impact", x: enemy.x, y: enemy.y, life: playerImpact ? 0.48 : 0.12, maxLife: playerImpact ? 0.48 : 0.12, radius: playerImpact ? 50 : 22 });
     if (enemy.hp <= 0) {
       if (source === "bloom-fish") state.party.shield = Number(state.party.shield || 0) + rank("waterBurst");
-      if (enemy.type === "boss") state.bossDefeated = true;
+      if (source === "feral-bat") state.party.hp = precise(Math.min(state.party.maxHp, state.party.hp + rank("batLeech") * .2));
       removeEnemy(enemy, true);
-      if (enemy.type === "boss") { state.victoryTimer = 0; return; }
+      if (enemy.type === "boss" && !state.enemies.some(other => other.type === "boss")) {
+        state.bossDefeated = true; state.victoryTimer = 0;
+      }
 
     }
   }
@@ -1182,8 +1193,10 @@
     "feral-beast": { damage: 3, range: ABILITY_RANGES.melee, cooldown: 1, sheet: "beastSlash", frames: 4, arc: Math.PI / 2 },
     "feral-lizard": { damage: 2, range: ABILITY_RANGES.short, cooldown: 1, sheet: "lizardImpact", frames: 6, burnChance: 0.05 }
   });
+  const feralAttackRange = id => feralAttacks[id].range * (1 + .1 * rank(id === "feral-bat" ? "batRange" : id === "feral-lizard" ? "lizardRange" : "unusedRange"));
+  const lizardBurnChance = () => rank("lizardBurn") ? Math.min(1, rank("lizardBurn") * .2) : .05;
   function feralCreatureAttack(companion, ability, followup = false) {
-    const targets = state.enemies.filter(e => enemyVisible(e) && e.hp > 0 && Math.hypot(e.x-companion.x,e.y-companion.y) <= ability.range);
+    const targets = state.enemies.filter(e => enemyVisible(e) && e.hp > 0 && Math.hypot(e.x-companion.x,e.y-companion.y) <= feralAttackRange(companion.creatureId));
     targets.sort((a,b) => companion.creatureId === "feral-bat" ? a.hp-b.hp : Math.hypot(a.x-companion.x,a.y-companion.y)-Math.hypot(b.x-companion.x,b.y-companion.y));
     const target = targets[0];
     if (!target) return false;
@@ -1198,7 +1211,7 @@
       const hit = criticalAmount("striker",ability.damage+rank("strikerPower")+partyDamageBonus());
       damageEnemy(enemy,hit.amount,followup ? "strikerFollowup" : companion.creatureId);
       if (!followup && companion.creatureId === "feral-beast" && rank("strikerFollowup") > 0 && enemy.hp <= 0 && state.mode === "combat" && Math.random() < Math.min(5, rank("strikerFollowup")) * 0.2) bonusSlashes++;
-      if (ability.burnChance && state.enemies.includes(enemy) && Math.random() < ability.burnChance) enemy.burn = { remaining:2, nextTick:1 };
+      if (ability.burnChance && state.enemies.includes(enemy) && Math.random() < lizardBurnChance()) enemy.burn = { remaining:2, nextTick:1 };
     }
     // Resolve the original arc first, then retarget each earned, non-chaining slash.
     for (let i=0;i<bonusSlashes && state.mode === "combat";i++) feralCreatureAttack(companion,ability,true);
@@ -1512,7 +1525,11 @@
     state.fireTimer -= dt;
     const bossWindow = state.stage.boss && state.stageTime >= state.stage.duration;
     if (bossWindow && !state.bossSpawned) {
-      spawnEnemy("boss");
+      const count = state.stage.number === 10 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        spawnEnemy("boss");
+        if (count === 2) state.enemies[state.enemies.length - 1].x = 180 + i * 180;
+      }
       state.bossSpawned = true;
     }
     if (state.stageTime < state.stage.duration && state.spawnTimer <= 0 && !bossWindow) {
@@ -1796,6 +1813,47 @@
     view.image(image,Math.round(x),Math.round(y),size,size,{center:true,alpha,frame:[frame*10,row*10,10,10]});
   }
 
+  // Expected direct-hit DPS on one target; burn, kill procs and extra AOE targets are situational.
+  function partyDpsSummary() {
+    const crit = owner => 1 + Math.min(10, rank(`${owner}CritChance`)) / 100 * Math.min(5, rank(`${owner}CritDamage`)) * .1;
+    const feralCount = 1 + shotChance(rank("strikerDouble")) * (1 + shotChance(rank("strikerTriple")));
+    const members = [{id:"player", name:"Player", dps:playerDamage() / playerFireInterval() * expectedProjectiles(state.save.upgrades) * crit("player")}];
+    for (const id of state.save.activeParty) {
+      const creature = creatureById(id), feral = feralAttacks[id], bloom = bloomAttacks[id];
+      let dps = 0;
+      if (id === "tutorial-cat") dps = tutorialCatAttack.damage / tutorialCatAttack.cooldown;
+      else if (feral) dps = (feral.damage + rank("strikerPower") + partyDamageBonus()) / (feral.cooldown * (1 - rank("strikerSpeed") * .15)) * feralCount * crit("striker");
+      else if (bloom) dps = (bloom.damage + partyDamageBonus()) / bloom.cooldown;
+      else if (creature?.petType === "striker") dps = strikerDamage() / (1.05 * (1 - rank("strikerSpeed") * .15)) * feralCount * crit("striker");
+      else if (creature?.petType === "aoe") dps = (3 + rank("aoePower") + partyDamageBonus()) / 3.3 * crit("aoe");
+      members.push({id, name:creature?.name || id, dps});
+    }
+    return {members, total:members.reduce((sum, member) => sum + member.dps, 0), basis:"Expected single-target direct-hit DPS; excludes burn, kill procs and extra AOE targets"};
+  }
+  function drawPartyHeader() {
+    const summary = partyDpsSummary(), colors = UI_THEME.colors;
+    drawPanel(0, 0, WIDTH, 112);
+    drawText(`ATTACK DPS · ${summary.total.toFixed(1)} TOTAL`, 18, 15, 12, colors.title);
+    for (let i = 0; i < 4; i++) {
+      const member = summary.members[i], x = 54 + i * 84;
+      if (member) {
+        if (member.id === "player") drawGridFrame("playerIdle", x, 43, 0, 4, 0, 1, 32, 32);
+        else drawPet(member.id, x, 43, 32, 1, "south");
+        drawText(member.name, x, 70, 12, colors.text, "center");
+        drawText(`${member.dps.toFixed(1)} DPS`, x, 91, 14, colors.accent, "center");
+      } else {
+        drawText("+", x, 43, 24, colors.muted, "center");
+        drawText("Empty", x, 70, 12, colors.muted, "center");
+        drawText("—", x, 91, 14, colors.muted, "center");
+      }
+    }
+    ["gold", ...affinityOrder].forEach((id, i) => {
+      const y = 19 + i * 25;
+      drawCurrencyIcon(id, 377, y, 18);
+      drawText(formatAmount(id === "gold" ? state.save.gold : state.save.essence[id]), 466, y, 14, id === "gold" ? colors.accent : colors[id], "right", false);
+    });
+  }
+
   function drawHeader(title, subtitle = "") {
     drawPanel(0, 0, WIDTH, 104);
     drawText(title, 24, 35, 26, "#ffe17d");
@@ -1840,7 +1898,7 @@
     const colors = UI_THEME.colors;
     view.rect(0, 0, WIDTH, HEIGHT, UI_THEME.colors.dark);
     drawWood("woodBackground", 0, 0, WIDTH, HEIGHT, 4, 2);
-    drawHeader("OVERWORLD", affinityWalletText());
+    drawPartyHeader();
     const reached = new URLSearchParams(location.search).get("overworld") === "explored" ? 10 : Math.min(10, state.save.unlockedStage);
     state.selectedStage = Math.min(state.selectedStage, reached);
     // Unreached terrain is not drawn; only the cleared route and current frontier are revealed.
@@ -1886,7 +1944,7 @@
         view.rect(44,615,452,1, colors.muted);
         if(stageBossCreature[stage.number]) drawPet(stageBossCreature[stage.number],62,637,32);
         else drawSheetFrame("demonWalk",62,637,0,6,40);
-        drawText(stageBossCreature[stage.number]?`${creatureById(stageBossCreature[stage.number]).name} Boss`:"Demon Cyclop",88,640,15,colors.text);
+        drawText(stageBossCreature[stage.number]?`${creatureById(stageBossCreature[stage.number]).name} Boss`:stage.number === 10 ? "2 × Cyclop" : "Demon Cyclop",88,640,15,colors.text);
         drawText(`HP ${bossHp} / ATK ${bossDamage}`,490,640,15,colors.text,"right");
       }
     }
@@ -2128,6 +2186,12 @@
       return definitions.map(definition => ({ definition, x: positions[definition.id][0], y: positions[definition.id][1] }));
     }
 
+    if (upgradeBranch === 1) {
+      const positions = {strikerPower:[80,285], strikerSpeed:[200,285], strikerDouble:[320,285], strikerTriple:[440,285],
+        strikerCritChance:[80,410], strikerCritDamage:[200,410], strikerFollowup:[340,410], strikerFollowupHeal:[460,410],
+        batLeech:[80,535], batRange:[200,535], lizardBurn:[340,535], lizardRange:[460,535]};
+      return definitions.map(definition => ({definition, x:positions[definition.id][0], y:positions[definition.id][1]}));
+    }
     if (upgradeBranch === 2) {
       const positions = [[100, 285], [270, 285], [440, 285], [100, 510], [270, 510], [440, 510], [100, 397]];
       return definitions.map((definition, i) => ({ definition, x: positions[i][0], y: positions[i][1] }));
@@ -2291,7 +2355,7 @@
       view.rect(enemy.x - enemy.r, enemy.y - enemy.r - 13, enemy.r * 2 * clamp(enemy.hp / enemy.maxHp, 0, 1), 5, enemy.type === "boss" ? "#ffb347" : "#ff6b5c");
     }
     if (state.bossSpawned && !state.bossDefeated) {
-      drawText(state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
+      drawText(state.stage.number === 10 ? `BOSSES LEFT: ${state.enemies.filter(enemy => enemy.type === "boss").length}` : state.stage.majorBoss ? "DEFEAT THE BOSS" : "DEFEAT THE MINIBOSS", WIDTH / 2, HEIGHT - 114, 18, "#ffe17d", "center");
     }
     for (const projectile of state.projectiles) {
       const bloomAbility = bloomAttacks[projectile.source];
@@ -2471,11 +2535,12 @@
       destructiblesSpawned: state.propsSpawned,
       vases: state.vases.map(vase => ({ x: Math.round(vase.x), y: Math.round(vase.y), hp: vase.hp, radius: vase.r, variant: destructibleVariants[vase.variant ?? 0].id, coinDropChance: 0.25 })),
       effects: state.effects.map(effect => ({ type: effect.type, x: Math.round(effect.x), y: Math.round(effect.y) })),
-      companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.creatureId || companion.type], creatureId: companion.creatureId, damage: companion.creatureId === "tutorial-cat" ? 1 : undefined, receivesStatBonuses: companion.creatureId !== "tutorial-cat", attackRange: (companion.creatureId === "tutorial-cat" ? tutorialCatAttack : feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.range, attackCooldown: (companion.creatureId === "tutorial-cat" ? tutorialCatAttack : feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.cooldown, shiny: state.save.shinyCreatures.includes(companion.creatureId), x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: companion.creatureId === "tutorial-cat" ? Math.floor(state.animationTime * 6) % 2 : Math.floor(state.animationTime * 8) % 4 })),
+      companions: state.companions.map(companion => ({ role: companion.type, name: petDisplayNames[companion.creatureId || companion.type], creatureId: companion.creatureId, damage: companion.creatureId === "tutorial-cat" ? 1 : undefined, receivesStatBonuses: companion.creatureId !== "tutorial-cat", attackRange: feralAttacks[companion.creatureId] ? feralAttackRange(companion.creatureId) : (companion.creatureId === "tutorial-cat" ? tutorialCatAttack : feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.range, attackCooldown: (companion.creatureId === "tutorial-cat" ? tutorialCatAttack : feralAttacks[companion.creatureId] || bloomAttacks[companion.creatureId])?.cooldown, shiny: state.save.shinyCreatures.includes(companion.creatureId), x: Math.round(companion.x), y: Math.round(companion.y), animationFrame: companion.creatureId === "tutorial-cat" ? Math.floor(state.animationTime * 6) % 2 : Math.floor(state.animationTime * 8) % 4 })),
       coins: state.drops.map(coin => ({ currency: coin.currency || "gold", x: coin.x, y: coin.y, phase: coin.age < 0.5 ? "pop" : coin.age < 0.65 ? "rest" : "travel", animationFrame: Math.floor(coin.age * 10) % 4 })),
       treasure: state.treasure, treasureSpawnAt: state.treasureSpawnAt, treasureGold: state.treasureGold,
       obstacles: state.obstacles.map(rock => ({x: Math.round(rock.x), y: Math.round(rock.y), radius: Math.round(rock.r), size: rock.size, spriteSize: rock.size === "small" ? 32 : 64, hp: rock.hp, maxHp: rock.maxHp, destructible: !!rank("rockBreaker"), blocks: "player shots"})), totalGold: precise(state.save.gold + state.runGold), totalEssence: Object.fromEntries(affinityOrder.map(id => [id, state.save.essence[id] + state.runEssence[id]])), goldPickup: "automatic-on-kill", runGold: state.runGold, runEssence: state.runEssence
     } : null,
+    partyDps: partyDpsSummary(),
     upgradeBranch: ["Player", "Feral", "Bloom", "Arcane"][upgradeBranch],
     bestiaryAffinity,
     bestiary: creatureDefs.map(creature => ({ id: creature.id, name: creature.name, affinityId: creature.affinityId, role: creature.role, cost: creature.captureCost, requiresStageClear: creature.requiresStageClear, gateUnlocked: creatureGateUnlocked(creature), owned: hasRecruit(creature.id), active: isActiveCreature(creature.id) })),

@@ -35,11 +35,21 @@ Refresh to return to the title screen, then choose **RESET PROGRESS** and confir
 
 ## Progression estimates
 
-Run `node scripts/calculate-dps.cjs` to simulate spending all affordable gold using the 90% regular-kill / independent-boss model. It prints stage estimates and first-purchase/capture timing across ten seeds. Availability and purchases are recorded separately; gold totals are cumulative earnings, not individual upgrade prices. Times exclude menu and shopping time.
+The calculator runs the current `game.js` combat and economy at 60 Hz in a seeded headless runtime. It uses actual rosters, summons, prices, damage, shields/healing, range, rewards, and boss counts. It no longer uses the old Fangle/Buttermant capture model or independent boss approximation.
 
-Generated reports, screenshots and temporary browser harnesses live in `output/`, which is ignored by Git. Reusable scripts in `scripts/` remain tracked. Detailed unlock summaries are in `output/unlock-timing-hybrid.json`.
+```sh
+node scripts/calculate-dps.cjs                       # 5 seeds per strategy
+SIM_SEEDS=20 node scripts/calculate-dps.cjs           # 60 campaign runs
+node scripts/calculate-dps.cjs 8                     # full campaigns; print stage 8
+node scripts/calculate-dps.cjs 10 /path/to/save.json  # current-save static DPS audit
+node scripts/diagnose-spikes.cjs                     # matched-loadout stage-8 diagnostics
+SIM_SEEDS=20 node scripts/simulate-stage8-health.cjs  # what-if: stage 8 Beast/Owl -4 HP
+node scripts/check-balance-calculator.cjs            # calculator regression checks
+```
 
-Current calculator what-if: Party Bond is a 50G node unlocked by Buttermant capture, granting +5 damage to attacking members only. It is implemented in the live game for player and Fangle damage. Run `BUTTERMANT_PARTY_BONUS=0 node scripts/calculate-dps.cjs` for the no-node baseline. Scenario report filenames end in `-buttermant5-cost50.json`.
+Results go to `output/balance-current/report.json` and `campaign.csv`. `diagnose-spikes.cjs` adds `diagnostics.json`. Set `SIM_OUTPUT` to preserve another scenario. `SIM_POLICIES=balanced,offense,range`, `SIM_MAX_ATTEMPTS=30`, and `SIM_MAX_SECONDS=180` control the scenarios. The range strategy emphasizes range upgrades, while the others emphasize balanced survival or offense. Results depend on these heuristics; they are not optimal builds or forecasts of human clear rates.
+
+Runs start with the real tutorial and mandatory upgrade, spend earned currency through real purchase/summon handlers, and select up to three owned companions. The scenarios use Tier 1 summons only, paid duplicates, automatic nearest-target cursor aim, no replay farming after a clear, and no menu time. Optional save files use the current `ownedCreatures`, `activeParty`, and `upgrades` fields. Legacy `recruits` saves are rejected rather than silently misread.
 
 ## Phaser runtime
 

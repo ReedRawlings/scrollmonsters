@@ -375,3 +375,16 @@ Golden Echo now has five ranks, granting +5% battle gold per rank (+25% maximum)
 ## September 14 — summon prices and starter Bat
 
 Tier 1/2/3 summons cost 30/300/3000 matching essence. The first Tier 1 Feral summon is guaranteed Bat when no Tier 1 Feral creature is owned; subsequent summons use the normal pool. Higher tiers retain their own tier pools.
+
+## September 15 — party DPS, Feral upgrades, and final stages
+
+- Overworld header shows four party slots, animated south-facing creature portraits, per-member expected direct-hit DPS, and total DPS. Includes current damage, Party Bond, cooldown upgrades, double/triple attacks, and crit expectation. Excludes burn, kill-triggered extras, and extra AOE targets; healing-only companions show zero DPS. Currency wallets are condensed beside the party.
+- Life Sip (Bat): five ranks, 0.2 HP healed per kill/rank, up to 1 HP. Far Bite follows it: five ranks, +10% base Bat range/rank (216 → 324px).
+- Kindle (Lizard): five ranks, 20/40/60/80/100% burn chance; unupgraded baseline remains 5%. Flame Reach follows it: five ranks, +10% base Lizard range/rank (152 → 228px). Existing burn damage/duration is unchanged.
+- First creature abilities start at 30 FE; connected range abilities at 60 FE, matching Beast's first/second ability bases and normal scaling. Ownership requirements use Bat/Lizard specifically.
+- Stage 10 spawns two full-stat Cyclops at separate positions. Both must die before victory; each awards normal gold, and the stage's 20 Arcane essence bonus is awarded once on the final boss.
+- Regular monsters and bosses get +3 final damage on stage 9 and +2 on stage 10. Other floors and damage overrides remain unchanged.
+
+## September 15 — stage 8 health reduction
+
+- Applied the accepted calculator scenario: stage 8 Beast health 30→26 and Owl health 20→16, through final-HP roster overrides shared by preview and combat. Damage, Fish, bosses and other stages unchanged. Scenario script uses fixed targets to prevent subtracting health again after adoption.
