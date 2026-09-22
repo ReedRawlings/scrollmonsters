@@ -933,3 +933,146 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## September 15 — stage 8 health reduction
 
 - Applied the accepted calculator scenario: stage 8 Beast health 30→26 and Owl health 20→16, through final-HP roster overrides shared by preview and combat. Damage, Fish, bosses and other stages unchanged. Scenario script uses fixed targets to prevent subtracting health again after adoption.
+
+## September 19 — survivor Step 1: Woodland Trial
+
+- User correction adopted: creatures earn a slot by party contribution. Support, survivability, and ability augmentation are valid; solo damage or standalone viability is not required.
+- Added isolated survivors.html / survivors.js using Phaser and current assets. Two-minute woodland arena, keyboard/touch movement, automatic player shots, Cat route following and sweep, bats, telegraphed Beast charges, solid obstacles, healing drops, rising pressure, pause/restart and results.
+- Documented scope and next party-role experiment in SURVIVORS.md; linked from README. Campaign logic and saves remain untouched.
+- Verification: supplied web-game client completed deterministic movement; its canvas export was black on this Mac, so visually inspected native browser screenshots from Metal-backed Playwright instead (title, combat, portrait). Improved panel contrast and modal padding after inspection.
+- Focused browser checks passed: movement, Cat damage/following, obstacle collision, pause, charge/damage, win/loss/reset, campaign-save isolation, portrait touch drag and release; no browser errors. Keyboard test uses held input to avoid event timing races. Full moving run reached 120 seconds with 92 defeats, 10 HP, and 187 Cat damage. This is a reproducible smoke test, not a difficulty assessment.
+- JavaScript syntax and diff whitespace checks passed. Preview at localhost:5174/survivors.html. No deployment.
+- Next: human playtest responsiveness/readability/companion presence, then compare a support creature and ability modifier with Cat before adding recruitment and progression.
+
+## September 19 — Owl capture and basic power-ups
+
+- User playtest: 162 defeats; deliberately grouped enemies for Cat's sweep. Requested 40 starting HP, a second attacker captured during play, and basic power-ups.
+- Set starting/max HP to 40. At 25s, an 18-HP wild Owl appears near the player; automatic attacks weaken rather than kill it. Capture by staying within its visible ring for 2.5s while combat continues. Leaving drains progress; pause freezes it. Ally Owl fires 4-damage feathers piercing up to three enemies, with its own result damage counter.
+- Every eight defeats rotates healing (+8 capped at 40), Frenzy (50% faster party attacks for 12s), Shield (one blocked hit). Pickups last 25s, refresh rather than stack, have distinct icons/labels, and reset with the run. Reused existing Owl, feather, heart and scroll art; shield icon uses Phaser graphics.
+- Browser checks passed for natural automatic weakening/capture, capture pause/decay, piercing multiple enemies, health cap, shield consumption/invulnerability, Frenzy expiry and reset, plus previous movement/combat/pause/restart/save-isolation/touch checks. No browser errors. Inspected desktop capture and portrait screenshots; enlarged/replaced tiny heart icon and distinguished pickups.
+- Required skill harness run in headed and headless modes; state correct, canvas export remains black on this Mac. Metal browser full-page screenshots verify rendered playfield and new features. Syntax and whitespace checks passed.
+- Next playtest: capture readability/difficulty amid enemies and power-up frequency. Party support roles remain valid future additions; no solo viability requirement.
+
+## September 19 — spaced power-up opportunities
+
+- Implemented requested replacement of kill-count power drops: one marked enemy at 40s, 70s, and 100s, awarding Frenzy, Shield, and Frenzy respectively only upon defeat. Existing nearby enemy is marked, or a Beast spawns nearby; gold ring and bounty label identify the target.
+- Healing separated: injured player can receive an +8 HP drop from a defeat at most every 30 seconds, starting at 30s. Full health does not generate healing drops.
+- Owl capture remains at 25s and verified end to end, including natural automatic weakening, capture progress/decay/pause, recruitment, and piercing damage.
+- Browser regression passed: 162 kills produce no power-up drops; exact three event thresholds, no duplicate events, earned rewards, healing throttle, reset and pause. Existing combat, 40 HP, pickup effects, save isolation, and touch checks pass with no browser errors. Inspected bounty screenshot. Required interaction harness completed; existing Mac canvas export limitation covered by Metal screenshots.
+
+## September 19 — XP, run upgrades, and minute-one scaling
+
+- Replaced scheduled reward enemies with persistent XP drops from defeats. XP attracts within 100 pixels and collecting thresholds 10,16,22,28,34,40… pauses combat for three unique upgrade choices. Overflow retained; upgrades reset each run. Six upgrades require 150 collected XP (target pacing, not guaranteed).
+- Added Cat damage +1, Cat reach +20%/wider arc with larger slash visual, basic attack speed +20%, +8 maximum/current HP, movement +10%, and +1 Owl projectile. Owl upgrade only eligible after capture. Choice supports buttons/touch and 1–3 keys.
+- At 60 seconds existing/future enemies gain 20% HP and 8% chase speed once, preserving current health ratio. Damage and charge timing unchanged. Owl encounter and occasional healing retained.
+- Tests passed: natural XP drop/collect/level flow, three choices, time freeze, keyboard/touch selection, upgrade application, Owl eligibility, scaling threshold/current and future enemy stats/no repeat, reset, prior capture/combat/save/touch regressions. Fixed Phaser number-key event names and fixed-screen button hit areas revealed by these tests. Inspected desktop and portrait upgrade screenshots; no browser errors. Skill interaction harness run; syntax and whitespace checks pass.
+- Next: human playtest level frequency and strength curve with real XP collection; tune thresholds/scaling from that feedback. Support creatures remain valid party roles.
+
+## September 19 — local run review
+
+- Added automatic local recording with independent survivor history key, latest 50 runs, version/build labels, start/update timestamps and IDs. Stores outcomes including restart, summary stats, upgrades offered/chosen, Owl events, incoming damage positions, healing, minute-one scaling and five-second snapshots. Saves at milestones, checkpoints and page exit; unfinished runs remain reviewable. Storage failure is surfaced in game.
+- Added survivor-runs.html review page with safe text rendering, event timelines, checkpoint details, per-run and all-run JSON exports. Linked from title/pause/result menus. No external telemetry or campaign-save writes.
+- Verification passed: persisted loss/restart, upgrade and damage events, checkpoints, history rendering and JSON download, plus full prior gameplay/touch suite. Inspected history screenshot; required game harness completed. Syntax/whitespace checks pass.
+
+## September 19 — increase enemy density
+
+- User cleared again with 166 defeats and felt spawn supply was low. Increased spawn curve .8→.5s in minute one and .5→.25s in minute two; raised living cap 90→120. Existing minute-one strength and XP tuning retained for comparison.
+- Added run summary/review metrics: total spawned, alive at end, peak alive, and seconds at spawn cap. Build woodland-density-v2 distinguishes logs; older records display not recorded.
+- Controlled spawn test yielded 255 (93/162 by minute), with cap test passing. Full gameplay/capture/XP/log export/touch regressions passed, no browser errors. Required interaction harness run; combat screenshot inspected. Syntax/whitespace checks passed. Next: review human run logs for density and extra XP effects.
+
+## September 19 — nest choice, behavior upgrades, Guardian finale
+
+- Implemented fixed Owl and Beast nests among tree groves on west/east sides. 50 HP each, defenders repeatedly spawn until destruction (six per nest, shared 120 cap). Owl defenders telegraph and fire hostile feathers; Beast defenders charge. First nest destroyed irrevocably chooses the recruit; creature is released ready for 2.5s proximity capture. Second nest never grants a companion. Removed automatic 25s Owl appearance.
+- Added Beast ally with piercing charge. One-time behavior upgrades: Cat Raking Vortex pulls enemies into sweep; Owl Splinter Feathers forks two projectiles on first impact, without recursive splits; Beast Quake Charge produces endpoint area damage. Creature upgrades only offered after recruitment.
+- Guardian reuses campaign DemonCyclop art; appears at 90s with 200 HP, telegraphed aimed triple shots and every-third-volley circular 16-orb attack. Clear spawn location, bright hostile orbs and terrain blocking. Win requires both 120s survival and boss defeat; overtime allowed with instruction in footer.
+- New survivor-encounters.js owns encounters/projectiles and reset lifecycle. Logs/history now include nest choice/destruction, Beast captures/damage, hostile shots, boss volleys/defeat; build woodland-nests-v3. Documentation updated.
+- New encounter browser suite passed: repeated defenders/firing, stopping on destruction, mutually exclusive capture both directions, capture freeze, natural Owl nest combat/capture (22 HP remaining), pull, feather split, separate shockwave target damage, boss patterns, hostile hit, overtime/win and reset. Existing gameplay/XP/history/touch suite passed with isolated old scenarios adjusted for new rules. Inspected desktop nest/boss and portrait boss screenshots; corrected tree-obstructed and HUD-obscured boss spawn. Required web-game harness completed. Syntax/whitespace checks passed.
+- Next human playtest: how rewarding each nest feels, whether defenders/Guardian demand readable movement, and companion balance; all encounter numbers provisional.
+
+## September 19 — nest timing, safer pull, Beast feedback
+
+- Nests now activate, become visible/targetable and start defender clocks at 30 seconds; trees remain as map scenery. Defender intervals Owl 3→5s, Beast 4.5→7s. Activation is logged; build woodland-nests-v4.
+- Cat pull validates the full displacement segment (including obstacle correction) against player radius + enemy radius + 24px margin. Unsafe pulls are skipped; safe pulls stagger targets for 0.45s.
+- Beast charges leave fading gold streaks, hit bursts and an endpoint impact ring. Quake upgrade retains a larger distinct ring matching area damage. Effects pause/reset with combat.
+- Both browser suites passed including new pre-30 absence/activation, slower spawn counts, unsafe vs safe pull and stagger tests. Inspected Beast charge screenshot. Gameplay/touch/history regressions and required skill harness completed. Syntax/whitespace checks passed.
+
+## September 19 — Beast pack targeting
+
+- User Beast run lost at 163s/390 defeats; reported charges wasted on scattered nearest enemies. Replaced nearest-target charge with scoring over target positions and local group centers: number intersected by charge plus Quake landing-area coverage, small Guardian preference and shorter-path tie break. Kept damage/cooldown/range unchanged; corrected final charge timestep to match planned endpoint.
+- Logs now record expected path/blast hit counts and boss inclusion per charge; build woodland-beast-targeting-v5.
+- Encounter tests passed: closer isolated enemy ignored for farther three-enemy line; all three actually hit for 18 damage; Quake chooses a three-target landing; isolated boss fallback and no-target behavior. Existing encounter regressions passed. Gameplay/history/touch suite and skill harness run; Beast effect screenshot reviewed. Syntax/whitespace checks pass. Next: compare human Beast route to Owl after targeting change; enemy movement may still change actual charge results.
+
+## September 19 — companion damage and attack-speed growth
+
+- User identified static Beast/Owl damage and attack intervals as a progression gap. Added four repeatable, capture-gated upgrades: Owl +1 feather damage and +20% base firing rate; Beast +2 charge/+1 shockwave damage and +20% base charge rate. Damage applies to split feathers and Quake; intervals divide base cooldown by 1+.2*rank. Choices show before/after values. Build woodland-companion-growth-v6; stats included in snapshots/run summaries.
+- Tests passed for pre-capture exclusion, repeated upgrade selection, actual damage and cooldown changes (two ranks: Owl 6 damage/.786s, Beast 10 charge/6 shockwave/1.429s), reset, and existing encounter/gameplay/history/touch regressions. Required skill harness run; upgrade card screenshot reviewed. Syntax/whitespace checks pass. Next: assess upgrade availability and companion performance from playtest logs before changing boss balance.
+
+## September 19 — five-minute expedition and collectible starters
+
+- Default survivor mode now runs five minutes; title offers the retained two-minute trial. First capture permanently unlocks that creature as a selectable starter in a separate local save, including migration from recorded Owl/Beast captures. Selected starter replaces Cat; captured starters include Cat, Owl, Beast and Frog.
+- Two mutually exclusive nest rounds at 30s and 150s allow a starter plus two recruits. Added support Frog with periodic one-hit shields and an optional haste chorus, and Owl marks that amplify other party members' damage. Creature upgrades remain ownership-gated.
+- Added minute-based encounter phases, ranged enemies, a recovery interval, stronger late enemies, optional guarded shrine at 90s (healing and a level), elite at 210s and Guardian at 270s. Regular waves stop at 300s; surviving players must still defeat the Guardian. Logs include party, starter, phases, shrine and support metrics; history and documentation updated.
+- Passed all three browser suites: original gameplay/history/touch, encounter regressions, and new expedition tests covering starter UI/persistence/history migration, three-member recruitment limits, support effects, marks, shrine rewards and full five-minute scheduling. Full timeline uses invulnerability and forced boss defeat to verify scheduling, not balance. Required web-game interaction harness completed; desktop/portrait title and party screenshots inspected. JavaScript syntax and whitespace checks passed.
+- Next human playtest: five-minute pacing, Frog's value versus an attacking recruit, second recruitment timing and Guardian difficulty across starters. Balance numbers remain provisional.
+
+## September 19 — reuse existing combat effect packs
+
+- Reused existing SoggySocks Combat, Earth and Water sheets: player rock impacts, Owl hit flashes, Cat Raking Vortex whirlwind, Beast charge dust/rocky landing (larger for Quake), nest destruction dust, and Frog shield pulse/block splashes. Existing Ninja Adventure Cat slash and enemy warning graphics remain.
+- Added generic cosmetic burst helper using existing sprite pooling and simulation clock; caps added bursts at 80 active effects, freezes on pause and clears on restart. Damage, cooldowns and hit areas unchanged.
+- Encounter and full expedition regressions passed, plus focused effect frame-count, pause, expiry, cap and restart checks. Required web-game harness completed; its canvas capture is black on this Mac, so inspected browser screenshots from Metal-backed checks, including all five sheets and in-game Frog pulse. Syntax and whitespace checks passed.
+- Next playtest: check visual clarity during crowded late waves; tune effect scale/opacity if needed without changing combat balance.
+
+## September 20 — split damage, escalating shrine, scenery
+
+- User requested 33% split-feather damage, an extra elite, three increasingly dangerous shrine summons each rewarding an upgrade, and existing asset art for shrine/nests.
+- Split projectiles now deal 33% of current Owl feather damage (including damage upgrades); primary feathers unchanged. Upgrade description states the penalty.
+- Replaced one-time shrine guards with six-second voluntary summons, one active challenge at a time. Tiers use 60/140/300 HP, 12/18/26 contact damage, 55/65/78 chase speed and 280/320/360 charge speed. Each defeat grants one XP threshold; first also retains up-to-12 healing. Leave/re-enter required before another summon, three victories exhaust the shrine. Channel decays outside, pauses with game, respects living cap. Fixed tier stats bypass timed wave buffs. Nearby label previews HP/damage, distant label stays compact. Logged tier activation/rewards and history counts.
+- Extra roaming elite at 120s gives bonus XP; existing 210s elite retained. Reused Nature stump + creature token for nests and Dungeon glowing stone altar for shrine. Sprites reset/destroy with encounter owners; damage bars and warnings remain.
+- Passed encounter and expedition browser regression suites, new shrine suite for actual 6 vs 1.98 projectile damage, all three tier stats/rewards, channel decay/pause, no duplicate summon/reward, rearm/exhaustion, cap handling, actual 26-damage contact, and both timed elites. Required skill harness completed; browser scenery screenshots inspected (Metal-backed browser screenshots used because harness canvas export is black on this Mac). Syntax/whitespace checks passed.
+- Next: human balance test for Owl throughput and whether later shrine tiers create a worthwhile risk/reward decision. No Cat balance changes in this pass.
+
+## September 20 — repelling Cat, larger woodland, XP chests
+
+- Replaced Cat pull behavior with Repelling Sweep: actual upgraded swipe hits push living regular enemies 60px away from player, 0.45s stagger, short collision-checked steps stop at trunks/bounds. Boss/nest positions unaffected. Internal upgrade id remains pull for old log compatibility; offered name/text now describe knockback.
+- Map width/height 1600→1920; landmarks/scenery positions scaled 1.2, spawn centered at960,960; boss/Beast boundaries use scene worldSize. Ground details and edge decoration expanded.
+- Random XP chests use existing two-frame LittleTreasureChest sheet. First attempt20s, then25–40s, maximum3 unopened, clear positions260–500px from player avoiding objectives. Walk within38px to receive8+2 per elapsed minute XP once. Open animation lingers1.2s. Counts/XP/events recorded in history, pause/reset cleanup included.
+- New browser suite passed knockback direction/distance, tree collision, player edge limits, chest cap/clear placement, one-time XP, pause and cleanup/reset. Full expedition and encounter suites passed after relocating old coordinate-based fixtures. Required skill harness completed and Metal browser chest screenshot inspected. No gameplay errors; syntax/whitespace checks passed.
+- Next human playtest: knockback feels predictable, larger map travel remains worthwhile, chest frequency/rewards encourage movement without overwhelming upgrade pacing.
+
+## September 20 — broader Frog support and repeatable upgrades
+
+- Interpreted user's party attack bonus as damage: recruited Frog now grants +10% damage to player/Cat/Owl/Beast, including splits/Quake, applied once centrally. Bolstering Croak adds +5 percentage points per rank. Bubble Rhythm continues scaling shield pulse rate, base interval10s.
+- Rallying Chorus now repeatable: shield pulses grant3s of +50% attack speed, +15 percentage points per extra rank. Separate chorus timer prevents its rank bonus leaking into Frenzy; both bonuses stack additively and use one shared attack-rate helper across all four attackers. New rank/timer reset each run. Support stats included in snapshots/summaries; build woodland-frog-v10.
+- Focused browser test passed all-source base damage (10→11), rank scaling, shield cadence, Chorus rank2 rate1.65, combined Frenzy2.15, independent expiration, ownership gating and reset. Full expedition regression passed. Required skill harness completed and upgrade screenshot inspected; syntax/whitespace checks passed.
+- Next playtest: whether Frog's immediate damage support makes it a compelling starter/recruit, and whether repeated Chorus ranks need a cap.
+
+## September20 — player relics
+
+- Implemented six player relics (Boots, Standing Stone, Ricochet, Repulsion, Slipstream, Bloodroot) in survivor-relics.js, with visible active indicators, two run-only slots and native Phaser choice/replacement/skip panels. Keyboard1–3 selects; replacement1–2. Relic rewards queue separately ahead of XP upgrades without losing either. Ownership, choices and source events persist in run logs/history.
+- Added purple guarded relic cache at45s, reward on120s elite defeat and final shrine challenge alongside XP. Cache requires defeating three guards before approach opens reward; screen-edge label points to it. Regular XP chests unchanged.
+- Focused browser suite passed all effects, three sources, pause, replacement, XP sequencing and reset; desktop and portrait choices inspected. Expedition and encounter regressions passed; required skill harness completed. Updated shrine fixture to handle relic-before-XP ordering. Build woodland-relics-v11.
+- Next playtest: cache travel/guard difficulty, relic choice clarity, and whether movement/standing builds feel distinct; all numeric relic values provisional.
+
+## September21 — Mouse, Mole and Bear
+
+- Added survivor-creatures.js for three capturable enemy/companion species using existing MouseBlack, Bear and Mole sprites. All unlock as permanent starters after proximity capture, have ownership-gated upgrades and participate in Frog buffs, party caps, damage logs and result totals. No creature relics added.
+- Mouse: fragile fast enemy packs from35s every22–30s; ally summons temporary biting helpers. Damage/count/rate upgrades and kill-chain behavior,24-helper cap and pooled sprite lifecycle.
+- Mole: enemy locked-position eruption warning1.25s then9 damage; ally dense-group targeting delayed8-damage area attacks. Damage/area/rate upgrades, aftershock and slowing ground. Hostile concurrent eruption cap3, regular-wave Mole cap2, reduced finale firing.
+- Bear: slow28HP blocker, one-second warned12-damage slam; ally positions near player toward threats and slams/staggers. Damage/area/rate/stagger upgrades and Safe Ground25% damage reduction. Protection applies contact/projectile/ground attacks; support logs preserved.
+- First expedition habitats shuffle attackers excluding starter; second round prioritizes unowned Frog plus an available attacker. Captures remain one perround,3 total party. Bear uses rock den art, Mouse/Mole stump burrows/mounds with entrances and creature markers. Tests pin the old roster explicitly where testing old scenarios.
+- New focused suite passed all captures/starter unlock persistence, party cap, upgrade gating, actual companion damage, Mole group hits/aftershock/slow, Mouse count/kill-chain, Bear stagger/protection, enemy warning/dodge, pack spawn and pause. Existing encounter and full expedition suites passed; required interaction harness completed. Party/den browser screenshots inspected. Syntax and whitespace checks passed.
+- Next human playtest: starter pacing, Mouse helper readability, whether Mole pressure remains fair during shrine fights, and whether Bear's protective positioning feels distinct from Beast.
+
+## September21 — relentless elites and stale preview
+
+- Boss/elite immunity now covers normal hit recoil, Cat knockback, Repulsion knockback and Bear stagger. Regular enemies retain existing reactions; damage still applies. Shared unstoppable predicate uses elite flag or boss kind, including shrine and roaming elites.
+- Inspected actual in-app preview: loaded script list lacked survivor-creatures.js, confirming stale pre-creature document. Reloaded finished-run screen after adding v13 script cache keys; verified creature module and all current game scripts are loaded, title screen ready, existing unlocks retained. Server was already running (sandboxed curl was inconclusive).
+- Added browser regression for seven damage sources, explicit knockback, Bear stagger, boss/roaming/shrine immunity, regular enemy movement and creature textures. Required interaction harness run. Build woodland-relentless-v13.
+
+## September21 — movement dash, Guardian, desert, bestiary and XP display
+
+- Added movement-only dash (Space/Shift/touch button):111.6px over0.18s,3s cooldown, solid-step collision, no invulnerability. Pauses/reset correctly.
+- Guardian uses existing Ninja Adventure explosion/fireball sheets, faster245 aimed/165 ring projectiles,1.15s recovery,85 chase speed, and every-fourth three warned ground eruptions. Pending Guardian eruptions clear on defeat.
+- Added selectable desert field using existing sand/palm/rock assets, retaining current encounter layout/schedule. Added capture-based seven-entry bestiary, unknown entries shown as???. Title menu offers field/bestiary/history; snapshots/logs include field.
+- User clarified XP request means showing progress to next level, NOT currency. Removed all provisional Essence/wallet code before delivery. Added current/required XP → next level label and gold progress bar. gainXP centralizes pickup/chest/shrine XP without currency conversion.
+- Expansion browser checks passed dash distance, damage during dash, cooldown/pause/collision, boss eruption/projectile speed and desert field. Full expedition and mobile title-start regressions passed. Required interaction harness completed; inspected bestiary, boss warnings, corrected desert palm selection and6/10XP bar screenshot. Syntax/whitespace checks passed.

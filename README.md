@@ -4,6 +4,10 @@ A portrait browser rail shooter built on Phaser 4.2.1, with a southbound route, 
 
 See [ABILITIES.md](ABILITIES.md) for shared attack radii, creature ability assignments, and pending ability decisions.
 
+## Survivor experiment
+
+Open `/survivors.html` on the local server for **Woodland Expedition**, a five-minute survivor prototype with collectible starters, up to three companions, nest choices, a support Frog, and a boss finale. The title screen also offers the short trial. Use WASD/arrows or touch drag; attacks fire automatically. See [SURVIVORS.md](SURVIVORS.md) for scope and the party-first creature design direction.
+
 ## Play locally or on a phone
 
 From this folder, start the server:
