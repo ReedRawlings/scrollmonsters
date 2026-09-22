@@ -1076,3 +1076,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Added selectable desert field using existing sand/palm/rock assets, retaining current encounter layout/schedule. Added capture-based seven-entry bestiary, unknown entries shown as???. Title menu offers field/bestiary/history; snapshots/logs include field.
 - User clarified XP request means showing progress to next level, NOT currency. Removed all provisional Essence/wallet code before delivery. Added current/required XP → next level label and gold progress bar. gainXP centralizes pickup/chest/shrine XP without currency conversion.
 - Expansion browser checks passed dash distance, damage during dash, cooldown/pause/collision, boss eruption/projectile speed and desert field. Full expedition and mobile title-start regressions passed. Required interaction harness completed; inspected bestiary, boss warnings, corrected desert palm selection and6/10XP bar screenshot. Syntax/whitespace checks passed.
+
+## September21 — current game becomes main entry
+
+- Main index.html now redirects to survivor game, preserving query/hash (including field selection). Original index markup preserved as legacy.html; game.js/styles/assets and old save keys untouched.
+- Added Legacy button beside Bestiary/History on current title. Current HTML title now ScrollMonsters · Expeditions. README describes new main game; original campaign documentation preserved in LEGACY.md.
+- Browser check passed root redirect/query preservation and actual Legacy button navigation; both game titles/screens rendered and inspected. Required game harness passed through root entry. Syntax/whitespace checks passed. No deployment performed.

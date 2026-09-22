@@ -310,7 +310,7 @@
         this.button('Field: '+(this.field==='desert'?'Desert':'Woodland')+' (change)',px+24,py+250,pw-48,()=>location.assign('survivors.html?'+(this.isExpedition?'':'trial&')+'field='+(this.field==='desert'?'woods':'desert')));
         this.button('Begin expedition',px+24,py+301,pw-48,()=>this.start());
         this.button(this.isExpedition?'Switch to short trial':'Switch to expedition',px+24,py+352,pw-48,()=>location.assign('survivors.html?'+(this.isExpedition?'trial&':'')+'field='+this.field));
-        this.button('Bestiary',px+24,py+403,(pw-58)/2,()=>{this.mode='bestiary';this.draw();});this.button('Run history',px+34+(pw-58)/2,py+403,(pw-58)/2,()=>location.assign('survivor-runs.html'));
+        const navWidth=(pw-68)/3;this.button('Bestiary',px+24,py+403,navWidth,()=>{this.mode='bestiary';this.draw();});this.button('History',px+34+navWidth,py+403,navWidth,()=>location.assign('survivor-runs.html'));this.button('Legacy',px+44+navWidth*2,py+403,navWidth,()=>location.assign('legacy.html'));
       }else if(this.mode!=='playing'){
         const pw=Math.min(w-32,470),px=(w-pw)/2,py=Math.max(96,(h-335)/2);this.panel(px,py,pw,335);
         const title={title:'THE WOODLAND TRIAL',paused:'TAKE A BREATHER',won:'TRIAL COMPLETE',lost:'THE WOODS WIN'}[this.mode];this.label(title,w/2,py+25,24,'#fff0b0','center');
