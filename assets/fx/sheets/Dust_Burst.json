@@ -1,0 +1,18 @@
+{
+  "image": "Dust_Burst.png",
+  "frame_width": 96,
+  "frame_height": 64,
+  "frame_count": 12,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.8,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "flip_horizontally_for": null,
+  "notes": "impact burst, side-view puffs",
+  "smoothing": "none (nearest neighbor)"
+}

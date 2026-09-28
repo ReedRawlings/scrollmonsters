@@ -1,2 +1,11 @@
-const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
-(async()=>{const b=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=metal']});try{const p=await b.newPage({viewport:{width:1100,height:760}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('http://localhost:5174/?field=desert');await p.waitForFunction(()=>window.__phaserReady);assert(p.url().endsWith('survivors.html?field=desert'));assert.equal(await p.evaluate(()=>JSON.parse(render_game_to_text()).field),'desert');fs.mkdirSync('output/entrypoints',{recursive:true});await p.screenshot({path:'output/entrypoints/current.png'});const rect=await p.locator('canvas').boundingBox();await p.mouse.click(rect.x+rect.width*630.67/960,rect.y+rect.height*513/640);await p.waitForURL('**/legacy.html');await p.waitForFunction(()=>typeof window.render_game_to_text==='function');assert(await p.locator('script[src^="game.js"]').count());assert.equal(await p.locator('script[src^="survivors.js"]').count(),0);await p.screenshot({path:'output/entrypoints/legacy.png'});assert.deepEqual(errors,[]);console.log('PASS: root opens current game, query preserved, legacy game loads separately.');}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});
+const assert = require('node:assert/strict');
+const {run, clickButton} = require('./survivor-test-utils.cjs');
+run('root redirect, query preservation, and Legacy navigation', async page => {
+  assert(page.url().endsWith('survivors.html?field=desert&test'));
+  assert.equal(await page.evaluate(() => JSON.parse(render_game_to_text()).field), 'desert');
+  // Verify the current-game link without loading or asserting the legacy game.
+  let navigated = false;
+  await page.route('**/legacy.html', route => {navigated = true; return route.fulfill({contentType: 'text/html', body: '<title>Legacy destination</title>'});});
+  await Promise.all([page.waitForURL('**/legacy.html'), clickButton(page, 'Legacy')]);
+  assert(navigated, 'Legacy button navigates to its separate entrypoint');
+}, '?field=desert&test').catch(error => {console.error(error);process.exitCode = 1;});

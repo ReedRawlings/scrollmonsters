@@ -1082,3 +1082,78 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Main index.html now redirects to survivor game, preserving query/hash (including field selection). Original index markup preserved as legacy.html; game.js/styles/assets and old save keys untouched.
 - Added Legacy button beside Bestiary/History on current title. Current HTML title now ScrollMonsters · Expeditions. README describes new main game; original campaign documentation preserved in LEGACY.md.
 - Browser check passed root redirect/query preservation and actual Legacy button navigation; both game titles/screens rendered and inspected. Required game harness passed through root entry. Syntax/whitespace checks passed. No deployment performed.
+
+## September22 — ten-minute expeditions and stackable relics
+- Removed two-slot limit; duplicate choices stack. Added Pack Sigil, Resonance Bell (three distinct attackers, pending future dedicated combo system), Echo Fang (delayed damage echo, not a repeated projectile), Guardian's Drum, Hunter's Brand, Spite Seed and Phase Veil. No dash attack/haste relics; Phase Veil alone grants 0.08s dash protection, +0.03/copy capped at 0.18s.
+- Existing relics now scale: Boots charged damage, Standing Stone shot speed, Ricochet bounce count, Repulsion reduced firing penalty, Slipstream duration, Bloodroot damage. Collection visible on pause, compact count HUD, stack/new labels on offers. Relic effects cannot recursively echo/explode; pending echoes capped80.
+- Recurring caches: first45s, next75s after claiming, guarded by3 time-scaled defenders. Relic hunters at4:00 then every90s through8:30, in addition to existing2:00 hunter. Each of3 shrine clears awards a relic plus existing XP. Same reward systems in both biomes for now; dedicated desert ruins event remains future work.
+- Standard expedition600s, Guardian570s/1200HP; early capture timing retained. Enemy mixes continue through9:30, post5min fixed HP/speed tiers and faster spawning. Trial remains120s.
+- New browser regression covers effects, duplicate stacks, no-recursion, shield haste expiry, dash invulnerability only with relic, cache recurrence, elite reward, finale timing, pause and reset. Existing expansion suite passed. Required skill harness ran; its WebGL screenshot black as previously; Metal browser screenshots used for visual checks.
+- Balance values provisional; invulnerable schedule simulation verifies progression, not difficulty. Creature-specific dash styles and dedicated pair combo upgrades remain future work.
+
+## September22 — movement experiment and roadmap
+- User requested10% slower player movement: base178→160.2px/s on both axes; dash unchanged. Cache version17 and run build movement-tuning-v17 distinguish playtest data.
+- Added SURVIVORS-ROADMAP.md with implemented/proposed status, creature combos, creature-dependent dashes, biome engagements, evolutions, replayability, and playtest questions.
+
+## September23 — charge commitment and enemy pressure
+- Reviewed supplied v16 desert run: won at618.27s,1948kills, Cat/Frog/Mouse,118total damage taken. Guardian lived48.25s and inflicted one logged damaging ring hit. This run predates v17 movement reduction.
+- Charging enemy Beasts now share knockback/stagger immunity with elites/bosses; normal Beasts can still be displaced outside a charge.
+- Guardian attack clocks advance2x, initial delay halved, ground warning halved to0.575s. Damage/projectile travel speed unchanged. This implements attack frequency, not doubled damage.
+- Soft radius-based enemy separation reduces exact overlap. Simultaneous capped steering respects obstacles and leaves committed charges, windups, ranged aiming, elites and stunned enemies stationary relative to this spacing pass. Groups remain valid AOE targets.
+- Build enemy-pressure-v18/cache18. Browser regression passed charge immunity/normal recoil, crowded enemy spread, fixed charge position and doubled boss timings. Required skill harness run; Metal screenshot inspected for rendering.
+
+## September23 — elemental roster, combos and dash styles
+- Added survivor-elements.js integrated with existing creature/capture/relic systems: Salamander(Lizard), Spider(SpiderRed), Storm Lizard(blackLizard2). Roster/unlocks/bestiary now10; paginated bestiary. One new species guaranteed in first normal expedition habitat pair. Existing party cap3 remains.
+- Added friendly capped fire/web zones, lightning chains, all proposed individual upgrade paths,4pair upgrade offers and creature-supplied selectable dash styles. No extra invulnerability. Fire particles and thunder sprites use existing Ninja assets; webs rendered with spokes/rings and fading outlines.
+- Hostile variants are habitat defenders only; fixed1.1s warnings, small30px hazards, shared4ground-hazard budget across elemental/Mole/Bear/Guardian. Guardian uses aimed volley if3eruption slots unavailable. No permanent terrain changes.
+- New browser suite verifies captures/starters/local save, actual combo level-up offers, damage effects, dash variants/no invulnerability, enemy casts, shared cap, pause and reset. Relic suite and complete ten-minute simulation passed; required skill client ran; Metal screenshots used due known black harness screenshot issue.
+- Existing unrelated asset deletions/.DS_Store modifications observed in working tree; left untouched.
+
+## September23 — combat readability
+- Replaced ambiguous loss wording with EXPEDITION FAILED; victory EXPEDITION COMPLETE.
+- Player/feather projectiles and impact sprites render above actors/scenery. Feathers face travel direction, have larger silhouettes and short cyan trails. Lightning lasts0.38s with layered core, zigzag and hit rings; Conductive Feathers uses gold arcs and an origin impact.
+- Damage/upgrade balance unchanged. Creature test suite and skill interaction harness run; dedicated screenshot covers blue and gold lightning. Current Storm damage is additive4→5→6, so relative damage upgrade value already declines. Future balance should compare utility and damage in actual builds before blanket nerfs.
+
+## September24 — shared level-up stats
+- Added Party Power8% base damage/rank and Party Tempo6% attack speed/rank, additive within each stat. New captures inherit ranks immediately. Removed individual damage/speed offers centrally; legacy fields kept for historical/debug compatibility.
+- Spider vulnerability remains a dedicated utility upgrade, separated from burst damage. Frog support enhancements unchanged. Snapshot and run upgrades include shared stats; build party-growth-v21/cache21.
+- Dedicated browser checks cover all10damage sources, late recruit damage, offer exclusions, resets and derived relic damage. Map pickups discussed as future proposals, not added this turn.
+
+## September24 — exploration and map supplies
+- Map2304x2304,20% wider/taller, camera/floor/boundaries/obstacle placement scaled; start and starter companions centered. Shrine relocated proportionally.
+- Both habitat waves randomly choose clear locations each run, separated from player/obstacles/objectives/other dens. Removed den, XP-chest and relic-cache labels/edge locators, plus old directional objective text. Den waves announce only A den of monsters appears; capture and shrine interaction UI retained.
+- Map supplies first35s, then45s intervals cycling magnet/Frenzy/cleanse, maximum3uncollected,90s lifetime. Magnet attracts existing XP across the map at900px/s; Frenzy grants existing12s/50% additive attack-speed effect; cleanse removes hostile ground zones/pending strikes within300px.
+- Browser checks passed random placement/clearance, map bounds/center, XP collection, haste, local cleansing versus distant hazards, and announcement. Required interaction harness completed; dedicated map screenshot inspected. Build exploration-v22/cache22. Den coordinates added to run summaries for review.
+
+## September24 — matching den defenders
+- Removed Cat→Bat and Frog→Owl placeholders. All10den types spawn their corresponding species.
+- Hostile Cats pursue and telegraph a0.65s close-range swipe; Frogs periodically grant non-stacking single-hit shields to up to3nearby ordinary enemies. Bosses/elites excluded. Correct2-frame enemy animation handling for animal sheets; shield/swipe warnings visible.
+- Browser regression passed all10spawn mappings, Cat/Frog recruitment, swipe damage/warning and shield consumption. Interaction harness run; enemy screenshot inspected. Build matching-dens-v23/cache23.
+
+## September24 — starter bestiary grid
+- Replaced title starter cycling with direct3x3portrait selection and two pages for10creatures. Locked entries remain??? and cannot select; current starter highlighted. Removed explanatory text above selection. Bestiary mode shares the grid.
+- Condensed field/start controls and retained trial/history/legacy navigation. Fixed card hit-testing with screen-fixed scroll factor. Browser test exercises actual pointer selection, locked cards, page switching, and starting selected Storm Lizard. Build starter-grid-v24/cache24.
+
+## September24 — gentler opening / faster XP (v25)
+- Expedition ordinary spawn rate 75% through120s, interpolates to100% at240s; den defenders and scripted encounters unchanged.
+- Cat base swipe3→2.4, Owl feather4→3.2, Beast charge6→4.8 and quake4→3.2. Cadence/geometry and shared upgrades unchanged.
+- Collected XP starts at1.5x, +0.05 each elapsed minute capped2x at10min. Fractional rewards bank toward whole XP so HUD stays integer; chest messages/history use actual award. Shrine's one-level reward bypasses multiplier. Level requirements unchanged.
+- Browser regression verifies rate boundaries, XP accumulation/growth, exact shrine award, reset and actual Cat attack plus Owl/Beast stats. Required gameplay harness passed; Metal screenshot inspected, no browser errors. Next: human playtest weaker starters and late Owl scaling; this is provisional tuning, not proof of win-rate balance.
+
+## September 28 — full code and design review
+- Added GAME-REVIEW-2026-09-28.md with prioritized findings, evidence, capture/spawn/design recommendations, and validation limits. Reviewed existing uncommitted changes; no production gameplay code edited.
+- Reproduced hidden pause-menu buttons beneath relic inventory, missing legacy projectile assets, Echo damage scaling mismatch, Resonance window mismatch, Thunderhead target-local counting, and ineffective enemy hit tint. Simulated telemetry quota exhaustion; exact browser failure threshold varies.
+- Fourteen selected current-game browser scripts: eight passed, six failed on stale expectations/coordinates. Both advertised npm browser checks target the wrong game; nonbrowser checks also need fixture repair. Capture completion/unlocks passed separate checks for all nine non-Cat recruits.
+- Required skill harness ran; default graphics captures were black. Dedicated Chromium/Metal desktop and portrait screenshots were inspected in output/review-2026-09-28. No page errors in those inspection scenarios.
+- Next: fix hidden UI/legacy assets/storage, restore reliable tests, resolve relic contracts, then improve deliberate capture choice and sound/visual feedback. Tune density after measuring local enemy pressure and cap occupancy in human playtests.
+
+## September 28 — current-game reliability fixes (v26)
+- User excluded legacy work and requested priorities 1–4: pause UI, history storage, current tests, relic behavior and capture choice. Existing unrelated working-tree changes were preserved.
+- Relic inventory now owns the pause screen, so covered Resume/History controls are not created underneath. Pointer and touch checks verify blank inventory clicks cannot navigate away; visible Resume and keyboard resume still work.
+- Run records use compact checkpoints and version 2. History retains up to 50 records within a 2 MiB UTF-16 serialization budget, evicts oldest runs, and retries quota failures. Oversized individual telemetry is trimmed with omission counts while retaining the summary. Failed writes leave previous saved history intact; starter storage is separate.
+- Echo uses finalized hit damage exactly once. Resonance uses per-attacker timestamps in a rolling three-second window. Thunderhead counts damaging lightning hits across targets, excluding shields, echoes and delayed strikes; counters reset each run.
+- Den destruction frees both options without committing. All species use a shared capture completion gate; completing the 2.5-second channel locks that round, dismisses pending alternatives, and preserves independent delayed rounds and party limits. Unresolved first-round species are reserved when selecting second-round dens. Shared two-line capture labels fit desktop and portrait screens.
+- Added npm run test:survivors with an automatically managed server, shared URL/browser helpers, pinned Playwright dependency and 17 current-game checks. All 17 passed. Restored touch release/upgrade, Frenzy expiry, restart cleanup, hostile charge and actual Hunter Marks coverage; affected checks also passed after those additions. Syntax checks and git diff --check passed.
+- Targeted quota tests cover normal byte/count retention, quota retry, oversized run, complete exhaustion, non-quota errors, recovery and JSON export. Capture tests cover all ten species, dual-den destruction, channel pause/decay, loser cleanup, delayed rounds, duplicate prevention, trial limits and mobile labels.
+- Required skill harness ran; default/headed capture path still yields black images on this graphics setup. Dedicated Chromium/Metal inventory and capture screenshots were inspected in output/reliability-v26. A headed-only missing favicon request was corrected using the existing Cat portrait.
+- Remaining later priorities: sound/hit feedback and measurement-led spawn tuning. Broader historical documentation cleanup and legacy fixes are outside this implementation.

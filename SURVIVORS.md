@@ -6,7 +6,7 @@ Open `survivors.html` for the five-minute expedition. The title screen also offe
 
 Cat is available initially. Completing a creature capture permanently unlocks that creature as a starter in this browser, even if the run later ends in defeat. The title's Starter button cycles through unlocked Cat, Owl, Beast, Frog, Mouse, Mole and Bear. Captures recorded in older local run histories migrate to unlocks. Storage key: `scrollmonsters-starters-v1`; no campaign currencies or upgrades are changed.
 
-The starter replaces Cat, rather than adding a free extra creature. Upgrade choices only include creatures currently recruited. Each of two nest rounds grants one companion, for a maximum of three. Destroying a nest locks that round's choice, then releases a creature for 2.5 seconds of proximity capture. Other nests remain hostile but cannot grant that round's second recruit. Options exclude already recruited or pending creatures.
+The starter replaces Cat, rather than adding a free extra creature. Upgrade choices only include creatures currently recruited. Each of two nest rounds grants one companion, for a maximum of three (the short trial grants one recruit). Destroying a nest frees its creature without choosing it, so both options can be freed safely. Stay inside a creature's ring for 2.5 seconds to commit that round's choice; leaving the ring loses progress, and pausing freezes it. Completing a capture removes other freed options from that round. Unbroken nests from the chosen round remain hostile but cannot grant another recruit. Second-round options exclude recruited creatures, pending captures, and species still available from an unchosen first round, keeping the two choices independent even when the first capture is delayed.
 
 Support creatures are judged by party contribution, not solo damage. Creature Keeper, Patch Quest and Boneraiser Minions remain design references.
 
@@ -46,15 +46,22 @@ WASD/arrows or touch drag to move; automatic attacks. Choose upgrades by click/t
 
 ## Run history
 
-`survivor-runs.html` reviews the last 50 local runs and exports one/all as JSON. Records include mode, starter, party, phase, upgrades, incoming damage, creature damage, shield activity, shrine completion, nest choices, boss events and five-second checkpoints. Interrupted runs remain marked unfinished. Build `woodland-creatures-v12` distinguishes the new expedition. History uses `scrollmonsters-survivor-runs-v1`; there is no server upload.
+`survivor-runs.html` reviews up to 50 local runs and exports one/all as JSON. Records include a final summary, event timeline, and compact five-second checkpoints of position, health, XP, party, damage and enemy pressure. Interrupted runs remain marked unfinished. Build `reliability-v26` uses record version 2; older records remain readable. History uses `scrollmonsters-survivor-runs-v1`; there is no server upload.
+
+History is limited to a conservative 2 MiB serialized UTF-16 budget. Older runs are removed first, and browser quota failures retry with less history. If a single run is still too large, its oldest checkpoints and then events are trimmed while retaining the newest summary; exports and the history page report omitted telemetry. Unavailable storage leaves the previous saved history intact and displays an error. Starter unlocks remain in their separate storage key.
 
 ## Verification
 
-With a server on port 5174:
+The maintained current-game suite is `npm run test:survivors`. Install dependencies with `npm install` and Chromium with `npx playwright install chromium`; Python 3 is required for the local server. The runner starts and stops its own server on a free port. Set `GAME_URL` to reuse an existing server. It excludes legacy gameplay.
 
-- `node scripts/check-expedition.cjs` — five-minute timeline, three-creature party, support, shrine, starter persistence/migration/UI, marks, boss finish, mobile start.
+Individual checks default to a server on port 5174 and also accept `GAME_URL`:
+
+- `node scripts/check-expedition.cjs` — ten-minute timeline, three-creature party, support, shrine, starter persistence, marks and boss finish.
 - `node scripts/check-survivors.cjs` — short-trial movement, combat, leveling, history/export and touch regressions.
 - `node scripts/check-survivor-encounters.cjs` — nest timing, exclusive captures, abilities, group targeting, growth, boss patterns and reset in the trial.
+- `node scripts/check-capture-choice.cjs` — all ten capture paths, choosing after both dens are destroyed, pause/decay, independent delayed rounds, duplicate prevention, and the trial's one-recruit limit.
+- `node scripts/check-survivor-reliability.cjs` — desktop/touch pause controls, history byte/count budgets, quota retries, storage failure recovery, compact checkpoints and export.
+- `node scripts/check-relic-contracts.cjs` — fully modified Echo damage, rolling Resonance windows and Thunderhead hit counting.
 
 Deterministic hooks: `render_game_to_text()` and `advanceTime(ms)`. Debug scene access requires `?test` (trial tests use `?trial&test`). Full-timeline tests use invulnerability to verify scheduling; they do not establish human difficulty or win rates.
 
@@ -84,7 +91,7 @@ Effects apply to the player, not companion attacks. Relics reset on restart; reg
 
 ## Mouse, Mole and Bear
 
-Every new species is capturable through the existing two habitat rounds and unlocks as a starter after capture. First-round attacker habitats rotate each run, excluding the starter. The second round excludes owned/pending recruits and prioritizes Frog if unowned. Three-member limit and one recruit per round remain. Habitats use existing stump/rock art with creature tokens and burrow/mound/den labels.
+Every new species is capturable through the existing two habitat rounds and unlocks as a starter after capture. First-round attacker habitats rotate each run, excluding the starter. The second round excludes owned/pending recruits and species still offered by an unchosen first round, and prioritizes Frog if available. Three-member limit and one completed capture per round remain. Habitats use existing stump/rock art with creature tokens and burrow/mound/den labels.
 
 - Mouse enemies: 2HP,95px/s,4 contact damage. Packs of up to6 arrive together from35s, then every22–30s until the finale, respecting120-enemy cap. Companion summons3 temporary mice every2.8s for2 damage each. Upgrades add damage, helpers, summon speed; Feeding Frenzy gives helpers a second target after a kill. Max24 living helpers,2.5s lifetime.
 - Bear enemies: 28HP,32px/s,9 contact damage; one-second warning precedes a12-damage85px slam. Enter regular waves at60s, maximum3 in the regular-wave mix. Companion holds position toward nearby threats, slams for5 damage in90px every2.1s and staggers for0.35s. Upgrades add damage, area, speed and stagger; Safe Ground reduces incoming damage25% within100px of the Bear, including projectile and contact damage. It complements Frog's one-hit shields.
@@ -101,3 +108,38 @@ Space or Shift (or touch Dash button) dashes in the last movement direction for0
 Title field selection switches Woodland/Desert. Desert uses existing sand, palms and rocks with the same current encounter layout and timing. Bestiary reveals captured creatures and their roles; uncaptured entries display???.
 
 Guardian now chases at85px/s, fires aimed245px/s and ring165px/s attacks with1.15s recovery, and adds three ground eruptions every fourth volley with1.15s warnings. Existing explosion and fireball art animates attacks. Guardian eruptions clear on defeat. Build `expedition-expansion-v14`; `scripts/check-expansion.cjs` covers these changes.
+
+### Ten-minute relic expansion
+Standard expeditions now last ten minutes, with the Guardian arriving at9:30 (1200HP). The two-minute trial remains available. Enemy health/speed increase in fixed minute tiers after5:00; spawn intervals progressively tighten. These do not depend on the player's relic inventory.
+
+Relics have no equipment limit and duplicates stack for the current run. Pause to view collected types/counts in one inventory screen with a Resume button. Pack Sigil rewards alternating attackers. Resonance Bell requires three distinct attackers on the same target within a rolling three-second window; triggering consumes that combination. Echo Fang repeats 40% of the fully modified creature-hit damage after a delay, without applying damage bonuses again or triggering another echo. Guardian's Drum grants shield-block party haste; Hunter's Brand rewards focused creature damage; Spite Seed produces non-chaining kill explosions; Phase Veil grants brief dash invulnerability. Creature combos and dash styles are described below.
+
+Rewards: guarded cache at0:45, another75s after each claim; roaming relic hunter at2:00, then4:00/5:30/7:00/8:30; each shrine challenge awards a relic. Caches stay available until cleared, with no backlog of missed caches. Both biomes currently share these systems. Relics never come from XP level-ups.
+
+### Enemy pressure tuning (v18)
+Charging enemy Beasts resist knockback/stagger until their charge ends. Guardian attack frequency is doubled by halving attack phase durations (eruption warning0.575s); damage and projectile speeds are unchanged. Ordinary enemies gently separate when their bodies overlap, with45px/s maximum spacing motion. Charges, elites and committed attack telegraphs are not displaced by this spacing. Player base movement remains160.2px/s.
+
+### Elemental creatures (v19)
+The roster now contains10 capturable starter species. Salamander uses Ninja Adventure Lizard; Storm Lizard uses the black Lizard2; Spider uses SpiderRed. A standard expedition's first habitat pair always includes at least one elemental creature, except deterministic test overrides. All remain eligible for subsequent habitat choices; the existing starter-plus-two-captures party limit remains.
+
+- Salamander: targeted fire landing after0.45s, burning every0.6s, base3damage,36radius,3s lifetime,2.6s attack interval. Level-ups improve damage/rate/duration/area and unlock spreading burns. At most6 friendly fire patches, max60radius/6s; spread-created burns do not recursively spread.
+- Spider: webs last4s, slow ordinary enemies and amplify creature damage by20%. Level-ups improve vulnerability, placement rate, active count/area, and unlock a burst when3enemies enter. Base2/max4webs,42/max65radius. Bosses/charging Beasts resist web slow.
+- Storm Lizard:4damage chaining to3targets within130px per jump,2s attack interval. Level-ups improve shared damage/rate and individual jumps/range. Thunderhead calls a warned strike on every third damaging lightning hit across all targets, including chained and killing hits. Shield-blocked hits, delayed strikes and Echo damage do not advance the counter. Maximum8targets/240px jump range.
+- Pair combos are one-time level-up offers when both partners are recruited: Blazing Charge (Salamander+Beast fire trail); Silk Ripper (Spider+Cat swipes detonate webs in their arc); Conductive Feathers (Storm+Owl, two-target lightning from feather hits,1s cooldown); Sheltering Silk (Spider+Frog shield blocks place a web).
+- Dash style button appears above Dash when a new creature is recruited. Cycle Normal/Salamander/Spider/Lightning among available companions. Salamander lays3small patches along the completed dash; Spider leaves a starting web; Storm chains lightning near the endpoint. No added invulnerability except the existing Phase Veil relic.
+
+Hostile elemental creatures spawn only as habitat defenders. They stay near their habitat while it exists and attack players within range. Fixed-target1.1s warnings precede fire/web impacts or lightning strikes. Hostile patches are30px radius/2.5s, max2pertype; player webs slow by30%. Shared4-hazard budget includes elemental casts, patches, Mole/Bear ground strikes and Guardian eruptions. Guardian substitutes an aimed volley when there is no room for its3ground strikes. Friendly and hostile outlines use cyan and orange respectively. Neither webs nor fire change collision geometry.
+
+### Shared party progression (v21)
+Party Power adds8% base damage per rank to player and creature attacks, including later captures and their ability damage. Party Tempo adds6percentage points to the shared attack-speed bonus per rank. Individual damage/attack-speed choices are removed from offers; legacy counters are retained at zero for compatibility. Creature behaviors, areas, projectiles, combos and support upgrades remain. Spider's Brittle Silk now improves vulnerability only. Frog's party buff and shield rhythm remain support specializations. Derived relic echoes/explosions inherit source damage without applying Party Power twice.
+
+### Exploration update (v22)
+Map is2304x2304 (20% larger in each dimension). Dens occupy random clear, separated positions in both waves. Their appearance uses a brief generic notification; dens and both chest types have no text labels or offscreen locators. Capture prompts and shrine interaction information remain.
+Map supplies appear near the player at35s and every45s thereafter, cycling XP Magnet, Frenzy, Cleanse; maximum3active supplies,90s lifetime. Magnet attracts all currently dropped XP. Frenzy grants12s of +50% attack speed. Cleanse removes nearby hostile ground hazards and pending ground strikes within300px; it does not damage enemies or erase distant hazards.
+
+### Matching den defenders (v23)
+Cat dens now spawn hostile Cats with warned melee swipes. Frog dens spawn hostile Frogs that protect up to3nearby ordinary enemies with a non-stacking one-hit shield every6s. All dens now spawn their own species; capture flow is unchanged.
+
+### Opening balance pass (v25)
+Expedition ordinary waves spawn at75% of their previous rate for the first two minutes, returning gradually to100% by minute four. Den defenders and scheduled encounters retain their pacing. Cat swipe, Owl feather and Beast charge/quake base damage are20% lower; attack timing and behavior upgrades are unchanged.
+XP rewards start at150%, rising5percentage points per elapsed minute to200% at10minutes. Fractional XP is retained until it forms a whole point. This applies to pickups and chests; shrine rewards still grant exactly one level's XP. Level thresholds remain10 +6 per prior level. Run logs identify this pass as opening-balance-v25.

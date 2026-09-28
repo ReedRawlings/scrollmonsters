@@ -1,0 +1,19 @@
+{
+  "image": "Bubble_Burst.png",
+  "frame_width": 96,
+  "frame_height": 96,
+  "frame_count": 16,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 1.067,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 48,
+    "from": "top-left of each frame",
+    "what": "bubble center"
+  },
+  "flip_horizontally_for": null,
+  "notes": "bubble grows sheet frames 0-8, pops at frame 9 (flash), small bubbles blink in and pop around it 9-15",
+  "smoothing": "none (nearest neighbor)"
+}

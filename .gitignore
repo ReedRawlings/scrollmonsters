@@ -5,3 +5,9 @@
 /ui-previews/
 
 /node_modules/
+
+# Pixel Composer: app-derived label map (regenerate with scripts/pixelcomposer/extract_labels.py), autosaves, caches.
+/scripts/pixelcomposer/templates/node_input_labels_en.json
+*.pxc1
+__pycache__/
+.DS_Store

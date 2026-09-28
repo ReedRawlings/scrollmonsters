@@ -1,0 +1,20 @@
+{
+  "image": "Capture_Fill.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 17,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 1.133,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40",
+  "notes": "progress frames, not a timed animation: show frame round(progress / captureSeconds * 16). Frame 0 = empty, 16 = full.",
+  "smoothing": "none (nearest neighbor)",
+  "indexed_by": "capture progress",
+  "frame_for_progress": "round(progress / 2.5 * 16)"
+}

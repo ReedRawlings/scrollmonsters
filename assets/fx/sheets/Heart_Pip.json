@@ -1,0 +1,18 @@
+{
+  "image": "Heart_Pip.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 8,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "flip_horizontally_for": null,
+  "notes": "heart-exhaust flicker: creme core + 5 scattered blobs (pink/purple/red/plum); spawn along the path every few frames",
+  "smoothing": "none (nearest neighbor)"
+}

@@ -1,0 +1,19 @@
+{
+  "image": "Scissor_Snip.png",
+  "frame_width": 64,
+  "frame_height": 64,
+  "frame_count": 16,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 1.067,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 32,
+    "from": "top-left of each frame",
+    "what": "scissor pivot"
+  },
+  "flip_horizontally_for": null,
+  "notes": "pops in open (sheet 0-2), slow close with blade sheen (3-11), snip + star spark (11-13), vanishes (13-15)",
+  "smoothing": "none (nearest neighbor)"
+}

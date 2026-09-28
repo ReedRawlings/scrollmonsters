@@ -1,0 +1,18 @@
+{
+  "image": "Capture_Burst.png",
+  "frame_width": 48,
+  "frame_height": 96,
+  "frame_count": 12,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.8,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 80,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40",
+  "notes": "capture moment: crest flashes, light column shoots up, sparkles rise; anchor = ring center on the ground (same point as Capture_Ring/Fill)",
+  "smoothing": "none (nearest neighbor)"
+}

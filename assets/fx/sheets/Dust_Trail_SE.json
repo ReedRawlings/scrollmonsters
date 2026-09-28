@@ -1,0 +1,18 @@
+{
+  "image": "Dust_Trail_SE.png",
+  "frame_width": 192,
+  "frame_height": 112,
+  "frame_count": 14,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.933,
+  "loop": false,
+  "anchor": {
+    "x": 16,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "flip_horizontally_for": "SW",
+  "notes": "trail: travels 160x80px down-right (2:1 iso)",
+  "smoothing": "none (nearest neighbor)"
+}

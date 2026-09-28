@@ -1,11 +1,40 @@
-const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
-(async()=>{const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=metal']});try{
-const p=await browser.newPage({viewport:{width:1100,height:760}}),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});await p.addInitScript(()=>window.__vt_pending=true);await p.goto('http://localhost:5174/survivors.html?test');await p.waitForFunction(()=>window.__phaserReady);
-const recruitment=await p.evaluate(()=>{const s=__survivorTest.scene,out=[];for(const type of ['mouse','mole','bear']){s.nestDeckOverride=[type,'owl','beast','cat'];s.starter='cat';s.start();s.elapsed=30;s.encounters.nestsActive=true;const n=s.encounters.nests[0];s.hit(n,999,'player',s.player);s.player.x=n.x;s.player.y=n.y;for(let i=0;i<151;i++)s.creatures.update(1/60);const party=s.expedition.party();s.elapsed=150;s.expedition.update(0);const next=s.encounters.nests.find(n=>n.stage===1);s.hit(next,999,'player',s.player);s.player.x=next.x;s.player.y=next.y;for(let i=0;i<151;i++)s.expedition.update(1/60);const other=s.encounters.nests.find(n=>n.stage===1&&n!==next);s.hit(other,999,'player',s.player);out.push({type,party,cap:s.expedition.party().length,unlocked:s.unlocked.includes(type)});s.starter=type;s.start();if(s.catActive||s.expedition.party().join()!==type)throw Error('starter replacement');if(!s.upgradePool().some(u=>u.id===type+'Power'))throw Error('upgrade missing');}return out;});for(const r of recruitment){assert(r.party.includes(r.type)&&r.unlocked);assert.equal(r.cap,3);}
-const combat=await p.evaluate(()=>{const s=__survivorTest.scene,result={};for(const type of ['mouse','mole','bear']){s.starter=type;s.start();s.spawnTimer=999;s.player.inv=999;s.player.fire=999;const a=s.creatures.allies[type];a.x=960;a.y=960;const e=s.spawn('beast',1020,960);e.hp=e.maxHp=200;e.speed=0;e.clock=999;const e2=s.spawn('beast',1035,960);e2.hp=e2.maxHp=200;e2.speed=0;e2.clock=999;for(let i=0;i<240;i++)s.creatures.update(1/60);result[type]={damage:s.creatures.damage[type],hp:e.hp,hp2:e2.hp,helpers:s.creatures.helpers.length};}
-s.upgrades.bearGuard=1;s.creatures.allies.bear.x=s.player.x;s.creatures.allies.bear.y=s.player.y;s.player.inv=0;s.encounters.damage(8,'test');result.protected=s.player.hp===34;s.starter='cat';s.start();const bear=s.spawn('bear',1020,960);bear.clock=0;s.creatures.enemy(bear,0);result.bearWarning=bear.phase==='slam';bear.clock=0;s.creatures.enemy(bear,0);s.creatures.update(.02);result.bearHit=s.player.hp===28;s.start();const mole=s.spawn('mole',1200,960);mole.clock=0;s.creatures.enemy(mole,0);const strike=s.creatures.strikes[0];result.moleDelay=s.player.hp===40&&strike.time===1.25;s.player.y+=200;s.creatures.update(1.3);result.dodged=s.player.hp===40;s.start();s.elapsed=35;s.creatures.update(0);result.swarm=s.enemies.filter(e=>e.type==='mouse').length;return result;});for(const t of ['mouse','mole','bear'])assert(combat[t].damage>0);assert(combat.mole.hp<200&&combat.mole.hp2<200);assert(combat.protected&&combat.bearWarning&&combat.bearHit&&combat.moleDelay&&combat.dodged);assert(combat.swarm>=5);
-const upgraded=await p.evaluate(()=>{const s=__survivorTest.scene;s.starter='mole';s.start();s.upgrades.moleEcho=1;s.upgrades.moleSlow=1;s.upgrades.molePower=2;s.upgrades.moleArea=1;const a=s.creatures.allies.mole;a.attack=0;const e=s.spawn('beast',1050,960);e.hp=e.maxHp=200;s.creatures.update(.01);s.creatures.update(.71);const first=s.creatures.damage.mole;s.creatures.update(.51);const second=s.creatures.damage.mole;const slow=e.slowUntil>s.elapsed;s.starter='mouse';s.start();s.upgrades.mouseJump=1;s.upgrades.mousePower=1;s.upgrades.mouseCount=2;const m=s.creatures.allies.mouse;m.attack=0;m.x=960;m.y=960;const one=s.spawn('bat',970,960),two=s.spawn('beast',990,960);one.hp=1;two.hp=100;s.creatures.update(.001);const helperCount=s.creatures.helpers.length;for(let i=0;i<90;i++)s.creatures.update(1/60);const bites=s.creatures.damage.mouse;s.starter='bear';s.start();s.upgrades.bearStun=2;const bear=s.creatures.allies.bear;bear.attack=0;const target=s.spawn('beast',1010,960);target.hp=100;s.creatures.update(.01);s.creatures.update(.16);const stagger=target.stun;const t=s.elapsed;s.mode='paused';s.tick(5);return {first,second,slow,helperCount,bites,stagger,paused:t===s.elapsed};});assert(upgraded.first===12&&upgraded.second===24&&upgraded.slow&&upgraded.helperCount===5&&upgraded.bites>1&&upgraded.stagger===.75&&upgraded.paused);
-await p.reload();await p.waitForFunction(()=>window.__phaserReady);const saved=await p.evaluate(()=>__survivorTest.scene.unlocked);for(const t of ['mouse','mole','bear'])assert(saved.includes(t));
-await p.evaluate(()=>{const s=__survivorTest.scene;s.starter='mouse';s.start();s.expedition.release('mole',925,995,true);s.expedition.release('bear',980,980,true);s.player.fire=999;s.player.inv=999;s.spawnTimer=999;for(let i=0;i<4;i++){const e=s.spawn('bear',1070+i*20,960);e.hp=200;}for(const a of Object.values(s.creatures.allies))a.attack=0;s.creatures.update(.02);s.draw();});await p.waitForTimeout(120);fs.mkdirSync('output/creatures',{recursive:true});await p.screenshot({path:'output/creatures/party.png'});
-await p.evaluate(()=>{const s=__survivorTest.scene;s.starter='cat';s.nestDeckOverride=['bear','mole','mouse'];s.start();s.elapsed=31;s.encounters.nestsActive=true;s.player.x=540;s.player.y=1010;s.draw();});await p.waitForTimeout(120);await p.screenshot({path:'output/creatures/den.png'});console.log('PASS',{recruitment,combat,upgraded,saved});assert.deepEqual(errors,[]);
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
+const assert = require('node:assert/strict');
+const {run} = require('./survivor-test-utils.cjs');
+run('Mouse/Mole/Bear recruitment, abilities, warnings, protection and persistence', async page => {
+  const result = await page.evaluate(() => {
+    const s = __survivorTest.scene, out = {};
+    const setup = starter => {s.starter=starter;s.start();s.obstacles=[];s.spawnTimer=999;s.player.fire=999;s.player.inv=999;};
+    for (const type of ['mouse','mole','bear']) {
+      s.nestDeckOverride=[type,'owl','beast'];setup('cat');s.elapsed=30;s.encounters.nestsActive=true;
+      const nest=s.encounters.nests[0];s.hit(nest,999,'player',s.player);s.player.x=nest.x;s.player.y=nest.y;
+      for(let i=0;i<151;i++)s.creatures.update(1/60);
+      if(!s.expedition.party().includes(type)||!s.unlocked.includes(type))throw Error('Capture failed: '+type);
+      setup(type);
+      const pool=s.upgradePool().map(u=>u.id);
+      if(!pool.includes('partyDamage')||!pool.includes('partySpeed')||pool.includes(type+'Power'))throw Error('Shared progression offers incorrect');
+      if(s.catActive||s.expedition.party().join()!==type)throw Error('Starter must replace Cat');
+      const a=s.creatures.allies[type];a.x=s.player.x;a.y=s.player.y;a.attack=0;
+      const targets=[50,65].map(dx=>{const e=s.spawn('beast',s.player.x+dx,s.player.y);Object.assign(e,{hp:200,maxHp:200,speed:0,clock:999});return e;});
+      for(let i=0;i<240;i++)s.creatures.update(1/60);
+      out[type]={damage:s.creatures.damage[type],targetHp:targets.map(e=>e.hp)};
+    }
+    setup('bear');s.upgrades.bearGuard=1;Object.assign(s.creatures.allies.bear,{x:s.player.x,y:s.player.y});s.player.inv=0;s.encounters.damage(8,'test');out.protectedHp=s.player.hp;
+    setup('cat');s.player.inv=0;const bear=s.spawn('bear',s.player.x+60,s.player.y);bear.clock=0;s.creatures.enemy(bear,0);out.bearWarning=bear.phase==='slam';bear.clock=0;s.creatures.enemy(bear,0);s.creatures.update(.02);out.bearHit=s.player.hp;
+    setup('cat');s.player.inv=0;const mole=s.spawn('mole',s.player.x+200,s.player.y);mole.clock=0;s.creatures.enemy(mole,0);out.moleDelay=s.creatures.strikes[0].time;s.player.y+=200;s.creatures.update(1.3);out.dodgedHp=s.player.hp;
+    setup('mole');s.upgrades.moleEcho=1;s.upgrades.moleSlow=1;const a=s.creatures.allies.mole;Object.assign(a,{x:s.player.x,y:s.player.y,attack:0});const e=s.spawn('beast',s.player.x+60,s.player.y);e.hp=e.maxHp=200;
+    s.creatures.update(.01);s.creatures.update(.71);out.first=s.creatures.damage.mole;s.creatures.update(.51);out.second=s.creatures.damage.mole;out.slow=e.slowUntil>s.elapsed;
+    setup('mouse');s.upgrades.mouseJump=1;s.upgrades.mouseCount=2;Object.assign(s.creatures.allies.mouse,{x:s.player.x,y:s.player.y,attack:0});const one=s.spawn('bat',s.player.x+10,s.player.y);one.hp=1;const two=s.spawn('beast',s.player.x+30,s.player.y);two.hp=100;s.creatures.update(.001);out.helpers=s.creatures.helpers.length;for(let i=0;i<90;i++)s.creatures.update(1/60);out.bites=s.creatures.damage.mouse;
+    setup('bear');s.upgrades.bearStun=2;Object.assign(s.creatures.allies.bear,{x:s.player.x,y:s.player.y,attack:0});const target=s.spawn('beast',s.player.x+50,s.player.y);target.hp=100;s.creatures.update(.01);s.creatures.update(.16);out.stagger=target.stun;const time=s.elapsed;s.mode='paused';s.tick(5);out.paused=s.elapsed===time;
+    setup('cat');s.elapsed=35;s.creatures.update(0);out.swarm=s.enemies.filter(e=>e.type==='mouse').length;
+    return out;
+  });
+  for(const type of ['mouse','mole','bear'])assert(result[type].damage>0, type+' damages targets');
+  assert(result.mole.targetHp.every(hp=>hp<200),'Mole damages grouped targets');
+  assert.equal(result.protectedHp,34);assert(result.bearWarning);assert.equal(result.bearHit,28);
+  assert.equal(result.moleDelay,1.25);assert.equal(result.dodgedHp,40);
+  assert(Math.abs(result.first-8)<1e-6);assert(Math.abs(result.second-16)<1e-6);assert(result.slow);
+  assert.equal(result.helpers,5);assert(result.bites>1);assert.equal(result.stagger,.75);assert(result.paused);assert.equal(result.swarm,6);
+  await page.reload();await page.waitForFunction(()=>window.__phaserReady);
+  const saved=await page.evaluate(()=>__survivorTest.scene.unlocked);
+  for(const type of ['mouse','mole','bear'])assert(saved.includes(type));
+}).catch(error=>{console.error(error);process.exitCode=1;});

@@ -9,6 +9,7 @@
     const s=run.summary||{},article=add(host,'article','');
     add(article,'h2',`${new Date(run.startedAt).toLocaleString()} · ${run.status==='in_progress'?'Unfinished / checkpoint':run.status}`);
     add(article,'p',`${run.runMode||'trial'} · ${s.seconds??0}s · ${s.kills??0} defeats · Level ${s.level??1} · HP ${s.hp??0}/${s.maxHp??40}`);
+    if(run.telemetryOmitted)add(article,'p',`Older telemetry trimmed to fit local storage: ${run.telemetryOmitted.events||0} events, ${run.telemetryOmitted.samples||0} checkpoints. Final summary retained.`);
     add(article,'p',`Spawned: ${s.spawned??'not recorded'} · Alive at end: ${s.enemiesAlive??'not recorded'} · Peak alive: ${s.peakEnemies??'not recorded'} · Spawn cap: ${s.spawnCapSeconds??'not recorded'}s`);
     const d=s.damage||{};add(article,'p',`Damage: player ${Math.round(d.player||0)}, Cat ${Math.round(d.cat||0)}, Owl ${Math.round(d.owl||0)}. Taken: ${d.taken||0}. Owl: ${s.owl||'not_seen'}.`);
     add(article,'p','Upgrades: '+(Object.entries(s.upgrades||{}).filter(([,n])=>n>0).map(([id,n])=>`${id} ×${n}`).join(', ')||'none'));

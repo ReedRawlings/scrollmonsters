@@ -5,9 +5,16 @@
     constructor(scene){
       if(!scene.textures.exists('hostileOrb')){const g=scene.make.graphics({x:0,y:0,add:false});g.fillStyle(0xff792f).fillCircle(8,8,6).lineStyle(2,0xffecc0).strokeCircle(8,8,6);g.generateTexture('hostileOrb',16,16);g.destroy();}
       this.s=scene;this.chosen=null;this.stageChoices={};this.beast=null;this.beastDamage=0;this.boss=null;this.bossAppeared=false;this.bullets=[];this.bulletPool=[];this.pulses=[];this.shotsFired=0;this.nestsActive=false;this.trails=[];this.nestSprites=[];
-      this.nests=(scene.isExpedition?scene.nestDeck.filter(t=>t!==scene.starter).slice(0,2):['owl','beast']).map((type,i)=>({kind:'nest',type,stage:0,activeAt:30,x:i?1380:540,y:960,r:35,hp:50,maxHp:50,clock:1+i,spawnCount:0,destroyed:false}));
+      const choices=scene.nestDeck.filter(t=>t!==scene.starter),first=choices.slice(0,2),elemental=choices.find(t=>['salamander','spider','storm'].includes(t));
+      if(!scene.nestDeckOverride&&elemental&&!first.some(t=>['salamander','spider','storm'].includes(t)))first[1]=elemental;
+      const placed=[];this.nests=(scene.isExpedition?first:['owl','beast']).map((type,i)=>{const spot=this.denPosition(placed);placed.push(spot);return {kind:'nest',type,stage:0,activeAt:30,...spot,r:35,hp:50,maxHp:50,clock:1+i,spawnCount:0,destroyed:false};});
       this.beastSprite=scene.add.sprite(0,0,'beast').setScale(3.5).setVisible(false);
       this.bossSprite=scene.add.sprite(0,0,'guardian').setScale(2.2).setVisible(false);
+    }
+    denPosition(existing=this.nests||[]){const s=this.s,sh=s.expedition?.shrine||{x:s.worldSize/2,y:s.worldSize*.2625};
+      const valid=p=>!s.blocked(p.x,p.y,100)&&dist(p,s.player)>300&&dist(p,sh)>180&&existing.every(n=>dist(n,p)>300)&&(s.expedition?.chests||[]).every(c=>dist(c,p)>100);
+      for(let i=0;i<250;i++){const p={x:140+Math.random()*(s.worldSize-280),y:140+Math.random()*(s.worldSize-280)};if(valid(p))return p;}
+      for(let y=140;y<s.worldSize-140;y+=120)for(let x=140;x<s.worldSize-140;x+=120)if(valid({x,y}))return {x,y};throw new Error('No clear den location');
     }
     destroy(){for(const n of this.nestSprites){n.base.destroy();n.token.destroy();}for(const b of this.bulletPool)b.destroy();this.beastSprite.destroy();this.bossSprite.destroy();}
     targets(){return [...this.nests.filter(n=>this.nestsActive&&this.s.elapsed>=(n.activeAt||30)&&!n.destroyed),...(this.boss?.hp>0?[this.boss]:[])];}
@@ -15,7 +22,7 @@
       const s=this.s;
       if(e.kind==='nest'){if(!this.nestsActive||s.elapsed<(e.activeAt||30)){e.hp=e.maxHp;return true;}
         if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);const stage=e.stage||0,eligible=!this.stageChoices[stage]&&!s.expedition.has(e.type)&&Object.keys(this.stageChoices).length<(s.isExpedition?2:1);s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
-          if(eligible){this.stageChoices[stage]=e.type;this.chosen=this.chosen||e.type;s.expedition.release(e.type,e.x,e.y);s.announce(e.type.toUpperCase()+' freed! Stand in its ring to capture.');}
+          if(eligible){s.expedition.release(e.type,e.x,e.y,false,stage);s.announce(e.type.toUpperCase()+' freed! Hold its ring to choose.');}
           else s.announce('Nest cleared. This recruitment choice is locked.');
           s.saveRun();
         }return true;
@@ -33,7 +40,7 @@
       if(n.clock<=0&&own<6&&s.enemies.length<120){
         // Keep defenders out of tree trunks and stagger arrivals around the nest.
         const angle=n.spawnCount++*2.4,x=n.x+Math.cos(angle)*52,y=n.y+Math.sin(angle)*52;
-        const e=s.spawn(n.type==='frog'?'owl':n.type==='cat'?'bat':n.type,x,y);e.nest=n.type;e.clock=.9;s.move(e,0,0);n.clock=n.type==='owl'?5:7;
+        const e=s.spawn(n.type,x,y);e.nest=n.type;e.clock=.9;s.move(e,0,0);n.clock=n.type==='owl'?5:7;
       }
     }
     updateShooter(e,dt){
@@ -50,15 +57,15 @@
     spawnBoss(){
       const s=this.s,p=s.player;this.bossAppeared=true;
       let x=p.x+190,y=p.y;for(let i=0;i<24;i++){const a=i*Math.PI/12;x=clamp(p.x+Math.cos(a)*190,80,s.worldSize-80);y=clamp(p.y+Math.sin(a)*190,80,s.worldSize-80);if(!s.blocked(x,y,75))break;}
-      this.boss={kind:'boss',x,y,r:35,hp:s.isExpedition?480:200,maxHp:s.isExpedition?480:200,phase:'seek',clock:2,volleys:0,aim:0};
+      this.boss={kind:'boss',x,y,r:35,hp:s.isExpedition?1200:200,maxHp:s.isExpedition?1200:200,phase:'seek',clock:1,volleys:0,aim:0};
       s.logEvent('boss_appeared');s.announce('Guardian approaches! Dodge its aimed and ring volleys.');
     }
     updateBoss(dt){
-      const s=this.s;if(!this.bossAppeared&&s.elapsed>=(s.isExpedition?270:90))this.spawnBoss();const b=this.boss;if(!b||b.hp<=0)return;
-      const d=dist(b,s.player)||1;b.clock-=dt;
+      const s=this.s;if(!this.bossAppeared&&s.elapsed>=(s.isExpedition?570:90))this.spawnBoss();const b=this.boss;if(!b||b.hp<=0)return;
+      const d=dist(b,s.player)||1;b.clock-=dt*2;
       if(b.phase==='seek'){
         if(d>230)s.move(b,(s.player.x-b.x)/d*85*dt,(s.player.y-b.y)/d*85*dt,true);
-        if(b.clock<=0){b.volleys++;b.phase=b.volleys%4===0?'eruption':b.volleys%3===0?'ring':'aimed';b.aim=Math.atan2(s.player.y-b.y,s.player.x-b.x);b.clock=b.phase==='ring'?.9:.65;s.burst('guardianBlast',b.x,b.y,2,.45);if(b.phase==='eruption'){for(const off of [-90,0,90])s.creatures.strikes.push({x:clamp(s.player.x+off,60,s.worldSize-60),y:s.player.y,r:52,time:1.15,total:1.15,hostile:true,source:'guardian_eruption',damage:12});}}
+        if(b.clock<=0){b.volleys++;b.phase=b.volleys%4===0?'eruption':b.volleys%3===0?'ring':'aimed';if(b.phase==='eruption'&&s.creatures.elements.hostileCount()>1)b.phase='aimed';b.aim=Math.atan2(s.player.y-b.y,s.player.x-b.x);b.clock=b.phase==='ring'?.9:.65;s.burst('guardianBlast',b.x,b.y,2,.45);if(b.phase==='eruption'){for(const off of [-90,0,90])s.creatures.strikes.push({x:clamp(s.player.x+off,60,s.worldSize-60),y:s.player.y,r:52,time:.575,total:.575,hostile:true,source:'guardian_eruption',damage:12});}}
       }else if(b.clock<=0){
         if(b.phase==='ring'){for(let i=0;i<16;i++)this.shoot(b,i*Math.PI*2/16+b.volleys*.12,165,'boss_ring');}
         else if(b.phase==='aimed')for(const offset of [-.12,0,.12])this.shoot(b,b.aim+offset,245,'boss_aimed');
@@ -92,8 +99,7 @@
     updateBeast(dt){
       const b=this.beast,s=this.s;if(!b)return;
       if(b.state==='ready'){
-        b.progress=dist(b,s.player)<70?Math.min(2.5,b.progress+dt):Math.max(0,b.progress-dt*2);
-        if(b.progress>=2.5){b.state='ally';s.logEvent('beast_captured');s.announce('Beast recruited! It charges through enemies.');s.saveRun();}return;
+        s.expedition.capture(b,'beast',dt);return;
       }
       b.attack-=dt*s.attackRate();
       if(b.charge>0){
@@ -108,7 +114,7 @@
       }
     }
     update(dt){
-      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.announce('Nests discovered: '+this.nests[0].type.toUpperCase()+' west · '+this.nests[1].type.toUpperCase()+' east.');}
+      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.announce('A den of monsters appears');}
       for(const n of this.nests)this.updateNest(n,dt);this.updateBeast(dt);this.updateBoss(dt);
       for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='owl_feather'?6:8,b.source);b.life=0;}this.s.relics.nearShot(b);}
       this.bullets=this.bullets.filter(b=>{if(b.life>0)return true;b.sprite.setVisible(false);return false;});
@@ -135,11 +141,11 @@
     }
     drawUI(w,h){
       const s=this.s,cam=s.cameras.main;
-      for(const n of this.nests){if(!this.nestsActive||s.elapsed<(n.activeAt||30)||n.destroyed)continue;const x=clamp(n.x-cam.scrollX,90,w-90),y=clamp(n.y-cam.scrollY,170,h-130);s.label(n.type.toUpperCase()+(n.type==='mouse'?' BURROW':n.type==='mole'?' MOUND':n.type==='bear'?' DEN':' NEST')+(this.stageChoices[n.stage||0]?' · NO RECRUIT':''),x,y-70,12,'#30221a','center');}
-      if(this.beast?.state==='ready'){const b=this.beast;s.label('CAPTURE BEAST '+Math.round(b.progress/2.5*100)+'%',clamp(b.x-cam.scrollX,95,w-95),clamp(b.y-cam.scrollY-85,160,h-125),13,'#30221a','center');}
+
+      if(this.beast?.state==='ready'){const b=this.beast;s.captureLabel('beast',b);}
       if(this.boss?.hp>0){s.panel(20,130,w-40,33);s.label('GUARDIAN  '+Math.ceil(this.boss.hp)+' / '+this.boss.maxHp,w/2,139,16,'#ffd36b','center');}
     }
-    summary(){return {nestsActive:this.nestsActive,shotsFired:this.shotsFired,choice:this.chosen,stageChoices:{...this.stageChoices},beast:this.beast?.state||null,beastDamage:this.beastDamage,nests:this.nests.map(n=>({type:n.type,stage:n.stage,activeAt:n.activeAt,hp:n.hp,destroyed:n.destroyed,spawnCount:n.spawnCount})),boss:this.boss?{hp:this.boss.hp,defeated:this.boss.hp<=0}:null};}
+    summary(){return {nestsActive:this.nestsActive,shotsFired:this.shotsFired,choice:this.chosen,stageChoices:{...this.stageChoices},beast:this.beast?.state||null,beastDamage:this.beastDamage,nests:this.nests.map(n=>({type:n.type,x:n.x,y:n.y,stage:n.stage,activeAt:n.activeAt,hp:n.hp,destroyed:n.destroyed,spawnCount:n.spawnCount})),boss:this.boss?{hp:this.boss.hp,defeated:this.boss.hp<=0}:null};}
     snapshot(){return {...this.summary(),nests:this.nests.map(n=>({type:n.type,stage:n.stage,activeAt:n.activeAt,x:n.x,y:n.y,hp:n.hp,destroyed:n.destroyed})),beast:this.beast?{x:this.beast.x,y:this.beast.y,state:this.beast.state,progress:this.beast.progress,charging:this.beast.charge>0,trailSegments:this.trails.length,impactEffects:this.pulses.length}:null,boss:this.boss?{x:this.boss.x,y:this.boss.y,hp:this.boss.hp,phase:this.boss.phase}:null,hostileShots:this.bullets.map(b=>({x:Math.round(b.x),y:Math.round(b.y),dx:b.dx,dy:b.dy,source:b.source}))};}
   }
   window.SurvivorEncounters=SurvivorEncounters;

@@ -1,0 +1,18 @@
+{
+  "image": "Capture_Ring.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 12,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.8,
+  "loop": true,
+  "anchor": {
+    "x": 24,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40",
+  "notes": "idle capture crest; faint glint pulse on the outer ring; 0.8 s loop",
+  "smoothing": "none (nearest neighbor)"
+}

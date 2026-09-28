@@ -1,0 +1,18 @@
+{
+  "image": "Dust_Trail_E.png",
+  "frame_width": 192,
+  "frame_height": 64,
+  "frame_count": 14,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.933,
+  "loop": false,
+  "anchor": {
+    "x": 16,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "flip_horizontally_for": "W",
+  "notes": "trail: dust source starts at anchor, travels 160px right over the animation",
+  "smoothing": "none (nearest neighbor)"
+}

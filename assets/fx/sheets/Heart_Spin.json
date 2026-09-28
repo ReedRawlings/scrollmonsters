@@ -1,0 +1,18 @@
+{
+  "image": "Heart_Spin.png",
+  "frame_width": 32,
+  "frame_height": 32,
+  "frame_count": 12,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.8,
+  "loop": true,
+  "anchor": {
+    "x": 16,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "flip_horizontally_for": null,
+  "notes": "3D coin-flip loop, heart ~24px: front 0-3 & 9-11, back 4-8; thickness band shows at the edge frames (3, 9); 0.8 s per turn",
+  "smoothing": "none (nearest neighbor)"
+}
