@@ -1,0 +1,18 @@
+{
+  "image": "Slot_PowerUp.png",
+  "frame_width": 32,
+  "frame_height": 32,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 16,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "gold ring pulse + rising shimmer: this creature got stronger",
+  "smoothing": "none (nearest neighbor)"
+}

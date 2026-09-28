@@ -1,0 +1,18 @@
+{
+  "image": "Pack_Flip.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.3,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "white card-flip flash; tint by rarity in code",
+  "smoothing": "none (nearest neighbor)"
+}

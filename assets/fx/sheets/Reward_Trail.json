@@ -1,0 +1,18 @@
+{
+  "image": "Reward_Trail.png",
+  "frame_width": 8,
+  "frame_height": 8,
+  "frame_count": 5,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.25,
+  "loop": false,
+  "anchor": {
+    "x": 4,
+    "y": 4,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "tiny white sparkle (hand-placed pixels): pops to a 7px cross, fades to one pixel. Tint gold in code if wanted.",
+  "smoothing": "none (nearest neighbor)"
+}

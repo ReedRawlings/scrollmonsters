@@ -1,0 +1,18 @@
+{
+  "image": "Pack_Open_Common.png",
+  "frame_width": 24,
+  "frame_height": 32,
+  "frame_count": 7,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.35,
+  "loop": false,
+  "anchor": {
+    "x": 12,
+    "y": 31,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "PLACEHOLDER art. Common pack opening: crimp tears off, wrapper puffs, cards peek, sparkles.",
+  "smoothing": "none (nearest neighbor)"
+}

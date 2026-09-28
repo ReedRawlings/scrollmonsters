@@ -1,0 +1,18 @@
+{
+  "image": "LevelUp_Aura_Fade_Front.png",
+  "frame_width": 32,
+  "frame_height": 48,
+  "frame_count": 5,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.333,
+  "loop": false,
+  "anchor": {
+    "x": 16,
+    "y": 47,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Fade (front layer): draw the Back strip behind the player sprite and the Front strip in front, same anchor (feet).",
+  "smoothing": "none (nearest neighbor)"
+}

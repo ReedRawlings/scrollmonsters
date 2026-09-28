@@ -1,0 +1,18 @@
+{
+  "image": "Pack_Sheen.png",
+  "frame_width": 24,
+  "frame_height": 85,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 0.667,
+  "loop": true,
+  "anchor": {
+    "x": 0,
+    "y": 0,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "white highlight band; tint lightly with the rarity color, clip to the card, offset start frame per card",
+  "smoothing": "none (nearest neighbor)"
+}

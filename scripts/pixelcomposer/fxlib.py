@@ -53,8 +53,8 @@ def show(on, off=None, level=1.0):
 
 
 class Project:
-    def __init__(s, W, H, FR, pal="Toasted40"):
-        s.W, s.H, s.FR, s.pal = W, H, FR, pal
+    def __init__(s, W, H, FR, pal="Toasted40W", fps=15):
+        s.W, s.H, s.FR, s.pal, s.fps = W, H, FR, pal, fps
         s.h, s.j = load(BASE)
         s.old = {n["type"]: n for n in s.j["nodes"]}
         s.exp = [n for n in s.j["nodes"] if n["type"] == "Node_Export"][0]
@@ -84,11 +84,15 @@ class Project:
         I[6]["r"]["d"] = False; I[10]["r"]["d"] = abgr(color)
         if inner is not None: I[5]["r"]["d"] = inner
         if sides is not None: I[4]["r"]["d"] = sides
-        if rotation is not None: I[7]["r"]["d"] = rotation
+        if rotation is not None: I[19]["r"]["d"] = rotation   # slot 19 "Shape Rotation" (slot 7 does not rotate area shapes)
         v = lambda a, b, c, d: [a / s.W, b / s.H, c / s.W, d / s.H, 0, 0]
         if len(keys) == 1: I[3]["r"]["d"] = v(*keys[0][1:])
         else: anim(I[3], [(k[0], v(*k[1:])) for k in keys])
         return n
+
+    def empty(s):
+        """Transparent bottom layer (a zero-size shape off-canvas), so every visible layer can have its own opacity."""
+        return s.shape("Empty Base", "Ellipse", "#ffffff", [(0, -8, -8, 0.01, 0.01)])
 
     def blend(s, bg, fg, opacity=None):
         b = s.add(s.old["Node_Blend"], "Blend", 192, s._y); s._y += 40
@@ -119,7 +123,7 @@ class Project:
         j = s.j; j["nodes"] = s.nodes
         if isinstance(j.get("timelines"), dict): j["timelines"]["contents"] = []
         j["attributes"]["surface_dimension"] = [s.W, s.H]
-        j["animator"]["frames_total"] = s.FR; j["animator"]["framerate"] = 15
+        j["animator"]["frames_total"] = s.FR; j["animator"]["framerate"] = s.fps
         j["previewNode"] = p["id"]; j["inspectingNode"] = p["id"]
         out = EX + name + ".pxc"; save(out, s.h, j)
         h2, j2 = load(out); ids = {n["id"] for n in j2["nodes"]}
@@ -128,8 +132,8 @@ class Project:
         print(f"{name:16s} {s.W}x{s.H} {s.FR}f | {len(ids)} nodes | dangling links: {bad}")
         ax, ay = anchor or (s.W // 2, s.H // 2)
         meta = {"image": name + ".png", "frame_width": s.W, "frame_height": s.H, "frame_count": s.FR,
-                "layout": "horizontal strip, no spacing", "fps": 15, "duration_s": round(s.FR / 15, 3), "loop": loop,
-                "anchor": {"x": ax, "y": ay, "from": "top-left of each frame"}, "palette": s.pal,
+                "layout": "horizontal strip, no spacing", "fps": s.fps, "duration_s": round(s.FR / s.fps, 3), "loop": loop,
+                "anchor": {"x": ax, "y": ay, "from": "top-left of each frame"}, "palette": "Toasted40 + white" if s.pal == "Toasted40W" else s.pal,
                 "notes": notes, "smoothing": "none (nearest neighbor)"}
         meta.update(extra_meta or {})
         json.dump(meta, open(SHEETS + name + ".json", "w"), indent=2)

@@ -91,6 +91,7 @@ one-time transforms after it.
 **Shapes.** The Shape node's **Positioning Mode** (slot 15) decides which settings place it: **0 = Area** uses Position (slot 3,
 `[cx, cy, half_w, half_h, 0, 0]` in canvas fractions), 1 = Center/Half Size, and **2 = fill the whole canvas** (it ignores
 position and only uses Shape Scale). Many templates are mode 2, so set mode 0 before keyframing a shape's size or position.
+**Rotating a shape:** use slot 19 "Shape Rotation" (degrees; can be keyframed). Slot 7 "Rotation" does not rotate area-positioned shapes.
 **Donut Inner Radius (slot 5) sets ring thickness, not hole size:** 0.1 gives a thin outline, and 0.8 gives a nearly solid disc.
 Keyframing Position from size 0 is a clean way to make something appear and grow (the Magic Circle sample does this).
 No sample uses transparency in shape colors; get translucency from the **Blend** node's Opacity (slot 3, which can be keyframed) instead.
@@ -137,6 +138,7 @@ and the domain's inertia or acceleration, decide whether the result rises, drift
 - **In the app:** open the file, press **F5** (Render All) and then **F6** (Export All). `File → Export` saves the *project*, not images.
 - **Images come from nodes:** an **Export** node (`templates/export_node.json`) set to single image PNG
   (slot 3 = 0, 9 = 0, template `%d%n`, slot 1 = full path including the name) or an image sequence (slot 3 = 1).
+- **Sprite sheets only collect frames that have played:** play the animation through once (or scrub every frame) before F6, otherwise the sheet comes out empty or sparse.
 - **Sprite sheets:** **Render Spritesheet** → Export. Check **Custom Range** (samples may limit it to a few frames),
   **Frame Step** (2 = every other frame), and **Packing** (0 is assumed to be horizontal; not yet confirmed).
 - **What the game needs per effect:** a transparent PNG strip with equal frame sizes, FPS or duration, loop or play once, and the

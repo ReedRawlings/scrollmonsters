@@ -1,0 +1,19 @@
+{
+  "image": "Unlock_Fill.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "swap the silhouette for the real portrait on frame 3 (full white)",
+  "smoothing": "none (nearest neighbor)",
+  "swap_frame": 3
+}

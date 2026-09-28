@@ -25,3 +25,29 @@ Pixel-art effects made in Pixel Composer (v1.22.10). **Game palette: Toasted40**
 
 `Dust_Trail.pxc` is the side-view original that `build_trail_dir.py` builds the directional trails from.
 Rebuilding with a script overwrites the `.pxc`, so hand edits made in Pixel Composer are lost unless they're also made in the script.
+
+## Reward juice pass (from `VFX_REQUESTS.md`)
+
+Pixel Composer effects: open the `.pxc`, press **F5** then **F6** to write the PNG into `sheets/`. JSON is already there.
+
+| # | Effect | Source | Size | Frames @fps | Loop | Built by |
+|---|---|---|---|---|---|---|
+| 3 | Foil sheen (white; tint lightly) | `Pack_Sheen.pxc` | 24×85 | 8 @12 | yes | `build_rewards.py sheen` |
+| 4 | Card flip flash (white; tint by rarity) | `Pack_Flip.pxc` | 48×48 | 6 @20 | no | `build_rewards.py flip` |
+| 6 | Slot power-up (gold) | `Slot_PowerUp.pxc` | 32×32 | 6 @15 | no | `build_rewards.py slot` |
+| 7 | Level-up aura: Ignite / Loop / Fade × Back / Front | `LevelUp_Aura_*_{Back,Front}.pxc` | 32×48 | 5 / 6 / 5 @15 | Loop only | `build_levelup.py` |
+| 8 | Reveal rays | `Unlock_Rays.pxc` | 64×64 | 8 @8 | yes | `build_rewards.py rays` |
+| 9 | Silhouette fill (swap portrait on frame 3) | `Unlock_Fill.pxc` | 48×48 | 8 @20 | no | `build_rewards.py unlockfill` |
+| 11 | Crit spark (gold, open center) | `Damage_Crit.pxc` | 24×24 | 5 @20 | no | `build_rewards.py crit` |
+
+**Placeholder pixel art** (PNG + JSON written directly to `sheets/` by `build_fillers.py`; no `.pxc`; replace with final art at the same size and frame count):
+
+| # | Asset | Size | Frames @fps | Notes |
+|---|---|---|---|---|
+| 1 | `Pack_Drop_{Common,Rare,Legendary}` | 16×20 | 6 @10, loop | wrapper width grows with rarity; bob, glint, glow |
+| 1b | `Pack_Open_{Common,Rare,Legendary}` | 24×32 | 7 @20, once | one strip per rarity |
+| 2 | `Pack_CardBack` | 60×85 | 3 (common, rare, legendary) | inner art only |
+| 5 | `Reward_Trail` (final, not a placeholder; too small for Pixel Composer shapes) | 8×8 | 5 @20, once | white sparkle, tint gold in code |
+| — | `Icon_{Bolstering_Croak,Growing_Colony,Staggering_Roar}` | 16×16 | 16, coin spin | stand-ins for the icon redraws |
+
+Rarity colors: common `#78949b`, rare `#8973ab`, legendary `#f7b750`. Not done yet: Priority 3 (capture affinity variants, guardian arrival).

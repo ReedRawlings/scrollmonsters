@@ -1,0 +1,18 @@
+{
+  "image": "Icon_Staggering_Roar.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 16,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 1.333,
+  "loop": true,
+  "anchor": {
+    "x": 8,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "PLACEHOLDER art. Staggering Roar upgrade icon, 16-frame coin spin (fps is a guess; match the other Tiny Dungeons icons).",
+  "smoothing": "none (nearest neighbor)"
+}

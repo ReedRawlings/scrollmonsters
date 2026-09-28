@@ -1,0 +1,23 @@
+{
+  "image": "Pack_CardBack.png",
+  "frame_width": 60,
+  "frame_height": 85,
+  "frame_count": 3,
+  "layout": "horizontal strip, no spacing",
+  "fps": null,
+  "duration_s": null,
+  "loop": false,
+  "anchor": {
+    "x": 30,
+    "y": 42,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "PLACEHOLDER art. Card back inner art, one frame per rarity: common, rare, legendary. Sits inside the DarkMode item-slot nine-slice.",
+  "smoothing": "none (nearest neighbor)",
+  "frames_by_rarity": [
+    "common",
+    "rare",
+    "legendary"
+  ]
+}
