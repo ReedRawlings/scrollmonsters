@@ -43,7 +43,7 @@
         for(const otherType of TYPES){const other=this.captureBody(otherType);if(other!==body&&other?.captureStage===stage)this.dismissCapture(otherType,other);}
         s.logEvent('recruitment_chosen',{creature:type,stage});
       }
-      this.unlock(type);s.logEvent(type+'_captured');s.announce((type==='storm'?'STORM LIZARD':type.toUpperCase())+' recruited and unlocked as a starter!');s.saveRun();
+      this.unlock(type);s.logEvent(type+'_captured');s.announce((type==='storm'?'STORM LIZARD':type.toUpperCase())+' recruited and unlocked as a starter!');s.saveRun();s.reward('capture',{type,x:body.x,y:body.y});
     }
     shieldBlocked(){this.s.burst('fxWater',this.s.player.x,this.s.player.y,3,.45);this.shieldBlocks++;this.s.relics.shieldBlocked();this.s.creatures.elements.shieldBlock();this.s.logEvent('shield_blocked');}
     update(dt){const s=this.s;this.capture(this.catCapture,'cat',dt);this.capture(this.frog,'frog',dt);this.pulse=Math.max(0,this.pulse-dt);
@@ -87,8 +87,8 @@
     phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian finale'][this.phase]||'Explore the woodland';}
     interval(){const t=this.s.elapsed;if(t<60)return .85-t*.004;if(t<120)return .55;if(t<150)return .7;if(t<180)return .4;if(t<200)return .85;if(t<240)return .4;return Math.max(.18,.34-Math.max(0,t-300)*.00055);}
     enemyType(){const s=this.s;if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.elapsed>=570)return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
-    draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);g.lineStyle(2,0x8ce7ae).strokeCircle(f.x,f.y,f.state==='ready'?70:23);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
-      if(this.catCapture)g.lineStyle(3,0x8ce7ae).strokeCircle(this.catCapture.x,this.catCapture.y,70);
+    draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);if(f.state!=='ready')g.lineStyle(2,0x8ce7ae).strokeCircle(f.x,f.y,23);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
+      
       const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setTint(sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff);
       if(s.isExpedition&&s.elapsed>=90){g.lineStyle(3,sh.done?0x66716e:sh.inCombat?0xffa066:0xb2eddf).strokeCircle(sh.x,sh.y,70);for(let i=0;i<3;i++)g.fillStyle(i<sh.completed?0x66716e:0xffd36b).fillCircle(sh.x-16+i*16,sh.y+46,4);if(sh.progress>0)g.lineStyle(6,0xffd36b).beginPath().arc(sh.x,sh.y,70,-Math.PI/2,-Math.PI/2+Math.PI*2*sh.progress/6).strokePath();}
     }

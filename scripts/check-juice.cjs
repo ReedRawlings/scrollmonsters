@@ -120,6 +120,21 @@ async function expeditionEvents(browser, juiceOn) {
     assert(await state(lvl, () => __survivorTest.scene.juice.played.includes('Slot_PowerUp')), 'The slot powers up when the icon lands');
     assert.deepEqual(lvl.errors, []);
     await lvl.close();
+    // --- capture: sheet ring + fill replace the drawn arc; completion bursts and flies the faceset home ---
+    const cap = await open(browser, {width: 390, height: 844}, 'survivors.html?test', {mobile: true});
+    const ring = await state(cap, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
+      s.expedition.release('mouse', s.player.x + 20, s.player.y, false); advanceTime(1250); s.draw();
+      const r = s.juice.rings.mouse; return r && {visible: r.ring.visible && r.fill.visible, fill: r.fill.frame.name, progress: s.creatures.allies.mouse.progress}; });
+    assert(ring && ring.visible, 'A capture-ready creature shows the sheet ring and fill');
+    assert.equal(ring.fill, 'f' + Math.round(ring.progress / 2.5 * 16), 'Fill frame follows capture progress');
+    const done = await state(cap, () => { const s = __survivorTest.scene; advanceTime(1400); s.draw();
+      return {state: s.creatures.allies.mouse.state, burst: s.juice.played.includes('Capture_Burst'), froze: s.juice.frozenUntil > 0, ringGone: !s.juice.rings.mouse?.ring.visible}; });
+    assert.deepEqual(done, {state: 'ally', burst: true, froze: true, ringGone: true});
+    await wait(1300);
+    assert(await state(cap, () => __survivorTest.scene.juice.played.includes('Slot_PowerUp')), 'The faceset lands in the party bar');
+    await cap.screenshot({path: 'output/juice/capture.png'});
+    assert.deepEqual(cap.errors, []);
+    await cap.close();
     console.log('PASS: juice');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

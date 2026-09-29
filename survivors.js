@@ -354,8 +354,8 @@
         if(e.hp<e.maxHp){this.fx.fillStyle(0x382921,.8).fillRect(e.x-15,e.y-28,30,4);this.fx.fillStyle(0xf0c16e).fillRect(e.x-15,e.y-28,30*e.hp/e.maxHp,4);}}
       const o=this.owl;this.owlSprite.setVisible(!!o);
       if(o){this.owlSprite.setPosition(o.x,o.y).setFrame(frame*4+direction(p.x-o.x,p.y-o.y)).setDepth(o.y+20);
-        this.fx.lineStyle(3,o.state==='ally'?0x8ee0df:0xffd36b,.9).strokeCircle(o.x,o.y,o.state==='ready'?70:24);
-        if(o.state==='ready'){this.fx.lineStyle(6,0x8ee0df,1).beginPath().arc(o.x,o.y,70,-Math.PI/2,-Math.PI/2+Math.PI*2*o.progress/2.5,false).strokePath();}
+        if(o.state!=='ready')this.fx.lineStyle(3,o.state==='ally'?0x8ee0df:0xffd36b,.9).strokeCircle(o.x,o.y,24);
+        
         if(o.state==='wild'){this.fx.fillStyle(0x30221a).fillRect(o.x-20,o.y-33,40,5);this.fx.fillStyle(0xffd36b).fillRect(o.x-20,o.y-33,40*o.hp/o.maxHp,5);}
       }
       this.encounters.draw();this.expedition.draw();this.creatures.draw();this.relics.draw();

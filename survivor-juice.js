@@ -11,7 +11,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.upgrade=e=>this.onUpgrade(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.upgrade=e=>this.onUpgrade(e);
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
@@ -26,7 +26,7 @@
     now(){return this.s.time.now;}
     observe(){if(this.s.mode!==this.mode){this.mode=this.s.mode;this.modeAt=this.now();}}
     since(mode){return this.mode===mode?this.now()-this.modeAt:Infinity;}
-    meta(key){const m=FX_SHEETS[key];if(m)return m;const t=this.s.textures.get(key).getSourceImage();return {fw:16,fh:16,n:Math.max(1,Math.floor(t.width/16)),fps:12,loop:true,ax:8,ay:8};}
+    meta(key){const m=FX_SHEETS[key];if(m)return m;if(/^face_/.test(key))return {fw:38,fh:38,n:1,fps:1,loop:true,ax:19,ay:19};const t=this.s.textures.get(key).getSourceImage();return {fw:16,fh:16,n:Math.max(1,Math.floor(t.width/16)),fps:12,loop:true,ax:8,ay:8};}
     // Sheets load as plain images; frames are cut on demand so sprites and NativeView.image share them.
     frameName(key,i){const m=this.meta(key),n=clamp(Math.floor(i),0,m.n-1),name='f'+n,t=this.s.textures.get(key);if(!t.has(name))t.add(name,0,n*m.fw,0,m.fw,m.fh);return name;}
     frameRect(key,i){const m=this.meta(key),n=clamp(Math.floor(i),0,m.n-1);return [n*m.fw,0,m.fw,m.fh];}
@@ -112,6 +112,29 @@
       this.auraSprites??=[s.add.sprite(0,0,key('Back')),s.add.sprite(0,0,key('Front'))];
       ['Back','Front'].forEach((b,i)=>{const sp=this.auraSprites[i],k=key(b),mm=this.meta(k);
         sp.setVisible(this.enabled).setTexture(k,this.frameName(k,this.frameAt(k,t))).setOrigin(mm.ax/mm.fw,mm.ay/mm.fh).setScale(3).setPosition(p.x,p.y+24).setDepth(p.y+(i?21:19));});
+    }
+    // Sheet ring + fill at 3x in the world. Ids not drawn this frame are hidden (mark and sweep).
+    ring(id,x,y,fill01,{tint=0xffffff,alpha=1}={}){
+      const now=this.now();let r=this.rings[id];
+      if(!r){const m=this.meta('Capture_Ring');r=this.rings[id]={ring:this.s.add.sprite(0,0,'Capture_Ring',this.frameName('Capture_Ring',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3),
+        fill:this.s.add.sprite(0,0,'Capture_Fill',this.frameName('Capture_Fill',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3)};}
+      r.seen=true;
+      r.ring.setVisible(true).setPosition(x,y).setDepth(y-3).setTint(tint).setAlpha(alpha).setFrame(this.frameName('Capture_Ring',this.frameAt('Capture_Ring',now,true)));
+      r.fill.setVisible(fill01>0).setPosition(x,y).setDepth(y-2).setAlpha(alpha).setFrame(this.frameName('Capture_Fill',Math.round(clamp(fill01,0,1)*16)));
+    }
+    updateWorld(now){
+      for(const r of Object.values(this.rings))r.seen=false;
+      if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm']){
+        const b=this.s.expedition.captureBody(type);if(b?.state==='ready')this.ring(type,b.x,b.y,b.progress/2.5);}
+      this.updateShrine?.(now);
+      for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
+    }
+    onCapture(e){
+      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);
+      const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
+      if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}
+      this.s.time.delayedCall(500,()=>{if(!face.active)return;const from={x:face.x,y:face.y};face.destroy();
+        this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1})});});
     }
   }
   window.SurvivorJuice = SurvivorJuice;

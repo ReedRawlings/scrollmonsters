@@ -135,7 +135,7 @@
       for(const e of s.enemies)if(e.type==='owl'&&e.phase==='shoot')g.lineStyle(2,0xff8070,.8).lineBetween(e.x,e.y,e.x+Math.cos(e.aim)*200,e.y+Math.sin(e.aim)*200);
       for(const t of this.trails)g.lineStyle(14,0xffc464,t.life/.22*.65).lineBetween(t.x-t.dx*18,t.y-t.dy*18,t.x+t.dx*18,t.y+t.dy*18);
       for(const p of this.pulses)g.lineStyle(5,0xffd36b,p.life/.35).strokeCircle(p.x,p.y,p.r*(1-p.life/.35));
-      const b=this.beast;this.beastSprite.setVisible(!!b);if(b){this.beastSprite.setPosition(b.x,b.y).setDepth(b.y+20).setFrame(Math.floor(s.elapsed*8)%4*4).setTint(b.charge>0?0xffdd88:0xffffff);g.lineStyle(3,0x83d9ff).strokeCircle(b.x,b.y,b.state==='ready'?70:23);if(b.state==='ready')g.lineStyle(6,0xffd36b).beginPath().arc(b.x,b.y,70,-Math.PI/2,-Math.PI/2+Math.PI*2*b.progress/2.5,false).strokePath();}
+      const b=this.beast;this.beastSprite.setVisible(!!b);if(b){this.beastSprite.setPosition(b.x,b.y).setDepth(b.y+20).setFrame(Math.floor(s.elapsed*8)%4*4).setTint(b.charge>0?0xffdd88:0xffffff);if(b.state!=='ready')g.lineStyle(3,0x83d9ff).strokeCircle(b.x,b.y,23);}
       const boss=this.boss;this.bossSprite.setVisible(!!boss&&boss.hp>0);if(boss?.hp>0){this.bossSprite.setPosition(boss.x,boss.y).setDepth(boss.y+35).setFrame(Math.floor(s.elapsed*6)%6);if(boss.phase==='ring')g.lineStyle(4,0xffa052).strokeCircle(boss.x,boss.y,65+(1.1-boss.clock)*35);if(boss.phase==='aimed')g.lineStyle(3,0xffa052).lineBetween(boss.x,boss.y,boss.x+Math.cos(boss.aim)*320,boss.y+Math.sin(boss.aim)*320);}
       for(const bullet of this.bullets)bullet.sprite.setPosition(bullet.x,bullet.y).setFrame(bullet.source==='owl_feather'?0:Math.floor(s.elapsed*12)%4).setRotation(Math.atan2(bullet.dy,bullet.dx)).setDepth(2900);
     }
