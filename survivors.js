@@ -114,12 +114,12 @@
       const border=this.add.graphics().setDepth(-4);border.lineStyle(8,0x426845,.8).strokeRect(12,12,WORLD-24,WORLD-24);
     }
     resetState(){
-      this.expansion=new SurvivorExpansion(this);this.totalXp=0;this.xpRemainder=0;
+      this.rng=9137;this.expansion=new SurvivorExpansion(this);this.totalXp=0;this.xpRemainder=0;
       for(const list of [this.enemies,this.shots,this.effects,this.pickups])for(const e of list)e.sprite.setVisible(false);
-      this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.rng=9137;this.elapsed=0;this.spawnTimer=.25;this.kills=0;this.spawned=0;this.peakEnemies=0;this.spawnCapSeconds=0;this.catKills=0;this.playerDamage=0;this.catDamage=0;this.damageTaken=0;this.accumulator=0;this.joy=null;
+      this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.elapsed=0;this.spawnTimer=.25;this.kills=0;this.spawned=0;this.peakEnemies=0;this.spawnCapSeconds=0;this.catKills=0;this.playerDamage=0;this.catDamage=0;this.damageTaken=0;this.accumulator=0;this.joy=null;
       Object.assign(this.player,{x:WORLD/2,y:WORLD/2,hp:MAX_HP,inv:0,fire:.1,dir:0});Object.assign(this.cat,{x:WORLD/2-42,y:WORLD/2+30,attack:0});
       this.owl=null;this.owlAppeared=false;this.owlDamage=0;this.haste=0;this.chorusTime=0;this.shield=false;this.notice='';this.noticeTime=0;this.nextHealAt=30;this.supplyAt=35;this.supplyIndex=0;this.level=1;this.xp=0;this.choices=[];this.upgrades={partyDamage:0,partySpeed:0,mousePower:0,mouseCount:0,mouseSpeed:0,mouseJump:0,molePower:0,moleArea:0,moleSpeed:0,moleEcho:0,moleSlow:0,bearPower:0,bearArea:0,bearSpeed:0,bearStun:0,bearGuard:0,claws:0,sweep:0,cast:0,feather:0,hide:0,feet:0,pull:0,split:0,slam:0,owlPower:0,owlSpeed:0,beastPower:0,beastSpeed:0,bubble:0,frogPower:0,chorus:0,marks:0};this.maxHp=40;this.stronger=false;
-      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:Math.random()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
+      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
     chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
