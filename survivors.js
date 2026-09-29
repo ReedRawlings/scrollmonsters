@@ -206,7 +206,7 @@
       if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);}}if(this.encounters.hitSpecial(e))return;
       if(e===this.owl&&e.hp<=0){e.state='ready';e.progress=0;this.logEvent('owl_weakened');this.announce('Owl weakened! Stay inside its ring to capture.');return;}
       const dx=e.x-from.x,dy=e.y-from.y,d=Math.hypot(dx,dy)||1;if(!this.unstoppable(e)){if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.move(e,dx/d*12,dy/d*12);}
-      if(e.hp<=0){if(e.relicReward)this.relics.reward('roaming_elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
+      if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
     }
     announce(message){this.notice=message;this.noticeTime=4;}
     drop(type,x,y){const sprite=this.pooled(this.pickupPool,{xp:'shieldPickup',heal:'heart',haste:'frenzyPickup',shield:'shieldPickup',magnet:'magnetPickup',cleanse:'cleansePickup'}[type],type==='xp'?.3:type==='shield'?.85:1.7);this.pickups.push({type,x,y,life:type==='xp'?Infinity:25,sprite});}

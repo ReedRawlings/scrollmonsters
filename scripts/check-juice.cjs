@@ -30,6 +30,7 @@ async function expeditionEvents(browser, juiceOn) {
     while (s.elapsed < 420 && steps++ < 40000) {
       if (s.mode === 'relic') s.relics.choose(0);
       else if (s.mode === 'upgrade') s.chooseUpgrade(0);
+      else if (s.mode === 'pack') s.packs.close();
       else if (s.mode === 'unlock') s.closeUnlock();
       else if (s.mode !== 'playing') break;
       if (!released && s.elapsed >= 20) { released = true; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); }

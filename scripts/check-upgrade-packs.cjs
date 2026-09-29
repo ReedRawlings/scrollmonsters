@@ -67,6 +67,30 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.deepEqual(f.restart, [0, null, 0], 'restart clears packs');
     assert.deepEqual(page.errors, []);
     await page.close();
+    // --- sources: elites and caches drop packs; relics only after a shrine completion ---
+    const src = await open(browser);
+    const d = await state(src, () => { const s = __survivorTest.scene, out = {}; s.start(); s.spawnTimer = 999;
+      s.elapsed = 330; s.relics.update(0); const hunter = s.enemies.find(e => e.packReward); out.hunterFlag = !!hunter;
+      s.hit(hunter, 9999, 'player', s.player); out.hunter = [s.packs.items.length, s.relics.queue.length];
+      s.start(); s.elapsed = 45; s.relics.update(0); const cache = s.relics.cache; s.player.x = cache.x; s.player.y = cache.y;
+      for (let i = 0; i < 3; i++) s.relics.update(0); for (const g of s.enemies.filter(e => e.cacheGuard)) s.hit(g, 9999, 'player', s.player); s.relics.update(0);
+      out.cache = [s.packs.items.length, s.relics.queue.length, s.packs.items[0]?.source];
+      return out; });
+    assert.equal(d.hunterFlag, true, 'Hunters still spawn, now carrying a pack');
+    assert.deepEqual(d.hunter, [1, 0], 'An elite kill drops a pack and queues no relic');
+    assert.deepEqual(d.cache.slice(0, 2), [1, 0], 'A claimed cache drops a pack and queues no relic'); assert(/_cache$/.test(d.cache[2]));
+    // A full 600s policy run: every relic offer follows a shrine completion, and packs actually open.
+    const run = await state(src, () => { const s = __survivorTest.scene; s.start(); let steps = 0;
+      while (s.elapsed < 601 && steps++ < 60000) { if (s.mode === 'relic') s.relics.choose(0); else if (s.mode === 'upgrade') s.chooseUpgrade(0); else if (s.mode === 'pack') s.packs.close(); else if (s.mode === 'unlock') s.closeUnlock(); else if (s.mode !== 'playing') break;
+        const sh = s.expedition.shrine; if (s.elapsed >= 100 + 60 * sh.completed && sh.completed < 3 && !sh.inCombat) { sh.inCombat = true; s.expedition.completeShrine({shrineTier: sh.completed + 1}); }
+        s.player.inv = 2; s.tick(1 / 60); }
+      return s.run.events.filter(e => ['relic_offered', 'shrine_completed', 'pack_dropped', 'pack_opened'].includes(e.type)).map(e => e.type); });
+    let shrines = 0, offers = 0; for (const t of run) { if (t === 'shrine_completed') shrines++; if (t === 'relic_offered') { offers++; assert(offers <= shrines, 'relics are offered only after a shrine completion'); } }
+    assert(run.includes('pack_dropped'), 'The policy run drops packs');
+    assert.equal(shrines, 3); assert(offers >= 1, 'Shrine clears still offer relics');
+    console.log('policy run:', {shrines, offers, dropped: run.filter(t => t === 'pack_dropped').length, opened: run.filter(t => t === 'pack_opened').length});
+    assert.deepEqual(src.errors, []);
+    await src.close();
     console.log('Upgrade packs: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
