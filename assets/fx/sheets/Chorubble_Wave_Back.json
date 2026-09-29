@@ -1,0 +1,19 @@
+{
+  "image": "Chorubble_Wave_Back.png",
+  "frame_width": 96,
+  "frame_height": 64,
+  "frame_count": 9,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.6,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Chorubble: the echo bouncing back (higher damage). Rings collapse onto the anchor and hit on frames 6-8; apply the damage on frame 6.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 6
+}

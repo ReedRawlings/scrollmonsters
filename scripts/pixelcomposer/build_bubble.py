@@ -10,7 +10,7 @@ W,H,FR=96,96,32                 # 30 fps source; sheet takes every other frame -
 GX,GY=48,48                     # ground anchor (ring / shadow center)
 POP=18                          # bubble visible 0..17, pop flash 18..19, ring+droplets 18..31
 def abgr(hx,a=255): r,g,b=int(hx[1:3],16),int(hx[3:5],16),int(hx[5:7],16); return (a<<24)|(b<<16)|(g<<8)|r
-DEEP,MID,CYAN,WHITE="#124e89","#0099db","#2ce8f5","#ffffff"
+DEEP,MID,CYAN,WHITE="#5d6b79","#78949b","#c2b5c4","#ffffff"
 def key(f,v): return [[0,f],v,[0,1],[0,0],0,0,True,0,16777215]
 def anim(inp,keys): inp["anim"]=True; inp["r"]=[key(f,v) for f,v in keys]
 def nid(p): return p+''.join(random.choices(string.ascii_letters,k=20))
@@ -71,6 +71,7 @@ for k,(layer,v) in enumerate(layers):
     cur=b
 
 post=add(old["Node_Posterize"],"Posterize",768,480)
+from fxlib import palette; post["inputs"][1]["r"]["d"]=palette("Toasted40W")   # base project still carries Endesga
 for i in post["inputs"]:
     if isinstance(i,dict) and "from_node" in i: i.pop("from_node"); i.pop("from_index",None)
 link(post,0,cur)

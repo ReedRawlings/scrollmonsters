@@ -4,6 +4,9 @@
   const WORLD = 2304, DURATION = new URLSearchParams(location.search).has('trial')?120:600, STEP = 1 / 60, MAX_HP = 40;
   const RUN_HISTORY_KEY = 'scrollmonsters-survivor-runs-v1', RUN_HISTORY_BYTES = 2 * 1024 * 1024;
   const A = 'assets/Ninja Adventure - Asset Pack/';
+  const UI = 2; // every survivors UI element is laid out in logical space and drawn at 2x
+  const FACESETS = {walker:'Characters/EggBoy',cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
+  const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil'];
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
   const direction = (x,y) => Math.abs(x)>Math.abs(y) ? (x<0?2:3) : (y<0?1:0);
@@ -38,10 +41,12 @@
       this.load.image('heart',A+'Items/Potion/Heart.png');
       this.load.image('floor',A+'Backgrounds/Tilesets/TilesetFloor.png');
       this.load.image('nature',A+'Backgrounds/Tilesets/TilesetNature.png');
-      this.load.image('woodPanel',A+'Ui/Theme/Theme Wood/nine_path_panel.png');
-      this.load.image('woodButton',A+'Ui/Theme/Theme Wood/button_normal.png');
-      this.load.font('NinjaPixel',encodeURI(A+'Ui/Font/NormalFont.ttf'));
       this.load.audio('hit',A+'Audio/Sounds/Menu/Accept4.wav');
+      for(const k of ['panel','slot','pill','banner','status','zslot','heart'])this.load.image('dk_'+k,'assets/ui/darkmode/'+k+'.png');
+      this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
+      this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
+      for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
+      for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+id+'.png');
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
@@ -63,10 +68,11 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(3000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
-      this.input.on('pointerdown',p=>{if(this.mode==='playing'&&p.y>85&&!this.joy&&!(p.x>this.scale.width-120&&p.y>this.scale.height-145))this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
+      // Any interactive UI object under the pointer owns the press; only bare field starts movement.
+      this.input.on('pointerdown',(p,over)=>{if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
       this.input.on('pointermove',p=>{if(this.joy?.id===p.id){this.joy.dx=p.x-this.joy.x;this.joy.dy=p.y-this.joy.y;}});
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
@@ -86,6 +92,9 @@
       if(new URLSearchParams(location.search).has('test'))window.__survivorTest={scene:this,start:()=>this.start(),spawn:(type,x,y)=>this.spawn(type,x,y),tick:seconds=>window.advanceTime(seconds*1000)};
       window.__phaserReady=true;
     }
+    uiSize(){return {w:this.scale.width/UI,h:this.scale.height/UI};}
+    // World point to logical UI point (the world camera never zooms).
+    toUI(x,y){const cam=this.cameras.main;return {x:(x-cam.scrollX)/UI,y:(y-cam.scrollY)/UI};}
     rand(){this.rng=(1664525*this.rng+1013904223)>>>0;return this.rng/4294967296;}
     makeMap(){
       const floor=this.textures.get('floor');floor.add('grass',0,0,192,16,16);floor.add('sand',0,16,16,16,16);this.textures.get('desert').add('palm',0,160,160,32,32);
@@ -113,6 +122,7 @@
       this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:Math.random()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
+    chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
     start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.resetState();this.run={id:crypto.randomUUID(),version:2,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
@@ -319,18 +329,6 @@
       if(!this.run?.finished)this.sampleRun();
     }
     update(time,delta){if(!this.manual&&!window.__vt_pending){this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}this.draw();}
-    label(text,x,y,size=18,color='#fff5d7',align='left'){
-      return this.ui.object('label',()=>new Phaser.GameObjects.Text(this,0,0,'',{fontFamily:'NinjaPixel'})).setText(text.replace(/ /g,'\u2009')).setPosition(x,y).setFontSize(size).setColor(color).setOrigin(align==='center'?.5:0,0);
-    }
-    captureLabel(type,body){
-      const name=type==='storm'?'STORM LIZARD':type.toUpperCase(),cam=this.cameras.main,w=this.scale.width,h=this.scale.height;
-      const text='CAPTURE '+name+' '+Math.round(body.progress/2.5*100)+'%\nCHOOSE 1 THIS ROUND';
-      const label=this.label(text,body.x-cam.scrollX,clamp(body.y-cam.scrollY-85,160,h-150),12,'#30221a','center').setAlign('center');
-      const margin=Math.min(w/2,label.width/2+12);
-      label.setX(clamp(body.x-cam.scrollX,margin,w-margin));
-    }
-    panel(x,y,w,h){const panel=this.ui.object('panel',()=>new ScrollUI.WoodPanel(this)).setPosition(x,y).layout('woodPanel',w,h);panel.background.setTint(0x70554a);return panel;}
-    button(label,x,y,w,action){return this.ui.object('button',()=>new ScrollUI.WoodButton(this,this.ui)).setScrollFactor(0).layout(label,x,y,w,44,{texture:'woodButton',borderX:7,borderY:3,scale:2,size:18,color:'#30221a',action});}
     draw(){if(!this.ui)return;const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
@@ -350,55 +348,16 @@
       for(const s of this.shots){s.sprite.setPosition(s.x,s.y).setRotation(s.source==='owl'?Math.atan2(s.dy,s.dx):this.elapsed*8).setDepth(2800);if(s.source==='owl'){s.sprite.setScale(s.split?1.5:2).setTint(0xd8faff);this.fx.lineStyle(s.split?1:2,0xadebff,.7).lineBetween(s.x,s.y,s.x-s.dx*18,s.y-s.dy*18);}if(s.charged)s.sprite.setTint(0xffd36b).setScale(.7);}
       for(const e of this.effects)e.sprite.setPosition(e.x,e.y).setRotation(e.a).setFrame(Math.min((e.frames||4)-1,Math.floor((1-e.life/(e.maxLife||.26))*(e.frames||4)))).setDepth(2850);
       for(const e of this.pickups){e.sprite.setPosition(e.x,e.y).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
-      const w=this.scale.width,h=this.scale.height,compact=w<700;
       this.ui.begin(this.mode);
-      this.panel(10,10,w-20,68);this.label(this.isExpedition?(compact?(this.field==='desert'?'DESERT':'EXPEDITION'):(this.field==='desert'?'DESERT EXPEDITION':'WOODLAND EXPEDITION')):'WOODLAND TRIAL',26,20,compact?13:18,'#fff0b0');
-      this.label('HP '+Math.ceil(p.hp)+' / '+this.maxHp,26,47,16,p.hp<18?'#ff9c8e':'#fff5d7');
-      this.label(`${Math.floor(this.elapsed/60)}:${String(Math.floor(this.elapsed%60)).padStart(2,'0')} / ${this.isExpedition?'10:00':'2:00'}`,w/2,23,19,'#ffd36b','center');
-      this.label(this.kills+' defeated',w/2,48,15,'#e2ccb0','center');
-      if(this.mode==='playing')this.button('Pause',w-112,22,86,()=>this.pause());
-      this.panel(10,h-83,w-20,73);this.label(this.expedition.party().join(' + ').toUpperCase(),26,h-70,14,'#8ee0df');
-      const objective=this.elapsed>=DURATION&&this.encounters.boss?.hp>0?'Defeat the Guardian to finish':this.elapsed>=(this.isExpedition?570:90)?'Guardian finale':'Explore · Recruit · Grow your party';
-      this.label(objective,26,h-45,14);
-      if(this.logStorageError||this.unlockError)this.label('Local progress could not be saved',w/2,80,14,'#ff9c8e','center');
-      const buffs='Lv '+this.level+' · '+this.xp+'/'+this.xpNeeded()+' XP → Lv '+(this.level+1);this.label(buffs,w-26,h-69,compact?11:14,'#ffd36b').setOrigin(1,0);
-      const xpBar=this.ui.object('xpBar',()=>new Phaser.GameObjects.Graphics(this)).setScrollFactor(0);xpBar.clear().fillStyle(0x30221a).fillRect(26,h-52,w-52,5).fillStyle(0xffd36b).fillRect(26,h-52,(w-52)*Math.min(1,this.xp/this.xpNeeded()),5);
-      if(this.mode==='playing'){
-        this.encounters.drawUI(w,h);this.expedition.drawUI(w,h);this.creatures.ui(w,h);
-        if(this.noticeTime>0){this.panel(20,88,w-40,38);this.label(this.notice,w/2,99,compact?13:16,'#fff5d7','center');}
-        for(const item of this.pickups.filter(e=>e.type!=='xp')){const cam=this.cameras.main,x=item.x-cam.scrollX,y=item.y-cam.scrollY;if(x>25&&x<w-25&&y>145&&y<h-120)this.label({heal:'+8 HP',haste:'FRENZY',shield:'SHIELD',magnet:'XP MAGNET',cleanse:'CLEANSE'}[item.type],x,y+23,12,'#30221a','center');}
-        if(o?.state==='ready')this.captureLabel('owl',o);
-        else if(o?.state==='wild'){const cam=this.cameras.main;this.label('WILD OWL',clamp(o.x-cam.scrollX,95,w-95),clamp(o.y-cam.scrollY,145,h-120)-48,13,'#30221a','center');}
-      }
-      if(this.mode==='relic'||(this.mode==='paused'&&this.relics.equipped.length)){
-        // Relics own this screen; do not create interactive pause controls underneath.
-      }else if(this.mode==='upgrade'){
-        const pw=Math.min(w-32,490),px=(w-pw)/2,py=(h-350)/2;this.panel(px,py,pw,350);
-        this.label('LEVEL '+this.level+' · CHOOSE AN UPGRADE',w/2,py+22,compact?18:21,'#fff0b0','center');
-        this.label('Combat paused · lasts for this run',w/2,py+54,15,'#e2ccb0','center');
-        this.choices.forEach((choice,i)=>{this.button((i+1)+'. '+choice.name,px+24,py+88+i*81,pw-48,()=>this.chooseUpgrade(i));this.label(choice.detail,w/2,py+137+i*81,14,'#fff5d7','center');});
-      }else if(this.mode==='bestiary'){
-      }else if(this.mode==='title'){
-        const pw=Math.min(w-32,490),px=(w-pw)/2,py=Math.max(88,(h-480)/2);this.panel(px,py,pw,490);
-        this.label(this.isExpedition?'TEN-MINUTE EXPEDITION':'TWO-MINUTE TRIAL',w/2,py+22,compact?19:22,'#fff0b0','center');
-        this.expansion.starterGrid(px+18,py+55,pw-36);
-        const half=(pw-56)/2;
-        this.button(this.field==='desert'?'Desert':'Woodland',px+24,py+338,half,()=>location.assign('survivors.html?'+(this.isExpedition?'':'trial&')+'field='+(this.field==='desert'?'woods':'desert')));
-        this.button('Begin',px+32+half,py+338,half,()=>this.start());
-        this.button(this.isExpedition?'Switch to short trial':'Switch to expedition',px+24,py+386,pw-48,()=>location.assign('survivors.html?'+(this.isExpedition?'trial&':'')+'field='+this.field));
-        this.button('History',px+24,py+434,half,()=>location.assign('survivor-runs.html'));this.button('Legacy',px+32+half,py+434,half,()=>location.assign('legacy.html'));
-      }else if(this.mode!=='playing'){
-        const pw=Math.min(w-32,470),px=(w-pw)/2,py=Math.max(96,(h-335)/2);this.panel(px,py,pw,335);
-        const title={title:'THE WOODLAND TRIAL',paused:'TAKE A BREATHER',won:'EXPEDITION COMPLETE',lost:'EXPEDITION FAILED'}[this.mode];this.label(title,w/2,py+25,24,'#fff0b0','center');
-        let lines=this.mode==='title'?['Choose a nest. Recruit one companion.','Move with WASD or arrow keys.','On touch: drag anywhere to move.','Collect XP; choose upgrades on level-up.','Guardian at 1:30. Defeat it to finish.']:this.mode==='paused'?['Your run is paused.','Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.']:['Survived '+Math.floor(this.elapsed)+' seconds · '+this.kills+' defeated','Your damage: '+Math.round(this.playerDamage),'Cat: '+Math.round(this.catDamage)+' · Ally: '+Math.round(this.owlDamage+this.encounters.beastDamage+Object.values(this.creatures.damage).reduce((a,b)=>a+b,0)),'Damage taken: '+this.damageTaken];
-        lines.forEach((t,i)=>this.label(t,w/2,py+72+i*25,compact?15:17,'#e2ccb0','center'));
-        this.button(this.mode==='paused'?'Resume':'Choose starter / play again',px+30,py+220,pw-60,()=>{if(this.mode==='paused')this.pause();else{this.mode='title';this.draw();}});
-        this.button('Run history / export',px+30,py+269,pw-60,()=>{this.saveRun();location.assign('survivor-runs.html');});
-      }
-      this.relics.ui(w,h);this.expansion.ui(w,h);this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
+      const logical=this.uiSize();
+      this.ui.beginGroup('ui2x',{scale:UI});
+      if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
+      if(['title','paused','won','lost','upgrade','relic'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      this.ui.endGroup();
+      this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
     snapshot(){return {field:this.field,dash:{cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; origin top-left; x right, y down',world:{width:WORLD,height:WORLD},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles,enemies:this.enemies.slice(0,40).map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows or touch drag; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
   const portrait=window.innerWidth/window.innerHeight<.85;
-  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:960,height:portrait?820:640,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
+  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:960,height:portrait?960:640,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
 })();

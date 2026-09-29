@@ -1,0 +1,18 @@
+{
+  "image": "Palimaw_Tongue_Mid.png",
+  "frame_width": 8,
+  "frame_height": 16,
+  "frame_count": 1,
+  "layout": "horizontal strip, no spacing",
+  "fps": null,
+  "duration_s": null,
+  "loop": false,
+  "anchor": {
+    "x": 0,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Palimaw tongue middle, tiles horizontally. Stretch/repeat from Palimaw's mouth to the tip along the lash line (rotate to aim); the band sits on rows 3-12 so it lines up with Palimaw_Tongue_Tip.",
+  "smoothing": "none (nearest neighbor)"
+}

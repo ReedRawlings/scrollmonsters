@@ -1,0 +1,19 @@
+{
+  "image": "Ratiot_Bite.png",
+  "frame_width": 48,
+  "frame_height": 56,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 31,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Ratiot: huge upper jaw slams onto a tiny lower jaw over the target (single target, melee). Anchor = target center; damage on frame 3.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 3
+}

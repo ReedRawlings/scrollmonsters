@@ -7,7 +7,7 @@ ROOT=os.path.abspath(os.path.join(HERE,"..",".."))
 EX=os.path.join(ROOT,"assets","fx","pixelcomposer")+"/"
 SHEETS=os.path.join(ROOT,"assets","fx","sheets")+"/"
 def abgr(hx): r,g,b=int(hx[1:3],16),int(hx[3:5],16),int(hx[5:7],16); return (255<<24)|(b<<16)|(g<<8)|r
-INK,DARK,RED,PINK,WHITE,MAROON="#181425","#a22633","#e43b44","#f6757a","#ffffff","#733e39"
+INK,DARK,RED,PINK,WHITE,MAROON="#1c080c","#84333e","#cd5151","#d46e76","#ffffff","#5f2525"
 def key(f,v): return [[0,f],v,[0,1],[0,0],0,0,True,0,16777215]
 def anim(inp,keys): inp["anim"]=True; inp["r"]=[key(f,v) for f,v in keys]
 T=lambda f: json.load(open(os.path.join(HERE,"templates",f)))
@@ -50,6 +50,7 @@ class Project:
             o=s.add(T("outline_node.json"),"Outline",576,0); I=o["inputs"]; s.link(o,0,cur)
             I[1]["r"]["d"]=1; I[2]["r"]["d"]=abgr(INK); I[5]["r"]["d"]=1; I[6]["r"]["d"]=0; cur=o
         p=s.add(s.old["Node_Posterize"],"Posterize",768,0); s.link(p,0,cur)
+        from fxlib import palette; p["inputs"][1]["r"]["d"]=palette("Toasted40W")   # base project still carries Endesga
         ss=s.add(s.old["Node_Render_Sprite_Sheet"],"Render Spritesheet",960,0); s.link(ss,0,p)
         ss["inputs"][2]["r"]["d"]=1; ss["inputs"][11]["r"]["d"]=False; ss["inputs"][3]["r"]["d"]=0
         e=s.add(s.exp,"Export Sheet",1152,0); s.link(e,0,ss); e["inputs"][1]["r"]["d"]=SHEETS+f"{name}.png"
@@ -66,8 +67,8 @@ class Project:
           "fps":15,"duration_s":round(s.FR/15,3),"loop":loop,"anchor":{"x":ax,"y":ay,"from":"top-left of each frame"},
           "flip_horizontally_for":None,"notes":notes,"smoothing":"none (nearest neighbor)"},open(SHEETS+f"{name}.json","w"),indent=2)
 
-YEL,ORA,FLAME="#fee761","#feae34","#f77622"
-CREME,PURPLE,PLUM="#ead4aa","#b55088","#68386c"
+YEL,ORA,FLAME="#f7b750","#d1952e","#e17e53"
+CREME,PURPLE,PLUM="#ffe6d1","#9a4e66","#53414f"
 def heart_spin():
     P=Project(32,32,12); C=16; R=12
     th=[2*math.pi*f/12 for f in range(12)]

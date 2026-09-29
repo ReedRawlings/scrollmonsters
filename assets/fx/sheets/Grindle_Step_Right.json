@@ -1,0 +1,19 @@
+{
+  "image": "Grindle_Step_Right.png",
+  "frame_width": 24,
+  "frame_height": 20,
+  "frame_count": 9,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.6,
+  "loop": false,
+  "anchor": {
+    "x": 12,
+    "y": 10,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Grindle: one stomping right footprint (toes point up). Place prints alternating Left/Right along the vertical line, a few frames apart; damage on frame 0. Rotate to change the line's direction.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 0
+}

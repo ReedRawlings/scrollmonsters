@@ -1,0 +1,18 @@
+{
+  "image": "Fizzteen_Flame.png",
+  "frame_width": 64,
+  "frame_height": 48,
+  "frame_count": 10,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.667,
+  "loop": false,
+  "anchor": {
+    "x": 4,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Fizzteen: small flame cone pointing right (0 deg) from the anchor; rotate the sprite to aim. Hot gold at the mouth, coral in the middle, plum smoke at the tips.",
+  "smoothing": "none (nearest neighbor)"
+}

@@ -9,7 +9,7 @@ SHEETS=os.path.join(ROOT,"assets","fx","sheets")+"/"
 W,H,FR=64,64,32; PX,PY=32,32          # pivot = canvas center = anchor
 BASE=45                                  # scissors point up-right
 def abgr(hx): r,g,b=int(hx[1:3],16),int(hx[3:5],16),int(hx[5:7],16); return (255<<24)|(b<<16)|(g<<8)|r
-STEEL,EDGE,CRIMSON,RED,SCREW,SPARK,INK="#8b9bb4","#c0cbdc","#a22633","#e43b44","#3a4466","#ffffff","#181425"
+STEEL,EDGE,CRIMSON,RED,SCREW,SPARK,INK="#78949b","#c2b5c4","#84333e","#cd5151","#5d6b79","#ffffff","#1c080c"
 def key(f,v): return [[0,f],v,[0,1],[0,0],0,0,True,0,16777215]
 def anim(inp,keys): inp["anim"]=True; inp["r"]=[key(f,v) for f,v in keys]
 def nid(p): return p+''.join(random.choices(string.ascii_letters,k=20))
@@ -78,6 +78,7 @@ both=blend("Both Halves",B,A,576,640)
 ol=add(T("outline_node.json"),"Outline",768,640); oi=ol["inputs"]; link(ol,0,both)
 oi[1]["r"]["d"]=1; oi[2]["r"]["d"]=abgr(INK); oi[5]["r"]["d"]=1; oi[6]["r"]["d"]=0
 post=add(old["Node_Posterize"],"Posterize",960,640); link(post,0,ol)
+from fxlib import palette; post["inputs"][1]["r"]["d"]=palette("Toasted40W")   # base project still carries Endesga
 ss=add(old["Node_Render_Sprite_Sheet"],"Render Spritesheet",1152,640); link(ss,0,post)
 ex=add([n for n in j["nodes"] if n["type"]=="Node_Export"][0],"Export Sheet",1344,640); link(ex,0,ss)
 ex["inputs"][1]["r"]["d"]=SHEETS+"Scissor_Snip.png"

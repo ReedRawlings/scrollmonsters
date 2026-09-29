@@ -1,8 +1,42 @@
 # ScrollMonsters UI Style Guide
 
-This guide records the approved menu direction and the implementation details that must remain consistent across future screens. The live Warm Wood Bestiary in `game.js` is the reference implementation. Shared values live in `UI_THEME`; update this guide and those values together.
+Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkMode.** The legacy campaign (`legacy.html`, `game.js`) keeps Ninja Adventure Theme Wood, documented at the end.
 
-## Approved direction
+## Survivors: DarkMode
+
+### Scale and space
+- Canvas: 540×960 portrait, 960×640 landscape, `Phaser.Scale.FIT`. Never `EXPAND`.
+- All UI is laid out in logical space (270×480 portrait, 480×320 landscape) inside the `ui2x` group, which is scaled ×2 (`UI` in `survivors.js`). World-anchored labels convert with `scene.toUI(x, y)`.
+- Raster UI art is drawn at whole-number scale: nine-slices, status frame, party slots and the heart at 2 (logical); banner, icons and facesets at 1 or 2.
+
+### Type
+- NovelMix (`assets/ui/font_medium_9px.ttf`, key `NovelMix`) at **9 or 18** only; `darkText` throws otherwise.
+- Text is white with a 2px ink (`#120a1a`) outline. Muted `#b9b0d0`, gold `#ffc41b`, teal `#2dc5c0`, danger `#ef5266`.
+
+### Components (`NativeView` in `phaser-ui.js`)
+- `darkText`, `darkPanel` (dialogue box, slice 5), `pill` (button, slice 3), `card` (item slot, slice 5, optional icon and wrapped detail), `banner` (192×32 ink banner, 18px title), `notice` (wrapped text on a panel).
+- Titles on banners stay short (about 15 characters at 18px).
+- Buttons press to 96% and recover on release or cancel. Any interactive object under the pointer blocks the touch joystick.
+- Pills go on the field or dimmed backdrops. Buttons inside a black dialogue panel use the `card` (item slot) art, because a black pill disappears against the panel.
+- A card's description must fit inside the card; `check-ui-foundation.cjs` fails if it spills.
+
+### HUD (`survivor-hud.js`)
+- Top-left status frame: heart, HP bar (no numbers), XP bar, `LV n`, sword icon and kill count.
+- Top-right: gold timer and the `II` pause pill.
+- Under the bars: relic row (20px icons on a 24px pitch, 8 per row, counts only above 1) followed by one diamond socket per shrine challenge left; the next socket is gold while its challenge is live.
+- Bottom: party bar of 4 Zelda slots, player first. The player's charge bar shows the dash cooldown; slots are not tappable. A `Dash` pill sits above the right end of the bar.
+
+### Screens (`survivor-screens.js`)
+- Title, pause (with relic collection), won/lost, level-up and relic choice. Every screen dims the field and blocks taps behind it. Each screen has a portrait and a landscape layout; `scripts/check-ui-foundation.cjs` fails if any text leaves the canvas.
+
+### Assets
+- `scripts/build-ui-assets.py` regenerates `assets/ui/darkmode/*` and `assets/icons/relics/*` from the purchased packs. Ship only the crops; never commit the packs.
+- Every relic and upgrade has its own icon; never reuse one or ship a near look-alike.
+
+## Legacy: Theme Wood
+This section is the original guide, unchanged. The live Warm Wood Bestiary in `game.js` is its reference implementation, and shared values live in `UI_THEME`.
+
+### Approved direction
 
 - Use the Ninja Adventure **Theme Wood** family for menus.
 - Keep the visual language warm, simple, and readable. Do not combine it with Dragon Regalia, Theme Mix, Bonus, or unrelated frame sets.
@@ -10,7 +44,7 @@ This guide records the approved menu direction and the implementation details th
 - Preserve native pixel shapes. Scale raster art at whole-number multiples with Phaser pixel-art filtering enabled.
 - The production Bestiary and `ui-previews/bestiary-concepts.html?variant=warm` show the approved composition.
 
-## Shared source of truth
+### Shared source of truth
 
 `game.js` contains `UI_THEME`, which owns:
 
@@ -39,7 +73,7 @@ and result-card transitions use Phaser tweens; respect reduced-motion preference
 The font has narrow spaces, so native labels use Unicode thin spaces for display
 and retain the original label as Phaser data for UI inspection.
 
-## Asset roles
+### Asset roles
 
 Use each asset only for its intended component.
 
@@ -59,7 +93,7 @@ The border pixels scale to 2x without distortion. Only the 2px center seam expan
 
 Never use `button_checked.png` or `button_unchecked.png` as wide action buttons. They are checkbox-style controls with different silhouettes.
 
-## Palette
+### Palette
 
 These values are mirrored in `UI_THEME.colors`:
 
@@ -80,7 +114,7 @@ These values are mirrored in `UI_THEME.colors`:
 
 Use dark text on light controls. Colored currency text and disabled text should not receive a drop shadow. White or cream panel text may use the existing two-pixel shadow where it improves separation.
 
-## Typography and spacing
+### Typography and spacing
 
 - Use `NormalFont.ttf` through the `NinjaPixel` font family.
 - Use integer font sizes and integer coordinates.
@@ -89,7 +123,7 @@ Use dark text on light controls. Colored currency text and disabled text should 
 - Keep roster cards 120px tall with 9px between their visual bounds. Do not reintroduce the older oversized gaps.
 - Touch targets may cover the full card even when the visible button is smaller.
 
-## Headers and currency
+### Headers and currency
 
 `Coin2-Sheet.png` is a 40×40 atlas made of 10×10 cells. It uses four animation columns and these rows:
 
@@ -104,7 +138,7 @@ Animate icons by changing the column while keeping the currency row fixed. Rende
 - Other economy-bearing menu headers may show gold plus all three affinity icons within the same header surface.
 - Do not create a separate essence banner below a header.
 
-## Bestiary component rules
+### Bestiary component rules
 
 ### Active party
 
@@ -134,7 +168,7 @@ Animate icons by changing the column while keeping the currency row fixed. Rende
 - Preserve their ends with the tab nine-slice values; never scale the entire tab horizontally.
 - The current three-creature roster remains visible while the selected affinity tab changes state. When multiple creatures exist per affinity, these controls can become filters after designing a clear all-types/default state.
 
-## Creature sprite rules
+### Creature sprite rules
 
 The directional pet atlas is `assets/Sprites/Pets/minimize_F-Sheet.png` at 192×80.
 
@@ -145,14 +179,14 @@ The directional pet atlas is `assets/Sprites/Pets/minimize_F-Sheet.png` at 192×
 - Bestiary and party portraits always use the south-facing walk cycle.
 - Render 16×16 creature frames at exact multiples such as 48px or 64px. Do not select a visually similar frame from the standalone strips when direction matters.
 
-## Interaction and state language
+### Interaction and state language
 
 - Visual state and behavior must agree: disabled controls do not trigger actions.
 - Recruitment is always a player action, including Fangle. Fangle has no stage-clear gate but is not recruited automatically.
 - Owned creatures can move between active party and reserves. Preserve the three-member party limit and save immediately after changes.
 - Use the existing menu accept sound for ordinary selection and the success jingle for completed recruitment or purchases.
 
-## Future-model handoff
+### Future-model handoff
 
 Before changing or extending menus:
 
@@ -171,7 +205,7 @@ On this Mac, the stock web-game browser client may stall with forced SwiftShader
 
 Font and image loading can produce incomplete first captures. Allow assets and `NinjaPixel` to load, render again, and visually inspect the resulting screenshot. A successful script exit is not proof that the pixels are correct.
 
-## New-menu review checklist
+### New-menu review checklist
 
 - Correct Theme Wood asset for each component.
 - Correct nine-slice borders; only center seams stretch.
@@ -184,7 +218,7 @@ Font and image loading can produce incomplete first captures. Allow assets and `
 - Screen remains legible at 540×900 and when CSS-scaled on mobile.
 - Screenshot, text state, interactions, persistence, and browser console verified.
 
-## Upgrade screen refinement
+### Upgrade screen refinement
 - Preserve the Player / Feral / Bloom / Arcane tab row and connected node layout. Upgrade tab labels use 30px NinjaPixel (2x) and actual glyph bounds for visual centering.
 - Show ranks on node icons only, not in the description heading.
 - Generic Feral stat labels use Feral Focus / Feral Rhythm; generic companion stats use type ownership requirements. Named creature abilities retain their individual ownership requirements.
@@ -192,20 +226,20 @@ Font and image loading can produce incomplete first captures. Allow assets and `
 - Player tree supports dragging and zoom buttons/mouse wheel inside its clipped viewport; header and node detail panel stay fixed. Damage +3 requires Damage +1 rank 5; Boulder Buster branches from Rock Breaker.
 
 
-## Approved overworld roster panels — September 14
+### Approved overworld roster panels — September 14
 
 Use `nine_path_bg.png` (4px slices, 2x) inside the orange frames of the overworld encounter and action panels, as approved in the Stage 1 preview. Buttons retain the normal orange Wood styling. Stages 1–3 display actual monster portraits, names, affinity below each name, HP, and ATK. Stage 1 includes its boss as the third column; Stages 2–3 put their boss in a compact footer below three regular monsters. These roster cards replace affinity density summaries for the configured stages.
 
-## Combat sprite scale — September 14
+### Combat sprite scale — September 14
 
 The player, companions, and regular monsters render at 32×32 (16px frames at 2x) using `COMBAT_SPRITE_SIZE`. Boss and menu portrait sizes retain their existing values. Player/companion collision radii are 12px; regular enemy radii are basic 11px, ranged 12px, armored 15px. Enemy health bars follow those radii. Player shots originate 12px below the center. Terrain, camera, HUD and encounter spawn rates retain their existing settings.
 
-## Collection and summon layout — September 14
+### Collection and summon layout — September 14
 
 Both Bestiary views use a solid black full-page backdrop. Collection affinity selectors use normal/selected Wood buttons, not tabs. The collection lists only owned creatures of the selected affinity across all tiers, four rows per page; there are no collection tier filters. Empty affinities show a short unlock prompt without revealing creature names. Center pagination above side-by-side Summon and Back to Map buttons at y=805, matching the summon view's footer. The collection Summon button opens the summon view regardless of essence balance; tier selection and affordability belong to that view.
 
-## Title screen surface
+### Title screen surface
 Use a black page background with `nine_path_bg.png` inset inside the orange Wood title frame, matching the updated menu surfaces. Title, instruction, and secondary text use the shared title/text/muted colors. Keep normal orange Wood action buttons.
 
-## Party slot selection
+### Party slot selection
 Collection Add enters placement mode. Display “Choose a party slot”, Wood focus outlines around the three slots, a Cancel button on the selected creature, and its name in the footer prompt. Clicking a slot assigns that creature and saves; clicking Add alone never alters the party. Leaving collection clears selection.

@@ -1,0 +1,19 @@
+{
+  "image": "Quibblet_Pierce.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 34,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Quibblet: warning triangle on the ground (frames 0-1), three spikes plus a center spike pierce up (2-4), retract and leave dust (5-7). Apply damage on frame 3. Anchor = triangle center on the ground.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 3
+}

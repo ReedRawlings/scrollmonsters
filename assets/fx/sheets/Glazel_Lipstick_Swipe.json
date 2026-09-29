@@ -1,0 +1,18 @@
+{
+  "image": "Glazel_Lipstick_Swipe.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.533,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 20,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Glazel: a lipstick draws the smear left to right (frames 0-5) and pops away. Then switch to Glazel_Smear_Loop (same anchor) for the rest of the 1 s, then Glazel_Smear_Fade.",
+  "smoothing": "none (nearest neighbor)"
+}
