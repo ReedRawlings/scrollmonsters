@@ -37,7 +37,7 @@
       const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
       ui.pill('<',hx-41,hy+34,30,28,()=>step(-1),{id:'prev'});ui.pill('>',hx+107,hy+34,30,28,()=>step(1),{id:'next'});
       // Name and description slide up as they fade in; a locked tap shows how to unlock instead.
-      const lock=s.lockedTap,info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
+      const lock=s.lockedTap&&now-s.lockedTap.at<1500?s.lockedTap:null,info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
       ui.darkText(lock?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
       ui.darkText(lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
       const pos=i=>({x:L.grid[0]+(i%5)*46,y:L.grid[1]+Math.floor(i/5)*46}),ids=roster.map(([id])=>id);
@@ -60,26 +60,28 @@
       const s=this.s,ui=s.ui,ids=[...new Set(s.relics.equipped)];this.dim(w,h);
       if(ids.length){
         // Relic collection: one column in portrait, two in landscape so 13 relics fit 320 logical px.
-        const cols=w>h?2:1,rows=Math.ceil(ids.length/cols),pw=Math.min(w-16,cols===2?440:254),ph=64+rows*20+34,px=(w-pw)/2,py=Math.max(34,(h-ph)/2);
+        const cols=w>h?2:1,rows=Math.ceil(ids.length/cols),pw=Math.min(w-16,cols===2?440:254),ph=64+rows*20+34+28,px=(w-pw)/2,py=Math.max(34,(h-ph)/2);this.layout.pausePanel={x:px,y:py,w:pw,h:ph};
         ui.darkPanel(px,py,pw,ph);ui.banner('RELICS',w/2,py-16);
         const colW=(pw-24)/cols;
         ids.forEach((id,i)=>{const cx=px+12+Math.floor(i/rows)*colW,cy=py+26+(i%rows)*20;ui.image('relic_'+id,cx,cy,16,16,{frame:[0,0,16,16]});
           ui.darkText(s.relics.name(id)+' ×'+s.relics.count(id),cx+22,cy+8,{color:D().muted});});
-        this.button('Resume',w/2-50,py+ph-30,100,22,()=>s.pause(),'resume');
-        this.numbersToggle(w,py+ph+8);
+        this.button('Resume',w/2-50,py+ph-58,100,22,()=>s.pause(),'resume');
+        this.numbersToggle(w,py+ph-30);
         return;
       }
-      const pw=Math.min(w-24,254),ph=178,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
+      const pw=Math.min(w-24,w>h?340:254),ph=206,px=(w-pw)/2,py=(h-ph)/2;this.layout.pausePanel={x:px,y:py,w:pw,h:ph};ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
       ['Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.'].forEach((t,i)=>ui.darkText(t,w/2,py+32+i*16,{align:'center',color:D().muted}));
-      this.button('Resume',px+16,py+ph-68,pw-32,24,()=>s.pause(),'resume');
-      this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
-      this.numbersToggle(w,py+ph+8);
+      this.button('Resume',px+16,py+ph-96,pw-32,24,()=>s.pause(),'resume');
+      this.button('Run history / export',px+16,py+ph-66,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
+      this.numbersToggle(w,py+ph-30);
     }
-    // Pause settings: damage numbers everywhere; UI size on desktop (landscape) only.
-    numbersToggle(w,y){const s=this.s,j=s.juice,ui=s.ui,wide=w>this.s.uiSize().h;
-      if(!wide)return ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});
-      ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-132,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});
-      ui.pill('UI size: '+(j.uiLarge?'Large':'Normal'),w/2+4,y,128,20,()=>j.setUiLarge(!j.uiLarge),{id:'ui-size'});}
+    // Pause settings, inside the panel's bottom row: damage numbers everywhere; UI size on desktop (landscape) only.
+    numbersToggle(w,y){const s=this.s,j=s.juice,wide=w>this.s.uiSize().h,num=()=>j.setNumbers(!j.numbersOn),label='Damage numbers: '+(j.numbersOn?'On':'Off');
+      // Inside a black panel, so they use the lighter card art like the other panel buttons.
+      this.layout.settings=wide?{x:w/2-154,y,w:308,h:20}:{x:w/2-64,y,w:128,h:20};
+      if(!wide)return this.button(label,w/2-64,y,128,20,num,'set-numbers');
+      this.button(label,w/2-154,y,150,20,num,'set-numbers');
+      this.button('UI size: '+(j.uiLarge?'Large':'Normal'),w/2+4,y,150,20,()=>j.setUiLarge(!j.uiLarge),'set-ui-size');}
     ended(w,h){
       const s=this.s,ui=s.ui,won=s.mode==='won';this.dim(w,h);
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));

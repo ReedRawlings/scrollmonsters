@@ -137,6 +137,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.deepEqual(ph, {canvas: [540, 960], ui: 2}, 'Portrait is unchanged');
     assert(!(await listControls(phone)).some(c => /UI size/.test(c.label)), 'No UI size setting in portrait');
     await phone.context().close();
+
+    // --- final review fixes: the locked hint expires; pause settings sit inside the panel at every size ---
+    const fr = await open(browser, {width: 1100, height: 760});
+    const lk = await state(fr, () => { const s = __survivorTest.scene, texts = () => { const t = []; s.draw(); s.ui.walk(o => { if (o.type === 'Text' && o.visible) t.push(o.text); }); return t; };
+      const id = SurvivorExpansion.roster.map(([k]) => k).find(k => !s.unlocked.includes(k)); s.chooseStarter(id); const shown = texts().includes('???');
+      s.lockedTap.at -= 2000; const expired = !texts().includes('???'); s.chooseStarter(id); s.start(); return {shown, expired, cleared: s.lockedTap == null}; });
+    assert.deepEqual(lk, {shown: true, expired: true, cleared: true}, 'The locked hint shows briefly, expires, and never survives into a run');
+    for (const large of [false, true]) for (const relics of [true, false]) {
+      const o = await state(fr, ([large, relics]) => { const s = __survivorTest.scene; s.juice.setUiLarge(large); s.start(); s.spawnTimer = 999; if (relics) s.relics.equipped = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil']; s.pause(); s.draw();
+        return {pill: s.screens.layout.settings, panel: s.screens.layout.pausePanel}; }, [large, relics]);
+      const inside = o.pill && o.panel && o.pill.x >= o.panel.x && o.pill.y >= o.panel.y && o.pill.x + o.pill.w <= o.panel.x + o.panel.w && o.pill.y + o.pill.h <= o.panel.y + o.panel.h;
+      assert(inside, `Pause settings sit inside the pause panel, never over the party bar (${large ? 'large' : 'normal'}): ` + JSON.stringify(o));
+      await fr.screenshot({path: `output/feedback/pause-settings-${large ? 'large' : 'normal'}${relics ? '-relics' : ''}.png`});
+    }
+    await state(fr, () => __survivorTest.scene.juice.setUiLarge(false));
+    assert.deepEqual(fr.errors, []);
+    await fr.close();
     console.log('Feedback: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
