@@ -13,7 +13,7 @@
     }
     denPosition(existing=this.nests||[]){const s=this.s,sh=s.expedition?.shrine||{x:s.worldSize/2,y:s.worldSize*.2625};
       const valid=p=>!s.blocked(p.x,p.y,100)&&dist(p,s.player)>300&&dist(p,sh)>180&&existing.every(n=>dist(n,p)>300)&&(s.expedition?.chests||[]).every(c=>dist(c,p)>100);
-      for(let i=0;i<250;i++){const p={x:140+Math.random()*(s.worldSize-280),y:140+Math.random()*(s.worldSize-280)};if(valid(p))return p;}
+      for(let i=0;i<250;i++){const p={x:140+s.rand()*(s.worldSize-280),y:140+s.rand()*(s.worldSize-280)};if(valid(p))return p;}
       for(let y=140;y<s.worldSize-140;y+=120)for(let x=140;x<s.worldSize-140;x+=120)if(valid({x,y}))return {x,y};throw new Error('No clear den location');
     }
     destroy(){for(const n of this.nestSprites){n.base.destroy();n.token.destroy();}for(const b of this.bulletPool)b.destroy();this.beastSprite.destroy();this.bossSprite.destroy();}

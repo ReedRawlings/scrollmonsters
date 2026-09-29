@@ -1,7 +1,7 @@
 const {spawn}=require('node:child_process');
 const net=require('node:net');
 const path=require('node:path');
-const tests=['starter-grid','opening-balance','enemy-pressure','survivor-fx','elements','relic-growth','party-growth','matching-dens','exploration','entrypoints','survivors','creatures','expedition','survivor-encounters','capture-choice','relic-contracts','survivor-reliability','ui-foundation','juice'];
+const tests=['starter-grid','opening-balance','enemy-pressure','survivor-fx','elements','relic-growth','determinism','party-growth','matching-dens','exploration','entrypoints','survivors','creatures','expedition','survivor-encounters','capture-choice','relic-contracts','survivor-reliability','ui-foundation'];
 const root=path.resolve(__dirname,'..');
 let server,child,interrupted=false;
 const stop=()=>{child?.kill('SIGTERM');server?.kill('SIGTERM');};
