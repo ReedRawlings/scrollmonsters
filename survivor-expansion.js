@@ -14,7 +14,7 @@
     });
     s.button('‹',x,y+232,65,()=>{this.bestiaryPage=(page+1)%2;s.draw();});s.label('Page '+(page+1)+'/2',x+width/2,y+246,14,'#e2ccb0','center');s.button('›',x+width-65,y+232,65,()=>{this.bestiaryPage=(page+1)%2;s.draw();});
   }
-  ui(w,h){const s=this.s;if(s.mode==='playing'){if(s.creatures.elements.dashOptions().length>1)s.button('Dash: '+(s.creatures.elements.dashStyle==='storm'?'lightning':s.creatures.elements.dashStyle),w-200,h-190,184,()=>s.creatures.elements.cycleDash());s.button(this.cooldown>0?'Dash '+this.cooldown.toFixed(1):'Dash',w-116,h-138,100,()=>this.dash());}
+  ui(w,h){const s=this.s;
    if(s.mode!=='bestiary')return;const pw=Math.min(w-24,490),x=(w-pw)/2,y=Math.max(85,(h-440)/2);s.panel(x,y,pw,440);s.label('CHOOSE STARTER',w/2,y+20,23,'#fff0b0','center');this.starterGrid(x+18,y+60,pw-36);s.button('Done',x+18,y+365,pw-36,()=>{s.mode='title';s.draw();});}
  }
  window.SurvivorExpansion=SurvivorExpansion;

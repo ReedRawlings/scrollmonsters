@@ -71,7 +71,7 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(3000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.hud=new SurvivorHud(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
@@ -95,6 +95,9 @@
       if(new URLSearchParams(location.search).has('test'))window.__survivorTest={scene:this,start:()=>this.start(),spawn:(type,x,y)=>this.spawn(type,x,y),tick:seconds=>window.advanceTime(seconds*1000)};
       window.__phaserReady=true;
     }
+    uiSize(){return {w:this.scale.width/UI,h:this.scale.height/UI};}
+    // World point to logical UI point (the world camera never zooms).
+    toUI(x,y){const cam=this.cameras.main;return {x:(x-cam.scrollX)/UI,y:(y-cam.scrollY)/UI};}
     rand(){this.rng=(1664525*this.rng+1013904223)>>>0;return this.rng/4294967296;}
     makeMap(){
       const floor=this.textures.get('floor');floor.add('grass',0,0,192,16,16);floor.add('sand',0,16,16,16,16);this.textures.get('desert').add('palm',0,160,160,32,32);
@@ -331,13 +334,6 @@
     label(text,x,y,size=18,color='#fff5d7',align='left'){
       return this.ui.object('label',()=>new Phaser.GameObjects.Text(this,0,0,'',{fontFamily:'NinjaPixel'})).setText(text.replace(/ /g,'\u2009')).setPosition(x,y).setFontSize(size).setColor(color).setOrigin(align==='center'?.5:0,0);
     }
-    captureLabel(type,body){
-      const name=type==='storm'?'STORM LIZARD':type.toUpperCase(),cam=this.cameras.main,w=this.scale.width,h=this.scale.height;
-      const text='CAPTURE '+name+' '+Math.round(body.progress/2.5*100)+'%\nCHOOSE 1 THIS ROUND';
-      const label=this.label(text,body.x-cam.scrollX,clamp(body.y-cam.scrollY-85,160,h-150),12,'#30221a','center').setAlign('center');
-      const margin=Math.min(w/2,label.width/2+12);
-      label.setX(clamp(body.x-cam.scrollX,margin,w-margin));
-    }
     panel(x,y,w,h){const panel=this.ui.object('panel',()=>new ScrollUI.WoodPanel(this)).setPosition(x,y).layout('woodPanel',w,h);panel.background.setTint(0x70554a);return panel;}
     button(label,x,y,w,action){return this.ui.object('button',()=>new ScrollUI.WoodButton(this,this.ui)).setScrollFactor(0).layout(label,x,y,w,44,{texture:'woodButton',borderX:7,borderY:3,scale:2,size:18,color:'#30221a',action});}
     draw(){if(!this.ui)return;const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
@@ -361,24 +357,10 @@
       for(const e of this.pickups){e.sprite.setPosition(e.x,e.y).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
       const w=this.scale.width,h=this.scale.height,compact=w<700;
       this.ui.begin(this.mode);
-      this.panel(10,10,w-20,68);this.label(this.isExpedition?(compact?(this.field==='desert'?'DESERT':'EXPEDITION'):(this.field==='desert'?'DESERT EXPEDITION':'WOODLAND EXPEDITION')):'WOODLAND TRIAL',26,20,compact?13:18,'#fff0b0');
-      this.label('HP '+Math.ceil(p.hp)+' / '+this.maxHp,26,47,16,p.hp<18?'#ff9c8e':'#fff5d7');
-      this.label(`${Math.floor(this.elapsed/60)}:${String(Math.floor(this.elapsed%60)).padStart(2,'0')} / ${this.isExpedition?'10:00':'2:00'}`,w/2,23,19,'#ffd36b','center');
-      this.label(this.kills+' defeated',w/2,48,15,'#e2ccb0','center');
-      if(this.mode==='playing')this.button('Pause',w-112,22,86,()=>this.pause());
-      this.panel(10,h-83,w-20,73);this.label(this.expedition.party().join(' + ').toUpperCase(),26,h-70,14,'#8ee0df');
-      const objective=this.elapsed>=DURATION&&this.encounters.boss?.hp>0?'Defeat the Guardian to finish':this.elapsed>=(this.isExpedition?570:90)?'Guardian finale':'Explore · Recruit · Grow your party';
-      this.label(objective,26,h-45,14);
-      if(this.logStorageError||this.unlockError)this.label('Local progress could not be saved',w/2,80,14,'#ff9c8e','center');
-      const buffs='Lv '+this.level+' · '+this.xp+'/'+this.xpNeeded()+' XP → Lv '+(this.level+1);this.label(buffs,w-26,h-69,compact?11:14,'#ffd36b').setOrigin(1,0);
-      const xpBar=this.ui.object('xpBar',()=>new Phaser.GameObjects.Graphics(this)).setScrollFactor(0);xpBar.clear().fillStyle(0x30221a).fillRect(26,h-52,w-52,5).fillStyle(0xffd36b).fillRect(26,h-52,(w-52)*Math.min(1,this.xp/this.xpNeeded()),5);
-      if(this.mode==='playing'){
-        this.encounters.drawUI(w,h);this.expedition.drawUI(w,h);this.creatures.ui(w,h);
-        if(this.noticeTime>0){this.panel(20,88,w-40,38);this.label(this.notice,w/2,99,compact?13:16,'#fff5d7','center');}
-        for(const item of this.pickups.filter(e=>e.type!=='xp')){const cam=this.cameras.main,x=item.x-cam.scrollX,y=item.y-cam.scrollY;if(x>25&&x<w-25&&y>145&&y<h-120)this.label({heal:'+8 HP',haste:'FRENZY',shield:'SHIELD',magnet:'XP MAGNET',cleanse:'CLEANSE'}[item.type],x,y+23,12,'#30221a','center');}
-        if(o?.state==='ready')this.captureLabel('owl',o);
-        else if(o?.state==='wild'){const cam=this.cameras.main;this.label('WILD OWL',clamp(o.x-cam.scrollX,95,w-95),clamp(o.y-cam.scrollY,145,h-120)-48,13,'#30221a','center');}
-      }
+      const logical=this.uiSize();
+      this.ui.beginGroup('ui2x',{scale:UI});
+      if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
+      this.ui.endGroup();
       if(this.mode==='relic'||(this.mode==='paused'&&this.relics.equipped.length)){
         // Relics own this screen; do not create interactive pause controls underneath.
       }else if(this.mode==='upgrade'){
@@ -409,5 +391,5 @@
     snapshot(){return {field:this.field,dash:{cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; origin top-left; x right, y down',world:{width:WORLD,height:WORLD},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles,enemies:this.enemies.slice(0,40).map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows or touch drag; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
   const portrait=window.innerWidth/window.innerHeight<.85;
-  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:960,height:portrait?820:640,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
+  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:960,height:portrait?960:640,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
 })();

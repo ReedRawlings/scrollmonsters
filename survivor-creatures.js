@@ -33,7 +33,7 @@
       for(const a of this.strikes){g.fillStyle(a.hostile?0xff673f:0x8ee0df,.12).fillCircle(a.x,a.y,a.r);g.lineStyle(3,a.hostile?0xff673f:0x8ee0df,.9).strokeCircle(a.x,a.y,a.r);g.lineStyle(4,a.hostile?0xffd36b:0xffffff).beginPath().arc(a.x,a.y,a.r,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-a.time/a.total)).strokePath();}
       for(const z of this.zones)g.lineStyle(2,0xbbe19c,z.life/3).strokeCircle(z.x,z.y,z.r);
     }
-    ui(w,h){const s=this.s,cam=s.cameras.main;for(const [type,a] of Object.entries(this.allies))if(a.state==='ready')s.captureLabel(type,a);}
+    ui(w,h){}
     summary(){return {elements:this.elements.summary(),damage:{...this.damage},allies:Object.fromEntries(Object.entries(this.allies).map(([k,a])=>[k,{x:a.x,y:a.y,state:a.state,progress:a.progress,stats:this.stats(k)}])),helpers:this.helpers.length,strikes:this.strikes.map(({x,y,r,time,source,hostile})=>({x,y,r,time,source,hostile:!!hostile})),zones:this.zones.length,waves:{...this.waveCounts}};}
   }
   window.SurvivorCreatures=SurvivorCreatures;

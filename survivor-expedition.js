@@ -92,9 +92,7 @@
       const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setTint(sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff);
       if(s.isExpedition&&s.elapsed>=90){g.lineStyle(3,sh.done?0x66716e:sh.inCombat?0xffa066:0xb2eddf).strokeCircle(sh.x,sh.y,70);for(let i=0;i<3;i++)g.fillStyle(i<sh.completed?0x66716e:0xffd36b).fillCircle(sh.x-16+i*16,sh.y+46,4);if(sh.progress>0)g.lineStyle(6,0xffd36b).beginPath().arc(sh.x,sh.y,70,-Math.PI/2,-Math.PI/2+Math.PI*2*sh.progress/6).strokePath();}
     }
-    drawUI(w,h){const s=this.s,cam=s.cameras.main;for(const [type,b] of [['frog',this.frog],['cat',this.catCapture]])if(b?.state==='ready')s.captureLabel(type,b);
-
-      const sh=this.shrine;if(s.isExpedition&&sh.active&&!sh.done)s.label('SHRINE · '+(sh.inCombat?'DEFEAT ELITE':sh.needsExit?'LEAVE TO REARM':dist(s.player,sh)>240?'OPTIONAL · '+(sh.completed+1)+'/3':`HOLD 6s · ${sh.completed+1}/3 · ${this.shrineStats().hp} HP / ${this.shrineStats().damage} DMG`),Math.max(100,Math.min(w-100,sh.x-cam.scrollX)),Math.max(180,Math.min(h-135,sh.y-cam.scrollY-90)),12,'#30221a','center');}
+    drawUI(w,h){}
     summary(){return {chestsOpened:this.chestsOpened,chestXp:this.chestXp,chests:this.chests.map(({x,y,xp,opened})=>({x,y,xp,opened})),starter:this.s.starter,party:this.party(),phase:this.phaseName(),secondNests:this.second,extraEliteSpawned:this.extraEliteSpawned,supportPulses:this.supportPulses,frogSupport:this.s.frogStats(),shieldBlocks:this.shieldBlocks,shrine:{...this.shrine},frog:this.frog?{state:this.frog.state,x:this.frog.x,y:this.frog.y,progress:this.frog.progress}:null};}
   }
   window.Expedition=Expedition;

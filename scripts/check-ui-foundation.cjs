@@ -58,6 +58,60 @@ const state = (page, fn, arg) => page.evaluate(fn, arg);
     assert.deepEqual(desk.errors, []);
     await desk.close();
 
+    // --- canvas size and HUD layout ---
+    const tall = await open(browser, {width: 390, height: 844}, 'survivors.html?test', true);
+    assert.deepEqual(await state(tall, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 540, h: 960});
+    await state(tall, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.draw(); });
+    let hud = await state(tall, () => __survivorTest.scene.hud.layout);
+    assert.equal(hud.slots.length, 4, 'Party bar always has 4 slots');
+    assert.equal(hud.slots[0].type, 'walker', 'Player is the first slot');
+    assert.equal(hud.slots[1].type, 'cat', 'Starter follows the player');
+    assert.equal(hud.sockets.length, 3, 'Three shrine sockets at the start of an expedition');
+    // 13 relic stacks wrap inside the screen
+    await state(tall, () => { const s = __survivorTest.scene; s.relics.equipped = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil','veil']; s.draw(); });
+    hud = await state(tall, () => __survivorTest.scene.hud.layout);
+    assert.equal(hud.relics.length, 13);
+    assert(hud.relics.every(r => r.x >= 0 && r.x + 20 <= 270), 'Relic row stays inside 270 logical px');
+    assert.equal(hud.relics.find(r => r.id === 'veil').count, 2);
+    // long notices wrap inside the screen; a party member without a faceset falls back
+    await state(tall, () => { const s = __survivorTest.scene; s.announce('Bonus upgrade earned! Leave the circle before the next challenge.'); const party = s.expedition.party; s.expedition.party = () => ['cat', 'nofaceset']; s.draw(); s.expedition.party = party; });
+    assert.deepEqual(await offscreenTexts(tall), [], 'No HUD text leaves the canvas (portrait)');
+    // tapping the player slot does nothing; the Dash pill dashes; neither starts movement
+    const slot = await state(tall, () => { const s = __survivorTest.scene, r = s.hud.layout.slots[0], c = s.game.canvas.getBoundingClientRect(); return {x: c.left + (r.x + r.w / 2) * 2 * c.width / s.scale.width, y: c.top + (r.y + r.h / 2) * 2 * c.height / s.scale.height}; });
+    await tall.touchscreen.tap(slot.x, slot.y);
+    assert.equal(await state(tall, () => __survivorTest.scene.expansion.cooldown), 0, 'The player slot is not a dash control');
+    await state(tall, () => { __survivorTest.scene.joy = null; });
+    const dash = await controlPoint(tall, 'Dash');
+    // Hold the press: a leaked joystick would be live until release, which a plain tap would hide.
+    const touch = await tall.context().newCDPSession(tall);
+    await touch.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: dash.x, y: dash.y}]});
+    await tall.waitForTimeout(80);
+    assert.equal(await state(tall, () => __survivorTest.scene.joy), null, 'Pressing the Dash pill does not start movement');
+    await touch.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
+    await tall.waitForTimeout(80);
+    assert(await state(tall, () => __survivorTest.scene.expansion.cooldown > 0), 'The Dash pill dashes');
+    assert.equal(await state(tall, () => __survivorTest.scene.joy), null, 'The Dash pill does not start movement');
+    await tall.screenshot({path: 'output/ui-foundation/hud-portrait.png'});
+    assert.deepEqual(tall.errors, []);
+    await tall.close();
+
+    const trial = await open(browser, {width: 390, height: 844}, 'survivors.html?trial&test', true);
+    await state(trial, () => { const s = __survivorTest.scene; s.start(); s.draw(); });
+    assert.equal((await state(trial, () => __survivorTest.scene.hud.layout)).sockets.length, 0, 'No shrine sockets in the trial');
+    await trial.close();
+
+    const land = await open(browser, {width: 1100, height: 760});
+    assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 960, h: 640});
+    await state(land, () => { const s = __survivorTest.scene; s.start(); s.announce('Shrine challenge 1/3! Defeat the elite for an upgrade.'); s.draw(); });
+    assert.deepEqual(await offscreenTexts(land), [], 'No HUD text leaves the canvas (landscape)');
+    await land.screenshot({path: 'output/ui-foundation/hud-landscape.png'});
+    await land.close();
+
+    const narrow = await open(browser, {width: 360, height: 900}, 'survivors.html?test', true);
+    await state(narrow, () => { const s = __survivorTest.scene; s.start(); s.draw(); });
+    await narrow.screenshot({path: 'output/ui-foundation/hud-tall-phone.png'});
+    await narrow.close();
+
     console.log('PASS: UI foundation');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

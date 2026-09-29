@@ -139,12 +139,7 @@
       const boss=this.boss;this.bossSprite.setVisible(!!boss&&boss.hp>0);if(boss?.hp>0){this.bossSprite.setPosition(boss.x,boss.y).setDepth(boss.y+35).setFrame(Math.floor(s.elapsed*6)%6);if(boss.phase==='ring')g.lineStyle(4,0xffa052).strokeCircle(boss.x,boss.y,65+(1.1-boss.clock)*35);if(boss.phase==='aimed')g.lineStyle(3,0xffa052).lineBetween(boss.x,boss.y,boss.x+Math.cos(boss.aim)*320,boss.y+Math.sin(boss.aim)*320);}
       for(const bullet of this.bullets)bullet.sprite.setPosition(bullet.x,bullet.y).setFrame(bullet.source==='owl_feather'?0:Math.floor(s.elapsed*12)%4).setRotation(Math.atan2(bullet.dy,bullet.dx)).setDepth(2900);
     }
-    drawUI(w,h){
-      const s=this.s,cam=s.cameras.main;
-
-      if(this.beast?.state==='ready'){const b=this.beast;s.captureLabel('beast',b);}
-      if(this.boss?.hp>0){s.panel(20,130,w-40,33);s.label('GUARDIAN  '+Math.ceil(this.boss.hp)+' / '+this.boss.maxHp,w/2,139,16,'#ffd36b','center');}
-    }
+    drawUI(w,h){}
     summary(){return {nestsActive:this.nestsActive,shotsFired:this.shotsFired,choice:this.chosen,stageChoices:{...this.stageChoices},beast:this.beast?.state||null,beastDamage:this.beastDamage,nests:this.nests.map(n=>({type:n.type,x:n.x,y:n.y,stage:n.stage,activeAt:n.activeAt,hp:n.hp,destroyed:n.destroyed,spawnCount:n.spawnCount})),boss:this.boss?{hp:this.boss.hp,defeated:this.boss.hp<=0}:null};}
     snapshot(){return {...this.summary(),nests:this.nests.map(n=>({type:n.type,stage:n.stage,activeAt:n.activeAt,x:n.x,y:n.y,hp:n.hp,destroyed:n.destroyed})),beast:this.beast?{x:this.beast.x,y:this.beast.y,state:this.beast.state,progress:this.beast.progress,charging:this.beast.charge>0,trailSegments:this.trails.length,impactEffects:this.pulses.length}:null,boss:this.boss?{x:this.boss.x,y:this.boss.y,hp:this.boss.hp,phase:this.boss.phase}:null,hostileShots:this.bullets.map(b=>({x:Math.round(b.x),y:Math.round(b.y),dx:b.dx,dy:b.dy,source:b.source}))};}
   }

@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const { gameURL, launchOptions } = require('./survivor-test-utils.cjs');
+const { gameURL, launchOptions, offscreenTexts } = require('./survivor-test-utils.cjs');
 
 (async () => {
   const browser = await chromium.launch(launchOptions);
@@ -139,16 +139,11 @@ const { gameURL, launchOptions } = require('./survivor-test-utils.cjs');
       await page.waitForTimeout(120);
       const labels = await page.evaluate(() => {
         const s = __survivorTest.scene, labels = [];
-        s.ui.walk(object => {
-          if (object.visible && object.type === 'Text' && object.text.includes('CHOOSE')) {
-            const bounds = object.getBounds();
-            labels.push({ left: bounds.left, right: bounds.right, width: s.scale.width });
-          }
-        });
+        s.ui.walk(object => { if (object.visible && object.type === 'Text' && object.text.includes('CHOOSE')) labels.push(object.text); });
         return labels;
       });
       assert.equal(labels.length, 2);
-      assert(labels.every(label => label.left >= 0 && label.right <= label.width), 'Capture choices fit the viewport');
+      assert.deepEqual(await offscreenTexts(page), [], 'Capture choices fit the viewport');
       await page.screenshot({ path: `output/reliability-v26/capture-options-${mobile ? 'mobile' : 'desktop'}.png` });
       const captured = await page.evaluate(() => {
         const s = __survivorTest.scene, body = s.creatures.allies.storm;
