@@ -10,6 +10,8 @@
       if(s.mode==='title')this.title(w,h);
       else if(s.mode==='paused')this.paused(w,h);
       else if(s.mode==='won'||s.mode==='lost')this.ended(w,h);
+      else if(s.mode==='upgrade')this.upgrade(w,h);
+      else if(s.mode==='relic')this.relic(w,h);
     }
     // Buttons inside a black panel use the lighter item-slot art; black pills would vanish against it.
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
@@ -61,6 +63,22 @@
       lines.forEach((t,i)=>ui.darkText(t,w/2,py+50+i*16,{align:'center',color:D().muted}));
       this.button('Choose starter / play again',px+16,py+ph-68,pw-32,24,()=>{s.mode='title';s.draw();},'again');
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
+    }
+    choicePanel(w,h,title,sub,count,cardH,extra=0){
+      const pw=Math.min(w-12,h>w?300:440),ph=34+count*(cardH+6)+extra,px=(w-pw)/2,py=Math.max(30,(h-ph)/2+8);
+      this.dim(w,h);this.s.ui.darkPanel(px,py,pw,ph);this.s.ui.banner(title,w/2,py-18);
+      this.s.ui.darkText(sub,w/2,py+20,{align:'center',color:D().muted});
+      return {px,py,pw,ph};
+    }
+    upgrade(w,h){
+      const s=this.s,ui=s.ui,cardH=58,{px,py,pw}=this.choicePanel(w,h,'LEVEL UP','Level '+s.level+' · combat paused',s.choices.length,cardH);
+      s.choices.forEach((c,i)=>ui.card((i+1)+'. '+c.name,px+8,py+32+i*(cardH+6),pw-16,cardH,()=>s.chooseUpgrade(i),{detail:c.detail,id:'up'+i}));
+    }
+    relic(w,h){
+      const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
+      r.offers.forEach((item,i)=>{const owned=r.count(item.id),tag=owned?' · '+owned+' → '+(owned+1):' · NEW';
+        ui.card((i+1)+'. '+item.name+tag,px+8,py+32+i*(cardH+6),pw-16,cardH,()=>r.choose(i),{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});});
+      this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
   }
   window.SurvivorScreens = SurvivorScreens;

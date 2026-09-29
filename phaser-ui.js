@@ -279,7 +279,7 @@
         .layout(label,x,y,width,height,{texture:'dk_slot',borderX:5,borderY:5,scale:2,size,color,font:DARK.font,hoverTint:0xd6cdec,
           align,labelX,labelY:detail?-height/2+12:0,action});
       if (icon) this.image(icon,x+8,y+(height-32)/2,32,32,{frame:iconFrame});
-      if (detail) this.darkText(detail,x+labelX,y+25,{color:DARK.muted,wrap:width-labelX-10}).setOrigin(0,0);
+      button.detailText = detail ? this.darkText(detail,x+labelX,y+25,{color:DARK.muted,wrap:width-labelX-10}).setOrigin(0,0) : null;
       return button;
     }
     banner(text,centerX,y) {

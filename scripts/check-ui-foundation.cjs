@@ -14,6 +14,18 @@ async function open(browser, viewport, path = 'survivors.html?test', mobile = fa
   return page;
 }
 const state = (page, fn, arg) => page.evaluate(fn, arg);
+// Card descriptions that spill past the bottom of their own card, in canvas pixels.
+const spilledDetails = page => page.evaluate(() => { const s = __survivorTest.scene, out = [];
+  const shown = o => { for (let n = o; n; n = n.parentContainer) if (!n.visible) return false; return true; };
+  s.ui.walk(o => { const d = o.detailText; if (o.type !== 'WoodButton' || !d || !shown(o) || !shown(d)) return;
+    const cardBottom = o.getWorldTransformMatrix().transformPoint(0, o.height / 2).y;
+    const m = d.getWorldTransformMatrix(), y0 = -d.originY * d.height, textBottom = Math.max(m.transformPoint(0, y0).y, m.transformPoint(0, y0 + d.height).y);
+    if (textBottom > cardBottom + 1) out.push(d.text); });
+  return out; });
+// Theme Wood belongs to the legacy game only; any wood nine-slice in the survivors UI is a regression.
+const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, found = [];
+  s.ui.walk(o => { const key = o.background?.texture?.key || o.panel?.background?.texture?.key; let shown = true; for (let n = o; n; n = n.parentContainer) if (!n.visible) shown = false; if (shown && /^wood/.test(key || '')) found.push(key); });
+  return found; });
 
 (async () => {
   fs.mkdirSync('output/ui-foundation', {recursive: true});
@@ -130,6 +142,30 @@ const state = (page, fn, arg) => page.evaluate(fn, arg);
       await state(page, () => { const s = __survivorTest.scene; s.mode = 'lost'; s.draw(); });
       assert.deepEqual(await offscreenTexts(page), [], `End screen fits (${name})`);
       await page.screenshot({path: `output/ui-foundation/lost-${name}.png`});
+      assert.deepEqual(page.errors, []);
+      await page.close();
+    }
+
+    // --- level-up and relic choice fit and respond in both orientations ---
+    for (const [name, viewport, mobile] of [['portrait', {width: 390, height: 844}, true], ['landscape', {width: 1100, height: 760}, false]]) {
+      const page = await open(browser, viewport, 'survivors.html?test', mobile);
+      const pick = await state(page, () => { const s = __survivorTest.scene; s.start(); s.xp = s.xpNeeded(); s.checkLevel(); s.draw(); return {id: s.choices[0].id, label: '1. ' + s.choices[0].name, mode: s.mode}; });
+      assert.equal(pick.mode, 'upgrade');
+      assert.deepEqual(await offscreenTexts(page), [], `Level-up fits (${name})`);
+      assert.deepEqual(await woodInUse(page), [], `Level-up uses DarkMode (${name})`);
+      assert.deepEqual(await spilledDetails(page), [], `Level-up descriptions fit their cards (${name})`);
+      await page.screenshot({path: `output/ui-foundation/levelup-${name}.png`});
+      const p = await controlPoint(page, pick.label);
+      if (mobile) await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y, {delay: 30});
+      assert.equal(await state(page, () => __survivorTest.scene.mode), 'playing');
+      await state(page, () => { const s = __survivorTest.scene; s.relics.reward('shrine_challenge'); s.relics.open(); s.draw(); });
+      assert.equal(await state(page, () => __survivorTest.scene.mode), 'relic');
+      const labels = (await listControls(page)).map(c => c.label);
+      assert(labels.some(l => l.startsWith('1. ')) && labels.includes('Leave reward'));
+      assert.deepEqual(await offscreenTexts(page), [], `Relic choice fits (${name})`);
+      assert.deepEqual(await woodInUse(page), [], `Relic choice uses DarkMode (${name})`);
+      assert.deepEqual(await spilledDetails(page), [], `Relic descriptions fit their cards (${name})`);
+      await page.screenshot({path: `output/ui-foundation/relic-${name}.png`});
       assert.deepEqual(page.errors, []);
       await page.close();
     }

@@ -41,9 +41,6 @@
       this.load.image('heart',A+'Items/Potion/Heart.png');
       this.load.image('floor',A+'Backgrounds/Tilesets/TilesetFloor.png');
       this.load.image('nature',A+'Backgrounds/Tilesets/TilesetNature.png');
-      this.load.image('woodPanel',A+'Ui/Theme/Theme Wood/nine_path_panel.png');
-      this.load.image('woodButton',A+'Ui/Theme/Theme Wood/button_normal.png');
-      this.load.font('NinjaPixel',encodeURI(A+'Ui/Font/NormalFont.ttf'));
       this.load.audio('hit',A+'Audio/Sounds/Menu/Accept4.wav');
       for(const k of ['panel','slot','pill','banner','status','zslot','heart'])this.load.image('dk_'+k,'assets/ui/darkmode/'+k+'.png');
       this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
@@ -332,11 +329,6 @@
       if(!this.run?.finished)this.sampleRun();
     }
     update(time,delta){if(!this.manual&&!window.__vt_pending){this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}this.draw();}
-    label(text,x,y,size=18,color='#fff5d7',align='left'){
-      return this.ui.object('label',()=>new Phaser.GameObjects.Text(this,0,0,'',{fontFamily:'NinjaPixel'})).setText(text.replace(/ /g,'\u2009')).setPosition(x,y).setFontSize(size).setColor(color).setOrigin(align==='center'?.5:0,0);
-    }
-    panel(x,y,w,h){const panel=this.ui.object('panel',()=>new ScrollUI.WoodPanel(this)).setPosition(x,y).layout('woodPanel',w,h);panel.background.setTint(0x70554a);return panel;}
-    button(label,x,y,w,action){return this.ui.object('button',()=>new ScrollUI.WoodButton(this,this.ui)).setScrollFactor(0).layout(label,x,y,w,44,{texture:'woodButton',borderX:7,borderY:3,scale:2,size:18,color:'#30221a',action});}
     draw(){if(!this.ui)return;const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
@@ -356,20 +348,13 @@
       for(const s of this.shots){s.sprite.setPosition(s.x,s.y).setRotation(s.source==='owl'?Math.atan2(s.dy,s.dx):this.elapsed*8).setDepth(2800);if(s.source==='owl'){s.sprite.setScale(s.split?1.5:2).setTint(0xd8faff);this.fx.lineStyle(s.split?1:2,0xadebff,.7).lineBetween(s.x,s.y,s.x-s.dx*18,s.y-s.dy*18);}if(s.charged)s.sprite.setTint(0xffd36b).setScale(.7);}
       for(const e of this.effects)e.sprite.setPosition(e.x,e.y).setRotation(e.a).setFrame(Math.min((e.frames||4)-1,Math.floor((1-e.life/(e.maxLife||.26))*(e.frames||4)))).setDepth(2850);
       for(const e of this.pickups){e.sprite.setPosition(e.x,e.y).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
-      const w=this.scale.width,h=this.scale.height,compact=w<700;
       this.ui.begin(this.mode);
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:UI});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
-      if(['title','paused','won','lost'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      if(['title','paused','won','lost','upgrade','relic'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.ui.endGroup();
-      if(this.mode==='upgrade'){
-        const pw=Math.min(w-32,490),px=(w-pw)/2,py=(h-350)/2;this.panel(px,py,pw,350);
-        this.label('LEVEL '+this.level+' · CHOOSE AN UPGRADE',w/2,py+22,compact?18:21,'#fff0b0','center');
-        this.label('Combat paused · lasts for this run',w/2,py+54,15,'#e2ccb0','center');
-        this.choices.forEach((choice,i)=>{this.button((i+1)+'. '+choice.name,px+24,py+88+i*81,pw-48,()=>this.chooseUpgrade(i));this.label(choice.detail,w/2,py+137+i*81,14,'#fff5d7','center');});
-      }
-      this.relics.ui(w,h);this.expansion.ui(w,h);this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
+      this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
     snapshot(){return {field:this.field,dash:{cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; origin top-left; x right, y down',world:{width:WORLD,height:WORLD},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles,enemies:this.enemies.slice(0,40).map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows or touch drag; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
