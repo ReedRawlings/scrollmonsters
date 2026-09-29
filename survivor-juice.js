@@ -19,7 +19,8 @@
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
-      this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;
+      for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -95,6 +96,8 @@
     }
     slotPoint(type){const slots=this.s.hud.layout.slots,slot=slots.find(v=>v.type===type)||slots[0];return {x:slot.x+24,y:slot.y+26};}
     onLevelUp(e){
+      // A level-up chained straight after a pick never passes through a draw, so re-arm the deal-in clock here.
+      this.mode='upgrade';this.modeAt=this.now();
       this.aura={phase:'Ignite',start:this.now()};this.note('LevelUp_Aura_Ignite_Back');
     }
     onUpgrade(e){
@@ -132,10 +135,13 @@
     onUnlock(e){this.unlocks.push(e.type);this.unlockAt=this.now()+900;}
     onCapture(e){
       this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);
+      if(this.fx.length+this.faces.length>=MAX_FX)return;
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
       if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}
-      this.s.time.delayedCall(500,()=>{if(!face.active)return;const from={x:face.x,y:face.y};face.destroy();
+      // Tracked so reset() can cancel a pending flight when the run restarts.
+      const entry={face};entry.timer=this.s.time.delayedCall(500,()=>{this.faces=this.faces.filter(f=>f!==entry);const from={x:face.x,y:face.y};face.destroy();
         this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1})});});
+      this.faces.push(entry);
     }
     updateShrine(now){
       const s=this.s,sh=s.expedition.shrine;if(!this.enabled||!s.isExpedition||s.elapsed<90)return;

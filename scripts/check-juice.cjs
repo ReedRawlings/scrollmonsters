@@ -33,6 +33,8 @@ async function expeditionEvents(browser, juiceOn) {
       else if (s.mode === 'unlock') s.closeUnlock();
       else if (s.mode !== 'playing') break;
       if (!released && s.elapsed >= 20) { released = true; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); }
+      // Drive shrine clears (crack, crack, shatter) so the shrine juice runs inside the compared window.
+      const sh = s.expedition.shrine; if (s.elapsed >= 100 + 60 * sh.completed && sh.completed < 3 && !sh.inCombat) { sh.inCombat = true; s.expedition.completeShrine({shrineTier: sh.completed + 1}); }
       s.player.inv = 2; s.tick(1 / 60);
       if (steps % 30 === 0) s.draw(); // exercise every presentation path between ticks
     }
@@ -78,7 +80,8 @@ async function expeditionEvents(browser, juiceOn) {
 
     // --- determinism: the juice never changes what happens in a run ---
     const withJuice = await expeditionEvents(browser, true), without = await expeditionEvents(browser, false);
-    assert(withJuice.length > 200, 'The fixed run produced events');
+    for (const type of ['mouse_captured', 'level_up', 'upgrade_chosen', 'shrine_completed', 'relic_equipped']) assert(withJuice.includes(`"type":"${type}"`), `The fixed run exercises ${type}`);
+    assert.equal((withJuice.match(/"shrine_completed"/g) || []).length, 3, 'All three shrine clears (crack, crack, shatter) happen');
     assert.equal(withJuice, without, 'Run event log is identical with juice on and off');
 
     // --- every offerable upgrade has its own icon, distinct from every other icon ---
@@ -206,10 +209,26 @@ async function expeditionEvents(browser, juiceOn) {
     const rm = await open(browser, {width: 1100, height: 760}, 'survivors.html?test', {realtime: true, reducedMotion: 'reduce', starters: ['cat']});
     await state(rm, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.player.inv = 999; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); });
     await rm.waitForFunction(() => __survivorTest.scene.mode === 'unlock', null, {timeout: 6000});
-    assert.equal(await state(rm, () => __survivorTest.scene.juice.frozen()), false, 'Reduced motion never freezes');
+    assert.deepEqual(await state(rm, () => { const j = __survivorTest.scene.juice; const before = j.frozenUntil; j.freeze(500); return [before, j.frozen()]; }), [0, false], 'Reduced motion never freezes (capture burst or direct)');
     await state(rm, () => __survivorTest.scene.closeUnlock());
     assert.equal(await state(rm, () => __survivorTest.scene.mode), 'playing');
     await rm.close();
+    // --- review fixes ---
+    const fixes = await open(browser, {width: 1100, height: 760});
+    // a level-up chained straight after a pick re-arms the deal-in and the 370ms lock
+    const chained = await state(fixes, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.xp = 100000; s.checkLevel(); s.draw(); return s.mode; });
+    assert.equal(chained, 'upgrade');
+    await wait(420);
+    const second = await state(fixes, () => { const s = __survivorTest.scene; s.chooseUpgrade(0); return {mode: s.mode, since: s.juice.since('upgrade')}; });
+    assert.equal(second.mode, 'upgrade', 'Enough XP for a second level-up');
+    assert(second.since < 370, `A chained level-up restarts the deal-in lock (${second.since}ms)`);
+    // a restart right after a capture leaves no faceset or flight from the old run
+    await state(fixes, () => { const s = __survivorTest.scene; s.choices = []; s.mode = 'playing'; s.reward('capture', {type: 'mouse', x: s.player.x, y: s.player.y}); s.start(); });
+    await wait(700);
+    const stale = await state(fixes, () => { const j = __survivorTest.scene.juice; return {flights: j.flights.length, faces: j.front.list.filter(o => o.visible && /^face_/.test(o.texture?.key || '')).length}; });
+    assert.deepEqual(stale, {flights: 0, faces: 0}, 'Restart cancels pending capture faces and flights');
+    assert.deepEqual(fixes.errors, []);
+    await fixes.close();
     console.log('PASS: juice');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
