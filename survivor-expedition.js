@@ -57,8 +57,8 @@
       this.updateShrine(dt);
     }
     updateChests(dt){const s=this.s;this.chestClock-=dt;
-      if(this.chestClock<=0){this.chestClock=25+Math.random()*15;if(this.chests.filter(c=>!c.opened).length<3){
-        for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,r=260+Math.random()*240,x=s.player.x+Math.cos(a)*r,y=s.player.y+Math.sin(a)*r;
+      if(this.chestClock<=0){this.chestClock=25+s.rand()*15;if(this.chests.filter(c=>!c.opened).length<3){
+        for(let i=0;i<40;i++){const a=s.rand()*Math.PI*2,r=260+s.rand()*240,x=s.player.x+Math.cos(a)*r,y=s.player.y+Math.sin(a)*r;
           if(x<60||y<60||x>s.worldSize-60||y>s.worldSize-60||s.blocked(x,y,36)||dist({x,y},this.shrine)<110||s.encounters.nests.some(n=>dist({x,y},n)<100)||this.chests.some(c=>dist(c,{x,y})<90))continue;
           const xp=8+Math.floor(s.elapsed/60)*2,sprite=s.add.sprite(x,y,'xpChest',0).setScale(3).setDepth(y+15);this.chests.push({x,y,xp,opened:false,life:0,sprite});s.logEvent('chest_spawned',{x:Math.round(x),y:Math.round(y),xp});break;
         }
