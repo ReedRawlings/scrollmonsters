@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const UI = 2, MAX_FX = 60;
+  const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
   // Math.random() (the sim uses it for dens and chests), scene.burst() or camera.shake() (uses Math.random).
@@ -12,6 +13,9 @@
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
       this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);
+      this.numbers=new SurvivorDamageNumbers(this);
+      let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
+      this.numbersOn=saved.damageNumbers!==false;
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
@@ -21,7 +25,7 @@
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
       this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;
-      this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);
+      this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
     now(){return this.s.time.now;}
@@ -58,6 +62,10 @@
       this.s.tweens.add({targets:t,y:y-14,alpha:0,delay:700,duration:300,onComplete:()=>t.setVisible(false)});
       return t;
     }
+    // Damage hooks from the sim. boost = product of the conditional multipliers on this hit; 25%+ reads as a crit.
+    damage(target,amount,boost=1){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(target,amount,{crit:boost>=1.25});}
+    hurt(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{hurt:true});}
+    setNumbers(on){this.numbersOn=!!on;if(!on)this.numbers.reset();try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({damageNumbers:this.numbersOn}));}catch{}}
     flyTo(key,from,to,{size=32,onLand}={}){
       if(!this.enabled)return null;
       const im=this.s.add.image(from.x,from.y,key,this.frameName(key,0)).setDisplaySize(size,size);this.front.add(im);
@@ -79,6 +87,7 @@
         if(!f.loop&&t>=m.n/m.fps*1000){this.stop(f);f.onDone?.();continue;}
         f.sprite.setFrame(this.frameName(f.key,this.frameAt(f.key,t,f.loop)));}
       this.advanceFlights(now);
+      this.numbers.update(now);
       if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(0,0);
       this.updateAura(now);
       this.updateWorld?.(now);
