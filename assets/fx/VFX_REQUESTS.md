@@ -15,16 +15,19 @@ This list covers only what's still open. Finished effects have been removed.
 These sheets exist and work in the prototype, but they're marked `PLACEHOLDER` and need final hand-drawn pixel art.
 
 ### Pack_Drop (Common, Rare, Legendary)
+- **Status:** placeholder art delivered and in use; final art still wanted.
 - **Where:** in the world, where the enemy died, until the player walks over it.
 - **Look:** a small sealed card pack, like a foil booster: crimped top and bottom edges, a diamond emblem on the front matching the card backs, and thicker for bigger packs. Wrapper colors: common cyan, rare violet, legendary gold. Idle frames: a slight bob, a glint sweeping across the foil, and a soft glow under it. It must not read as a chest, and should have no coins or light beams.
 - **Spec:** 16×20 · 6 frames · 10fps · loop · anchor bottom-center (8,19).
 
 ### Pack_Open (Common, Rare, Legendary)
+- **Status:** placeholder art delivered and in use; final art still wanted.
 - **Where:** in the world, where the pack lay, the moment the player picks it up.
 - **Look:** the top crimp tears off, the wrapper puffs open, and cards peek out with a pop of rarity-colored sparkles.
 - **Spec:** 24×32 · 7 frames · 20fps · once · anchor bottom-center (12,31).
 
 ### Pack_CardBack
+- **Status:** placeholder art delivered and in use; final art still wanted.
 - **Where:** UI. The face-down cards in the pack stack, inside the DarkMode item-slot nine-slice, so draw only the inner art.
 - **Look:** a dark navy base (`#191524`) with a diagonal pattern and a central diamond emblem in the rarity color, with a "?" in the diamond. Legendary can have extra ornament.
 - **Spec:** 60×85 · one frame per rarity in one strip (common, rare, legendary) · anchor center (30,42).
