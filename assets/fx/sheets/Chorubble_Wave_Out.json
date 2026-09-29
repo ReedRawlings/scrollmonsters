@@ -1,0 +1,18 @@
+{
+  "image": "Chorubble_Wave_Out.png",
+  "frame_width": 96,
+  "frame_height": 64,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.533,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Chorubble: outgoing sound wave (low damage). Play centered on Chorubble; follow with Chorubble_Wave_Back when it bounces back.",
+  "smoothing": "none (nearest neighbor)"
+}

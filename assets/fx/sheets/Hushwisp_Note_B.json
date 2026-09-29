@@ -1,0 +1,18 @@
+{
+  "image": "Hushwisp_Note_B.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 10,
+  "duration_s": 0.8,
+  "loop": true,
+  "anchor": {
+    "x": 8,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Hushwisp music note (two beamed notes), gentle bob. Pick A or B at random per note; on touch or after 3 s play Hushwisp_Note_Burst at the same spot.",
+  "smoothing": "none (nearest neighbor)"
+}

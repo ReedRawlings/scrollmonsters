@@ -1,0 +1,18 @@
+{
+  "image": "Glazel_Smear_Fade.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 5,
+  "layout": "horizontal strip, no spacing",
+  "fps": 10,
+  "duration_s": 0.5,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 20,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Glazel smear fading out. Same frame size and anchor as the swipe.",
+  "smoothing": "none (nearest neighbor)"
+}

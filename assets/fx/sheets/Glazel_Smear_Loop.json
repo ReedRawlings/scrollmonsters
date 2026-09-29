@@ -1,0 +1,18 @@
+{
+  "image": "Glazel_Smear_Loop.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 10,
+  "duration_s": 0.6,
+  "loop": true,
+  "anchor": {
+    "x": 24,
+    "y": 20,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Glazel smear on the ground (speed boost for the player, slow for enemies). Same frame size and anchor as the swipe.",
+  "smoothing": "none (nearest neighbor)"
+}

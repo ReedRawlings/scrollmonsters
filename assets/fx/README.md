@@ -1,6 +1,6 @@
 # Spell & ability FX
 
-Pixel-art effects made in Pixel Composer (v1.22.10). **Game palette: Toasted40** (`scripts/pixelcomposer/palettes/Toasted40.hex`); effects built before the capture ring still use Endesga 32.
+Pixel-art effects made in Pixel Composer (v1.22.10). **Game palette: Toasted40** (`scripts/pixelcomposer/palettes/Toasted40.hex`). Bubble, Scissors and Heart effects were moved to Toasted40 with `recolor_t40.py` (re-export their sheets); the dust effects still use Endesga 32.
 
 - `sheets/`: game-ready transparent PNG strips (equal frames, horizontal, no spacing) plus a JSON file per effect
   with frame size, frame count, fps, loop and anchor point. Render with nearest-neighbour (no smoothing).
@@ -51,3 +51,30 @@ Pixel Composer effects: open the `.pxc`, press **F5** then **F6** to write the P
 | — | `Icon_{Bolstering_Croak,Growing_Colony,Staggering_Roar}` | 16×16 | 16, coin spin | stand-ins for the icon redraws |
 
 Rarity colors: common `#78949b`, rare `#8973ab`, legendary `#f7b750`. Not done yet: Priority 3 (capture affinity variants, guardian arrival).
+
+## Monster attacks (from "THE SCROLL — Confirmed Monsters")
+
+Already covered by earlier effects: Blushcap = `Bubble_Burst`, Outsnip = `Scissor_Snip`, Parasocial Relationships = `Heart_*`.
+No attack defined yet: Digital Detox, MossSnooze.
+
+Pixel Composer effects (open the `.pxc`, play through, **F5** then **F6**; JSON is already in `sheets/`), built by `build_monster_fx.py`:
+
+| Monster | Effect | Size | Frames @fps | Loop | Notes |
+|---|---|---|---|---|---|
+| Fizzteen | `Fizzteen_Flame` | 64×48 | 10 @15 | no | points right from the anchor (mouth); rotate to aim |
+| Chorubble | `Chorubble_Wave_Out` | 96×64 | 8 @15 | no | outgoing rings, low damage |
+| Chorubble | `Chorubble_Wave_Back` | 96×64 | 9 @15 | no | echo collapses inward; `hit_frame` 6 |
+| Ghosting | `Ghosting_Ink_{Appear,Loop,Fade}` | 32×24 | 5 / 6 / 6 @10 | Loop only | puddles dropped along the player's path |
+| Hushwisp | `Hushwisp_Note_Burst` | 32×32 | 6 @20 | no | when a note touches an enemy or times out |
+| Glazel | `Glazel_Lipstick_Swipe` → `Glazel_Smear_Loop` → `Glazel_Smear_Fade` | 48×32 | 8 @15 / 6 @10 / 5 @10 | Loop only | same anchor for all three |
+
+Hand-placed pixel pieces (PNG + JSON written straight to `sheets/`, no `.pxc`), built by `build_monster_sprites.py`:
+
+| Monster | Effect | Size | Frames @fps | Notes |
+|---|---|---|---|---|
+| Palimaw | `Palimaw_Tongue_Mid` / `_Tip` / `_Hit` | 8×16 / 16×16 / 16×16 | 1 / 4 @8 loop / 5 @20 | code stretches Mid from the mouth to the Tip along the lash |
+| Quibblet | `Quibblet_Pierce` | 48×48 | 8 @20 | warning triangle, spikes pierce up; `hit_frame` 3 |
+| Alert Beaked Caller | `Caller_Anger_Pop` → `Caller_Anger_Loop` | 16×16 | 5 @15 / 6 @10 loop | anchor bottom-center, above the enemy's head |
+| Hushwisp | `Hushwisp_Note_A` / `_B` | 16×16 | 8 @10 loop | single / beamed note, pick at random |
+| Grindle | `Grindle_Step_Left` / `_Right` | 24×20 | 9 @15 | alternate along the line; `hit_frame` 0 |
+| Ratiot | `Ratiot_Bite` | 48×56 | 8 @20 | anchor = target center; `hit_frame` 3 |

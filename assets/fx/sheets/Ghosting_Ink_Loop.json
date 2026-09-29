@@ -1,0 +1,18 @@
+{
+  "image": "Ghosting_Ink_Loop.png",
+  "frame_width": 32,
+  "frame_height": 24,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 10,
+  "duration_s": 0.6,
+  "loop": true,
+  "anchor": {
+    "x": 16,
+    "y": 12,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Ghosting ink puddle, loop part. Drop one every few steps behind the player; slow enemies standing on it. Appear -> Loop while active -> Fade.",
+  "smoothing": "none (nearest neighbor)"
+}

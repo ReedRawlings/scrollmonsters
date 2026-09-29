@@ -1,0 +1,18 @@
+{
+  "image": "Palimaw_Tongue_Tip.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 4,
+  "layout": "horizontal strip, no spacing",
+  "fps": 8,
+  "duration_s": 0.5,
+  "loop": true,
+  "anchor": {
+    "x": 0,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Palimaw tongue tip with its second face (blinks). Anchor = left edge of the band; attach to the end of the Mid pieces and rotate with them.",
+  "smoothing": "none (nearest neighbor)"
+}

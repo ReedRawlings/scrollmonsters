@@ -1,0 +1,18 @@
+{
+  "image": "Palimaw_Tongue_Hit.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 5,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.25,
+  "loop": false,
+  "anchor": {
+    "x": 8,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Palimaw: slobber splat where the tongue tip hits.",
+  "smoothing": "none (nearest neighbor)"
+}
