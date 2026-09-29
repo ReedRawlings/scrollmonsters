@@ -3,7 +3,6 @@
   const D = () => ScrollUI.DARK;
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
-  const NAMES = {storm:'STORM LIZARD'};
   class SurvivorHud {
     constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
     // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
@@ -17,7 +16,6 @@
       if(s.encounters.boss?.hp>0)y=this.guardian(ui,w,y)+6;
       if(s.noticeTime>0&&s.mode==='playing')y+=ui.notice(s.notice,w/2,y,w-24).height+6;
       if(s.logStorageError||s.unlockError)ui.darkText('Local progress could not be saved',w/2,y+6,{align:'center',color:D().danger});
-      if(s.mode==='playing')this.worldLabels(ui,w,h);
     }
     status(ui){
       const s=this.s,p=s.player,hp=clamp(p.hp/s.maxHp,0,1),xp=clamp(s.xp/s.xpNeeded(),0,1);
@@ -77,18 +75,6 @@
       ui.rect(26,y+14,Math.max(0,(width-12)*b.hp/b.maxHp),3,'#ef5266');
       ui.darkText('GUARDIAN '+Math.ceil(b.hp)+' / '+b.maxHp,w/2,y+9,{align:'center',color:D().gold});
       return y+22;
-    }
-    // Labels that follow things in the world. All positions go through toUI and are clamped on screen.
-    worldLabels(ui,w,h){
-      const s=this.s,top=112,bottom=h-SLOT_H-30;
-      const at=(text,x,y,color=D().text)=>{const t=ui.darkText(text,0,0,{align:'center',color});const half=t.width/2+4;t.setPosition(clamp(x,half,w-half),clamp(y,top,bottom));return t;};
-      const capture=(type,b)=>{const p=s.toUI(b.x,b.y);at('CAPTURE '+(NAMES[type]||type.toUpperCase())+' '+Math.round(b.progress/2.5*100)+'%\nCHOOSE 1 THIS ROUND',p.x,p.y-42);};
-      for(const [type,a] of Object.entries(s.creatures.allies))if(a.state==='ready')capture(type,a);
-      for(const [type,b] of [['frog',s.expedition.frog],['cat',s.expedition.catCapture],['beast',s.encounters.beast]])if(b?.state==='ready')capture(type,b);
-      const o=s.owl;if(o?.state==='ready')capture('owl',o);else if(o?.state==='wild'){const p=s.toUI(o.x,o.y);at('WILD OWL',p.x,p.y-24);}
-      for(const item of s.pickups.filter(e=>e.type!=='xp')){const p=s.toUI(item.x,item.y);if(p.x>12&&p.x<w-12&&p.y>top&&p.y<bottom)at({heal:'+8 HP',haste:'FRENZY',shield:'SHIELD',magnet:'XP MAGNET',cleanse:'CLEANSE'}[item.type],p.x,p.y+12);}
-      const sh=s.expedition.shrine;if(s.isExpedition&&sh.active&&!sh.done){const p=s.toUI(sh.x,sh.y),st=s.expedition.shrineStats(),near=Math.hypot(s.player.x-sh.x,s.player.y-sh.y)<=240;
-        at('SHRINE '+(sh.inCombat?'· DEFEAT ELITE':sh.needsExit?'· LEAVE TO REARM':!near?'· OPTIONAL '+(sh.completed+1)+'/3':'· HOLD 6s · '+(sh.completed+1)+'/3\n'+st.hp+' HP / '+st.damage+' DMG'),p.x,p.y-45,D().gold);}
     }
   }
   window.SurvivorHud = SurvivorHud;

@@ -208,7 +208,9 @@
       const dx=e.x-from.x,dy=e.y-from.y,d=Math.hypot(dx,dy)||1;if(!this.unstoppable(e)){if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.move(e,dx/d*12,dy/d*12);}
       if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
     }
-    announce(message){this.notice=message;this.noticeTime=4;}
+    // Map callouts are off by design (playtest 2026-09-29); only headline() shows a header.
+    announce(message){}
+    headline(message){this.notice=message;this.noticeTime=4;}
     drop(type,x,y){const sprite=this.pooled(this.pickupPool,{xp:'shieldPickup',heal:'heart',haste:'frenzyPickup',shield:'shieldPickup',magnet:'magnetPickup',cleanse:'cleansePickup'}[type],type==='xp'?.3:type==='shield'?.85:1.7);this.pickups.push({type,x,y,life:type==='xp'?Infinity:25,sprite});}
     summonOwl(){
       this.logEvent('owl_appeared');this.owlAppeared=true;const p=this.player;let x=p.x,y=p.y;
