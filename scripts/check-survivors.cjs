@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const {run,gameURL}=require('./survivor-test-utils.cjs');
+const {run,gameURL,controlPoint}=require('./survivor-test-utils.cjs');
 run('trial movement, collision, pause, combat, leveling, endings, history and touch',async(page,browser)=>{
  await page.evaluate(()=>{localStorage.setItem('scollmonsters-save-v2','campaign-sentinel');const s=__survivorTest.scene;s.start();s.obstacles=[];s.spawnTimer=999;});
  const origin=await page.evaluate(()=>__survivorTest.scene.player.x);
@@ -24,12 +24,9 @@ run('trial movement, collision, pause, combat, leveling, endings, history and to
  const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});await mobile.addInitScript(()=>window.__vt_pending=true);await mobile.goto(gameURL('survivors.html?trial&test'));await mobile.waitForFunction(()=>window.__phaserReady);await mobile.evaluate(()=>{const s=__survivorTest.scene;s.start();s.obstacles=[];s.spawnTimer=999;});const c=await mobile.locator('canvas').boundingBox();const session=await mobile.context().newCDPSession(mobile);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:c.x+c.width*.4,y:c.y+c.height*.6}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:c.x+c.width*.65,y:c.y+c.height*.6}]});const start=await mobile.evaluate(()=>__survivorTest.scene.player.x);await mobile.evaluate(()=>advanceTime(500));assert(await mobile.evaluate(()=>__survivorTest.scene.player.x)>start);await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await mobile.waitForFunction(()=>!__survivorTest.scene.joy);
  const released=await mobile.evaluate(()=>{const s=__survivorTest.scene,x=s.player.x,y=s.player.y;advanceTime(500);return {x,y,afterX:s.player.x,afterY:s.player.y};});assert.equal(released.afterX,released.x);assert.equal(released.afterY,released.y);
- const upgrade=await mobile.evaluate(()=>{
-  const s=__survivorTest.scene;s.xp=s.xpNeeded();s.checkLevel();s.draw();const choice=s.choices[0],label='1. '+choice.name,buttons=[];
-  const visit=o=>{if(o.type==='WoodButton'&&o.label?.getData('label')===label)buttons.push(o);if(o.list)o.list.forEach(visit);};s.children.list.forEach(visit);
-  const bounds=buttons.find(o=>o.visible&&o.active).getBounds();return {id:choice.id,before:s.upgrades[choice.id]||0,x:bounds.centerX,y:bounds.centerY,width:s.scale.width,height:s.scale.height};
- });
- await mobile.touchscreen.tap(c.x+upgrade.x*c.width/upgrade.width,c.y+upgrade.y*c.height/upgrade.height);
+ const upgrade=await mobile.evaluate(()=>{const s=__survivorTest.scene;s.xp=s.xpNeeded();s.checkLevel();s.draw();const choice=s.choices[0];return {id:choice.id,before:s.upgrades[choice.id]||0,label:'1. '+choice.name};});
+ const point=await controlPoint(mobile,upgrade.label);
+ await mobile.touchscreen.tap(point.x,point.y);
  await mobile.waitForFunction(()=>__survivorTest.scene.mode==='playing');
  assert.equal(await mobile.evaluate(id=>__survivorTest.scene.upgrades[id],upgrade.id),upgrade.before+1,'Touching the upgrade applies its rank');
  assert.equal(await mobile.evaluate(()=>__survivorTest.scene.joy),null,'Touch upgrade does not leave movement active');

@@ -66,7 +66,8 @@
       this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
-      this.input.on('pointerdown',p=>{if(this.mode==='playing'&&p.y>85&&!this.joy&&!(p.x>this.scale.width-120&&p.y>this.scale.height-145))this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
+      // Any interactive UI object under the pointer owns the press; only bare field starts movement.
+      this.input.on('pointerdown',(p,over)=>{if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
       this.input.on('pointermove',p=>{if(this.joy?.id===p.id){this.joy.dx=p.x-this.joy.x;this.joy.dy=p.y-this.joy.y;}});
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
