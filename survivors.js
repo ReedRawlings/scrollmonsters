@@ -51,7 +51,7 @@
     }
     create(){
       document.getElementById('fallback').hidden=true;this.field=new URLSearchParams(location.search).get('field')==='desert'?'desert':'woods';this.isExpedition=DURATION===600;this.unlocked=Expedition.readUnlocks();this.starter='cat';this.catActive=true;
-      this.rng=9137;this.mode='title';this.accumulator=0;this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.obstacles=[];
+      this.seed=this.runSeed();this.rng=this.seed;this.mode='title';this.accumulator=0;this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.obstacles=[];
       this.enemyPool=[];this.shotPool=[];this.effectPool=[];this.pickupPool=[];
       this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
       this.worldSize=WORLD;this.cameras.main.setBounds(0,0,WORLD,WORLD);
@@ -95,6 +95,8 @@
     uiSize(){return {w:this.scale.width/UI,h:this.scale.height/UI};}
     // World point to logical UI point (the world camera never zooms).
     toUI(x,y){const cam=this.cameras.main;return {x:(x-cam.scrollX)/UI,y:(y-cam.scrollY)/UI};}
+    // Each run gets a fresh seed so dens, chests and spawns vary; ?seed=N replays one, and ?test pins 9137 so checks are reproducible.
+    runSeed(){const q=new URLSearchParams(location.search);if(q.has('seed'))return Number(q.get('seed'))>>>0;if(q.has('test'))return 9137;return crypto.getRandomValues(new Uint32Array(1))[0];}
     rand(){this.rng=(1664525*this.rng+1013904223)>>>0;return this.rng/4294967296;}
     makeMap(){
       const floor=this.textures.get('floor');floor.add('grass',0,0,192,16,16);floor.add('sand',0,16,16,16,16);this.textures.get('desert').add('palm',0,160,160,32,32);
@@ -114,7 +116,7 @@
       const border=this.add.graphics().setDepth(-4);border.lineStyle(8,0x426845,.8).strokeRect(12,12,WORLD-24,WORLD-24);
     }
     resetState(){
-      this.rng=9137;this.expansion=new SurvivorExpansion(this);this.totalXp=0;this.xpRemainder=0;
+      this.rng=this.seed;this.expansion=new SurvivorExpansion(this);this.totalXp=0;this.xpRemainder=0;
       for(const list of [this.enemies,this.shots,this.effects,this.pickups])for(const e of list)e.sprite.setVisible(false);
       this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.elapsed=0;this.spawnTimer=.25;this.kills=0;this.spawned=0;this.peakEnemies=0;this.spawnCapSeconds=0;this.catKills=0;this.playerDamage=0;this.catDamage=0;this.damageTaken=0;this.accumulator=0;this.joy=null;
       Object.assign(this.player,{x:WORLD/2,y:WORLD/2,hp:MAX_HP,inv:0,fire:.1,dir:0});Object.assign(this.cat,{x:WORLD/2-42,y:WORLD/2+30,attack:0});
@@ -123,7 +125,7 @@
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
     chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
-    start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.resetState();this.run={id:crypto.randomUUID(),version:2,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
+    start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.seed=this.runSeed();this.resetState();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
     saveRun(){
