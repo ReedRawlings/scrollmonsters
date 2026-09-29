@@ -135,6 +135,37 @@ async function expeditionEvents(browser, juiceOn) {
     await cap.screenshot({path: 'output/juice/capture.png'});
     assert.deepEqual(cap.errors, []);
     await cap.close();
+    // --- starter unlock: a newly unlocked creature stops the real-time game until Continue ---
+    const un = await open(browser, {width: 390, height: 844}, 'survivors.html?test', {mobile: true, realtime: true, starters: ['cat']});
+    await state(un, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.player.inv = 999; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); });
+    await un.waitForFunction(() => __survivorTest.scene.mode === 'unlock', null, {timeout: 6000});
+    assert.equal(await state(un, () => __survivorTest.scene.unlockType), 'mouse');
+    const t0 = await state(un, () => __survivorTest.scene.elapsed); await wait(300);
+    assert.equal(await state(un, () => __survivorTest.scene.elapsed), t0, 'The game is stopped behind the unlock screen');
+    await state(un, () => window.dispatchEvent(new Event('blur')));
+    assert.equal(await state(un, () => __survivorTest.scene.mode), 'unlock', 'Blur does not break the unlock screen');
+    await wait(900);
+    assert.deepEqual(await offscreenTexts(un), [], 'Unlock screen fits');
+    await un.screenshot({path: 'output/juice/unlock.png'});
+    const cont = await controlPoint(un, 'Continue');
+    await un.touchscreen.tap(cont.x, cont.y);
+    assert.equal(await state(un, () => __survivorTest.scene.mode), 'playing');
+    assert.deepEqual(un.errors, []);
+    await un.close();
+
+    // --- an already-unlocked creature never opens the screen; a same-tick level-up shows first ---
+    const known = await open(browser, {width: 1100, height: 760}, 'survivors.html?test', {realtime: true, starters: ['cat', 'mouse']});
+    await state(known, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.player.inv = 999; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); });
+    await wait(4000);
+    assert.equal(await state(known, () => __survivorTest.scene.mode), 'playing', 'No unlock screen for an already-unlocked starter');
+    await known.close();
+    const both = await open(browser, {width: 1100, height: 760}, 'survivors.html?test', {realtime: true, starters: ['cat']});
+    await state(both, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.player.inv = 999; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); s.creatures.allies.mouse.progress = 2.45; s.xp = s.xpNeeded() - 1; s.gainXP(5, false); });
+    await both.waitForFunction(() => ['upgrade', 'unlock'].includes(__survivorTest.scene.mode), null, {timeout: 4000});
+    assert.equal(await state(both, () => __survivorTest.scene.mode), 'upgrade', 'Level-up shows first');
+    await wait(420); await state(both, () => __survivorTest.scene.chooseUpgrade(0));
+    await both.waitForFunction(() => __survivorTest.scene.mode === 'unlock', null, {timeout: 4000});
+    await both.close();
     console.log('PASS: juice');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

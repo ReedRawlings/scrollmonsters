@@ -11,7 +11,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.upgrade=e=>this.onUpgrade(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.upgrade=e=>this.onUpgrade(e);
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
@@ -129,6 +129,7 @@
       this.updateShrine?.(now);
       for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
     }
+    onUnlock(e){this.unlocks.push(e.type);this.unlockAt=this.now()+900;}
     onCapture(e){
       this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);

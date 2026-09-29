@@ -11,7 +11,7 @@
     destroy(){for(const c of this.chests)c.sprite.destroy();this.frogSprite.destroy();this.shrineSprite.destroy();}
     has(type){if(['mouse','mole','bear','salamander','spider','storm'].includes(type))return !!this.s.creatures.allies[type];return type==='cat'?this.s.catActive||!!this.catCapture:type==='owl'?!!this.s.owl:type==='beast'?!!this.s.encounters.beast:!!this.frog;}
     party(){return TYPES.filter(t=>['mouse','mole','bear','salamander','spider','storm'].includes(t)?this.s.creatures.allies[t]?.state==='ally':t==='cat'?this.s.catActive:t==='owl'?this.s.owl?.state==='ally':t==='beast'?this.s.encounters.beast?.state==='ally':this.frog?.state==='ally');}
-    unlock(type){const s=this.s;if(s.unlocked.includes(type))return;s.unlocked.push(type);try{localStorage.setItem(KEY,JSON.stringify(s.unlocked));s.unlockError=false;}catch{s.unlockError=true;}s.logEvent('starter_unlocked',{creature:type});}
+    unlock(type){const s=this.s;if(s.unlocked.includes(type))return false;s.unlocked.push(type);try{localStorage.setItem(KEY,JSON.stringify(s.unlocked));s.unlockError=false;}catch{s.unlockError=true;}s.logEvent('starter_unlocked',{creature:type});s.reward('unlock',{type});return true;}
     captureBody(type){const s=this.s;return type==='cat'?this.catCapture:type==='owl'?s.owl:type==='beast'?s.encounters.beast:type==='frog'?this.frog:s.creatures.allies[type];}
     dismissCapture(type,body){
       if(body?.state!=='ready')return;body.state='dismissed';

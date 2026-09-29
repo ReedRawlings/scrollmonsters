@@ -15,7 +15,7 @@
       this.partyBar(ui,w,h);
       let y=Math.max(86,rowBottom+6);
       if(s.encounters.boss?.hp>0)y=this.guardian(ui,w,y)+6;
-      if(s.noticeTime>0)y+=ui.notice(s.notice,w/2,y,w-24).height+6;
+      if(s.noticeTime>0&&s.mode==='playing')y+=ui.notice(s.notice,w/2,y,w-24).height+6;
       if(s.logStorageError||s.unlockError)ui.darkText('Local progress could not be saved',w/2,y+6,{align:'center',color:D().danger});
       if(s.mode==='playing')this.worldLabels(ui,w,h);
     }
