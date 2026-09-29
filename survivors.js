@@ -4,7 +4,7 @@
   const WORLD = 2304, DURATION = new URLSearchParams(location.search).has('trial')?120:600, STEP = 1 / 60, MAX_HP = 40;
   const RUN_HISTORY_KEY = 'scrollmonsters-survivor-runs-v1', RUN_HISTORY_BYTES = 2 * 1024 * 1024;
   const A = 'assets/Ninja Adventure - Asset Pack/';
-  const UI = 2; // every survivors UI element is laid out in logical space and drawn at 2x
+  // Survivors UI is laid out in logical space and drawn at uiScale(): 2x (portrait, desktop Normal) or 3x (desktop Large).
   const FACESETS = {walker:'Characters/EggBoy',cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
   const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil'];
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
@@ -94,9 +94,10 @@
       if(new URLSearchParams(location.search).has('test'))window.__survivorTest={scene:this,start:()=>this.start(),spawn:(type,x,y)=>this.spawn(type,x,y),tick:seconds=>window.advanceTime(seconds*1000)};
       window.__phaserReady=true;
     }
-    uiSize(){return {w:this.scale.width/UI,h:this.scale.height/UI};}
+    uiScale(){return this.scale.width<this.scale.height?2:(this.juice?.uiLarge?3:2);}
+    uiSize(){const k=this.uiScale();return {w:this.scale.width/k,h:this.scale.height/k};}
     // World point to logical UI point (the world camera never zooms).
-    toUI(x,y){const cam=this.cameras.main;return {x:(x-cam.scrollX)/UI,y:(y-cam.scrollY)/UI};}
+    toUI(x,y){const cam=this.cameras.main,k=this.uiScale();return {x:(x-cam.scrollX)/k,y:(y-cam.scrollY)/k};}
     // Each run gets a fresh seed so dens, chests and spawns vary; ?seed=N replays one, and ?test pins 9137 so checks are reproducible.
     runSeed(){const q=new URLSearchParams(location.search);if(q.has('seed'))return Number(q.get('seed'))>>>0;if(q.has('test'))return 9137;return crypto.getRandomValues(new Uint32Array(1))[0];}
     rand(){this.rng=(1664525*this.rng+1013904223)>>>0;return this.rng/4294967296;}
@@ -369,7 +370,7 @@
       for(const e of this.pickups){e.sprite.setPosition(e.x,e.y).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
       this.ui.begin(this.mode);
       const logical=this.uiSize();
-      this.ui.beginGroup('ui2x',{scale:UI});
+      this.ui.beginGroup('ui2x',{scale:this.uiScale()});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
       if(['title','paused','won','lost','upgrade','relic','pack','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.screens.dismiss(logical.w,logical.h);
@@ -379,5 +380,5 @@
     snapshot(){return {field:this.field,dash:{cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; origin top-left; x right, y down',world:{width:WORLD,height:WORLD},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles,enemies:this.enemies.slice(0,40).map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows or touch drag; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
   const portrait=window.innerWidth/window.innerHeight<.85;
-  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:960,height:portrait?960:640,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
+  new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:1440,height:960,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});
 })();

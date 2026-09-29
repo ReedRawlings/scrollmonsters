@@ -21,6 +21,8 @@
     title(w,h){
       const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced;
       this.dim(w,h);
+      // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
+      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
         ?{banner:[w/2,26],hero:[87,72],name:[w/2,186],desc:[w/2,204,240],grid:[24,228],begin:[55,340,160,44],field:[55,398,76,26],hist:[139,398,76,26]}
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
@@ -31,7 +33,7 @@
       const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
       const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
       const face=ui.image(key,hx+48,hy+48-lift,Math.max(1,76*sx),76,{center:true});this.layout.hero={scaleX:Math.round(sx*1000)/1000,key};
-      if(!red&&t>=80&&t<400&&this.sparkAt!==s.starterAt){this.sparkAt=s.starterAt;for(let i=0;i<8;i++){const a=i*Math.PI/4+j.rand()*.5,r=30+j.rand()*24;j.play('Reward_Trail',hx+48+Math.cos(a)*r,hy+48+Math.sin(a)*r,{ui:true,scale:1});}}
+      if(!red&&t>=80&&t<400&&this.sparkAt!==s.starterAt){this.sparkAt=s.starterAt;for(let i=0;i<8;i++){const a=i*Math.PI/4+j.rand()*.5,r=30+j.rand()*24;j.play('Reward_Trail',ox+hx+48+Math.cos(a)*r,oy+hy+48+Math.sin(a)*r,{ui:true,scale:1});}}
       const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
       ui.pill('<',hx-41,hy+34,30,28,()=>step(-1),{id:'prev'});ui.pill('>',hx+107,hy+34,30,28,()=>step(1),{id:'next'});
       // Name and description slide up as they fade in; a locked tap shows how to unlock instead.
@@ -41,17 +43,18 @@
       const pos=i=>({x:L.grid[0]+(i%5)*46,y:L.grid[1]+Math.floor(i/5)*46}),ids=roster.map(([id])=>id);
       roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
         if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
-        this.layout.faces.push({id,x,y,size:38,known});
+        this.layout.faces.push({id,x:x+ox,y:y+oy,size:38,known}); // layout is recorded in screen space
         const f=ui.image('face_'+id,x,y,38,38);if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
         ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);});
       // The selection brackets slide from the previous face over 150ms.
       const to=pos(ids.indexOf(sel)),from=s.starterFrom?pos(ids.indexOf(s.starterFrom)):to,bk=red?1:Math.min(1,t/150),be=bk>=1?1:ease(bk);
       bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,38,38);
       const [bx,by,bw,bh]=L.begin;ui.card('BEGIN',bx,by,bw,bh,()=>s.start(),{color:D().gold,size:18,align:'center',id:'begin'});
-      bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx,by,bw,bh];this.layout.beginBrackets=[bx,by,bw,bh];
+      bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx+ox,by+oy,bw,bh];this.layout.beginBrackets=[bx+ox,by+oy,bw,bh];
       const other=s.field==='desert'?'woods':'desert';
       ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
+      if(!portrait)ui.endGroup();
     }
     paused(w,h){
       const s=this.s,ui=s.ui,ids=[...new Set(s.relics.equipped)];this.dim(w,h);
@@ -72,7 +75,11 @@
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
       this.numbersToggle(w,py+ph+8);
     }
-    numbersToggle(w,y){const j=this.s.juice;this.s.ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});}
+    // Pause settings: damage numbers everywhere; UI size on desktop (landscape) only.
+    numbersToggle(w,y){const s=this.s,j=s.juice,ui=s.ui,wide=w>this.s.uiSize().h;
+      if(!wide)return ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});
+      ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-132,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});
+      ui.pill('UI size: '+(j.uiLarge?'Large':'Normal'),w/2+4,y,128,20,()=>j.setUiLarge(!j.uiLarge),{id:'ui-size'});}
     ended(w,h){
       const s=this.s,ui=s.ui,won=s.mode==='won';this.dim(w,h);
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));

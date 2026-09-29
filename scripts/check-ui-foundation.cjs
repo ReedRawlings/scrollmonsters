@@ -108,7 +108,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     await tall.close();
 
     const land = await open(browser, {width: 1100, height: 760});
-    assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 960, h: 640});
+    assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 1440, h: 960});
     await state(land, () => { const s = __survivorTest.scene; s.start(); s.headline('Shrine challenge 1/3! Defeat the elite for an upgrade.'); s.draw(); });
     assert.deepEqual(await offscreenTexts(land), [], 'No HUD text leaves the canvas (landscape)');
     await land.screenshot({path: 'output/ui-foundation/hud-landscape.png'});

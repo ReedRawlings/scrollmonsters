@@ -102,6 +102,41 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       assert.deepEqual(home.errors, []);
       await home.context().close();
     }
+
+    // --- desktop view: 1440x960 canvas; UI size Normal (2x, 720x480) or Large (3x, 480x320) ---
+    const dv = await open(browser);
+    assert.deepEqual(await state(dv, () => { const s = __survivorTest.scene; return {canvas: [s.scale.width, s.scale.height], ui: s.uiScale(), size: s.uiSize()}; }), {canvas: [1440, 960], ui: 2, size: {w: 720, h: 480}}, 'Desktop canvas 1440x960 at Normal UI size');
+    await state(dv, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.pause(); s.draw(); });
+    let pt = await controlPoint(dv, 'UI size: Normal'); await dv.mouse.click(pt.x, pt.y);
+    const big = await state(dv, () => { const s = __survivorTest.scene; s.draw(); return {ui: s.uiScale(), size: s.uiSize(), front: s.juice.front.scaleX, saved: JSON.parse(localStorage.getItem('scrollmonsters-survivor-settings-v1'))}; });
+    assert.deepEqual(big, {ui: 3, size: {w: 480, h: 320}, front: 3, saved: {damageNumbers: true, uiLarge: true}}, 'Large: 3x, 480x320, saved alongside damageNumbers');
+    pt = await controlPoint(dv, 'UI size: Large'); await dv.mouse.click(pt.x, pt.y);
+    const resized = await state(dv, () => { const s = __survivorTest.scene; s.draw(); return [s.uiScale(), s.juice.front.scaleX]; });
+    assert.deepEqual(resized, [2, 2], 'resize mid-run: the juice layer follows the UI scale on the next frame');
+    await controlPoint(dv, 'UI size: Normal');
+    await state(dv, () => __survivorTest.scene.juice.setUiLarge(true)); await dv.reload(); await dv.waitForFunction(() => window.__phaserReady);
+    assert.equal(await state(dv, () => __survivorTest.scene.uiScale()), 3, 'Large survives a reload');
+    await state(dv, () => __survivorTest.scene.juice.setUiLarge(false));
+    // landscape screens at both sizes: nothing off screen
+    const setups = {
+      title: s => { s.mode = 'title'; }, paused: s => { s.start(); s.pause(); },
+      relics: s => { s.start(); s.relics.equipped = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil']; s.pause(); },
+      upgrade: s => { s.start(); s.xp = s.xpNeeded(); s.checkLevel(); }, relic: s => { s.start(); s.relics.reward('shrine_challenge'); s.relics.open(); },
+      pack: s => { s.start(); const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 5; p.cards = s.packs.draw(s.upgradePool(), 5).map(u => u.id); s.tick(1 / 60); s.packs.reveal.start -= 5000; },
+      unlock: s => { s.start(); s.openUnlock('owl'); }, won: s => { s.start(); s.mode = 'won'; }};
+    for (const large of [false, true]) for (const [name, fn] of Object.entries(setups)) {
+      await state(dv, ([large, src]) => { const s = __survivorTest.scene; s.juice.setUiLarge(large); s.spawnTimer = 999; (0, eval)('(' + src + ')')(s); s.spawnTimer = 999; s.draw(); }, [large, fn.toString()]);
+      await wait(450); await state(dv, () => __survivorTest.scene.draw());
+      assert.deepEqual(await offscreenTexts(dv), [], `landscape screens at both sizes: ${name} ${large ? 'large' : 'normal'}`);
+      await dv.screenshot({path: `output/feedback/view-${large ? 'large' : 'normal'}-${name}.png`});
+    }
+    assert.deepEqual(dv.errors, []);
+    await dv.close();
+    const phone = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const ph = await state(phone, () => { const s = __survivorTest.scene; s.start(); s.pause(); s.draw(); return {canvas: [s.scale.width, s.scale.height], ui: s.uiScale()}; });
+    assert.deepEqual(ph, {canvas: [540, 960], ui: 2}, 'Portrait is unchanged');
+    assert(!(await listControls(phone)).some(c => /UI size/.test(c.label)), 'No UI size setting in portrait');
+    await phone.context().close();
     console.log('Feedback: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

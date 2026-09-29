@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const UI = 2, MAX_FX = 60;
+  const MAX_FX = 60;
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
@@ -8,14 +8,14 @@
   class SurvivorJuice {
     constructor(s){
       this.s=s;this.enabled=true;this.reduced=s.ui.reducedMotion;this.seed=(Date.now()>>>0)||1;
-      this.front=s.add.container(0,0).setScrollFactor(0).setDepth(10002).setScale(UI); // logical UI space, above the HUD
+      this.front=s.add.container(0,0).setScrollFactor(0).setDepth(10002).setScale(s.uiScale()); // logical UI space, above the HUD
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
       this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
-      this.numbersOn=saved.damageNumbers!==false;
+      this.numbersOn=saved.damageNumbers!==false;this.uiLarge=saved.uiLarge===true;
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
@@ -65,7 +65,9 @@
     // Damage hooks from the sim. boost = product of the conditional multipliers on this hit; 25%+ reads as a crit.
     damage(target,amount,boost=1){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(target,amount,{crit:boost>=1.25});}
     hurt(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{hurt:true});}
-    setNumbers(on){this.numbersOn=!!on;if(!on)this.numbers.reset();try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({damageNumbers:this.numbersOn}));}catch{}}
+    setNumbers(on){this.numbersOn=!!on;if(!on)this.numbers.reset();this.saveSettings();}
+    setUiLarge(on){this.uiLarge=!!on;this.saveSettings();}
+    saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({damageNumbers:this.numbersOn,uiLarge:this.uiLarge}));}catch{}}
     flyTo(key,from,to,{size=32,onLand}={}){
       if(!this.enabled)return null;
       const im=this.s.add.image(from.x,from.y,key,this.frameName(key,0)).setDisplaySize(size,size);this.front.add(im);
@@ -82,7 +84,7 @@
     }
     // Called at the end of every draw().
     update(){
-      const now=this.now(),cam=this.s.cameras.main;
+      const now=this.now(),cam=this.s.cameras.main;this.front.setScale(this.s.uiScale());
       for(const f of [...this.fx]){if(f.key==='flash')continue;const t=now-f.start,m=this.meta(f.key);
         if(!f.loop&&t>=m.n/m.fps*1000){this.stop(f);f.onDone?.();continue;}
         f.sprite.setFrame(this.frameName(f.key,this.frameAt(f.key,t,f.loop)));}
