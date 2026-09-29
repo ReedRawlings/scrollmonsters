@@ -1,6 +1,7 @@
 (() => {
   const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm'],KEY='scrollmonsters-starters-v1';
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const CAPTURE_R = 140; // capture zone radius in world px (2x since the 2026-09-29 playtest)
   class Expedition {
     static readUnlocks(){
       let unlocked=['cat'];try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))unlocked.push(...saved.filter(t=>TYPES.includes(t)));
@@ -34,7 +35,7 @@
       if(!body||body.state!=='ready')return;
       const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?2:1;
       if(this.party().length>=roundLimit+1||(Number.isInteger(stage)&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
-      body.progress=dist(body,s.player)<70?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
+      body.progress=dist(body,s.player)<CAPTURE_R?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
       if(body.progress<2.5)return;
       body.state='ally';if(type==='cat'){s.catActive=true;this.catCapture=null;}
       if(Number.isInteger(stage)){

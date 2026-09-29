@@ -41,6 +41,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.deepEqual(t.world, [], 'No world-anchored text: ' + t.world);
     assert.deepEqual(page.errors, []);
     await page.close();
+
+    // --- capture zone 2x: radius 140, ring and fill at 6x (shrine circle unchanged) ---
+    const cz = await open(browser);
+    const c = await state(cz, () => { const s = __survivorTest.scene, out = {}; s.start(); s.spawnTimer = 999;
+      s.expedition.release('mouse', s.player.x + 200, s.player.y, false); const b = s.expedition.captureBody('mouse') || s.creatures.allies.mouse;
+      if (!b) return {missing: true}; b.state = 'ready'; b.progress = 0;
+      const at = d => { b.x = s.player.x + d; b.y = s.player.y; const before = b.progress; s.expedition.capture(b, 'mouse', 1 / 60); return b.progress > before; };
+      out.in = at(120); b.progress = .5; out.out = !at(150) ; s.draw();
+      const r = s.juice.rings.mouse; out.ring = r && [r.ring.scaleX, r.fill.scaleX];
+      s.elapsed = 100; const sh = s.expedition.shrine; sh.active = true; s.draw(); out.shrine = s.juice.rings.shrine?.ring.scaleX;
+      return out; });
+    assert.notEqual(c.missing, true, 'test setup: a ready mouse capture');
+    assert.equal(c.in, true, 'Standing 120px away charges the capture'); assert.equal(c.out, true, 'Standing 150px away does not');
+    assert.deepEqual(c.ring, [6, 6], 'The capture ring and fill draw at 6x'); assert.equal(c.shrine, 3, 'The shrine circle stays at 3x');
+    await cz.screenshot({path: 'output/feedback/capture-ring.png'});
+    assert.deepEqual(cz.errors, []);
+    await cz.close();
     console.log('Feedback: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

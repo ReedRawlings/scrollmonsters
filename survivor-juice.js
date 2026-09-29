@@ -135,18 +135,18 @@
         sp.setVisible(this.enabled).setTexture(k,this.frameName(k,this.frameAt(k,t))).setOrigin(mm.ax/mm.fw,mm.ay/mm.fh).setScale(3).setPosition(p.x,p.y+24).setDepth(p.y+(i?21:19));});
     }
     // Sheet ring + fill at 3x in the world. Ids not drawn this frame are hidden (mark and sweep).
-    ring(id,x,y,fill01,{tint=0xffffff,alpha=1}={}){
+    ring(id,x,y,fill01,{tint=0xffffff,alpha=1,scale=3}={}){
       const now=this.now();let r=this.rings[id];
       if(!r){const m=this.meta('Capture_Ring');r=this.rings[id]={ring:this.s.add.sprite(0,0,'Capture_Ring',this.frameName('Capture_Ring',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3),
         fill:this.s.add.sprite(0,0,'Capture_Fill',this.frameName('Capture_Fill',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3)};}
       r.seen=true;
-      r.ring.setVisible(true).setPosition(x,y).setDepth(y-3).setTint(tint).setAlpha(alpha).setFrame(this.frameName('Capture_Ring',this.frameAt('Capture_Ring',now,true)));
-      r.fill.setVisible(fill01>0).setPosition(x,y).setDepth(y-2).setAlpha(alpha).setFrame(this.frameName('Capture_Fill',Math.round(clamp(fill01,0,1)*16)));
+      r.ring.setVisible(true).setScale(scale).setPosition(x,y).setDepth(y-3).setTint(tint).setAlpha(alpha).setFrame(this.frameName('Capture_Ring',this.frameAt('Capture_Ring',now,true)));
+      r.fill.setVisible(fill01>0).setScale(scale).setPosition(x,y).setDepth(y-2).setAlpha(alpha).setFrame(this.frameName('Capture_Fill',Math.round(clamp(fill01,0,1)*16)));
     }
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
       if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm']){
-        const b=this.s.expedition.captureBody(type);if(b?.state==='ready')this.ring(type,b.x,b.y,b.progress/2.5);}
+        const b=this.s.expedition.captureBody(type);if(b?.state==='ready')this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});}
       this.updateShrine?.(now);
       for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
     }
