@@ -48,13 +48,16 @@
         ids.forEach((id,i)=>{const cx=px+12+Math.floor(i/rows)*colW,cy=py+26+(i%rows)*20;ui.image('relic_'+id,cx,cy,16,16,{frame:[0,0,16,16]});
           ui.darkText(s.relics.name(id)+' ×'+s.relics.count(id),cx+22,cy+8,{color:D().muted});});
         this.button('Resume',w/2-50,py+ph-30,100,22,()=>s.pause(),'resume');
+        this.numbersToggle(w,py+ph+8);
         return;
       }
       const pw=Math.min(w-24,254),ph=178,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
       ['Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.'].forEach((t,i)=>ui.darkText(t,w/2,py+32+i*16,{align:'center',color:D().muted}));
       this.button('Resume',px+16,py+ph-68,pw-32,24,()=>s.pause(),'resume');
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
+      this.numbersToggle(w,py+ph+8);
     }
+    numbersToggle(w,y){const j=this.s.juice;this.s.ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});}
     ended(w,h){
       const s=this.s,ui=s.ui,won=s.mode==='won';this.dim(w,h);
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));

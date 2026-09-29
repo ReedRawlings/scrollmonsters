@@ -91,6 +91,35 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await sim.screenshot({path: 'output/damage-numbers/hits.png'});
     assert.deepEqual(sim.errors, []);
     await sim.close();
+
+    // --- the pause toggle turns numbers off, persists, and survives storage that throws ---
+    for (const [name, viewport, mobile, relics] of [['portrait', {width: 390, height: 844}, true, false], ['landscape', {width: 1100, height: 760}, false, true]]) {
+      const page = await open(browser, viewport, {mobile});
+      await state(page, relics => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; if (relics) s.relics.equipped = ['boots', 'veil', 'veil']; s.pause(); s.draw(); }, relics);
+      await page.screenshot({path: `output/damage-numbers/pause-${name}.png`});
+      const p = await controlPoint(page, 'Damage numbers: On');
+      if (mobile) await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y);
+      const t = await state(page, () => { const s = __survivorTest.scene; s.draw(); s.juice.damage({x: 0, y: 0}, 5);
+        return {on: s.juice.numbersOn, shown: s.juice.numbers.list().length, saved: localStorage.getItem('scrollmonsters-survivor-settings-v1')}; });
+      assert.deepEqual(t, {on: false, shown: 0, saved: '{"damageNumbers":false}'}, `${name}: the toggle turns numbers off and saves it`);
+      await controlPoint(page, 'Damage numbers: Off');
+      await page.reload(); await page.waitForFunction(() => window.__phaserReady);
+      assert.equal(await state(page, () => __survivorTest.scene.juice.numbersOn), false, `${name}: off survives a reload`);
+      assert.deepEqual(page.errors, []);
+      await page.context().close();
+    }
+    const locked = await open(browser, {width: 1100, height: 760}, {init: () => { Storage.prototype.setItem = () => { throw new Error('blocked'); }; Storage.prototype.getItem = () => { throw new Error('blocked'); }; }});
+    const ls = await state(locked, () => { const s = __survivorTest.scene; s.start(); s.juice.setNumbers(false); return s.juice.numbersOn; });
+    assert.equal(ls, false, 'storage throws: the toggle still works for the session');
+    assert.deepEqual(locked.errors, []);
+    await locked.close();
+
+    // --- reduced motion: no pop, no crit burst; rise and fade stay ---
+    const calm = await open(browser, {width: 1100, height: 760}, {reducedMotion: 'reduce'});
+    const c = await state(calm, () => { const s = __survivorTest.scene, j = s.juice; s.start(); j.played.length = 0; j.damage({x: 300, y: 300}, 4, 2);
+      return {scale: j.numbers.list()[0].scale, burst: j.played.includes('Damage_Crit')}; });
+    assert.deepEqual(c, {scale: 3, burst: false}, 'Reduced motion: crit at its resting size, no Damage_Crit');
+    await calm.close();
     console.log('Damage numbers: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

@@ -87,7 +87,7 @@ In `survivor-relics.js` and the shrine code in `survivor-expedition.js`:
 | Pack pickup | Cards granted immediately, `mode='pack'` | `Pack_Open`, then the stack, flip, hand row, then each icon flies to its slot. |
 | Shrine | `updateShrine()` and `completeShrine()` (timing unchanged) | The shrine sprite is `ShrineStates` with frame = completed (whole, cracked, badly cracked, shattered), replacing the altar prop and the three dots. For now the circle reuses `Capture_Ring` at 3x, and the charge reuses `Capture_Fill` with frame = round(progress ÷ 6 × 16). The ring fades to grey once the shrine shatters. Dedicated shrine circle art is a later follow-up. `Shrine_Summon` at the elite spawn, and `Shrine_EliteMark` over the elite. On the kill, the crystal flashes and moves to its next frame with a few VfxMix gold shards. The third clear is a full shatter: a 110ms freeze, `spark_04` light burst, shards and rubble, and a grey ring. |
 | Relic choice | Shrine completion calls `relics.reward('shrine')`, then `relics.open()` | DarkMode choice cards with relic icons, deal-in and input lock. On pick, the relic icon flies to the HUD relic row. |
-| Damage | `hit()` already applied | A number in world space. Hits on the same target within 150ms merge. Crits get `Damage_Crit`. At most 40 on screen. |
+| Damage | `hit()` already applied | A number in world space. Hits on the same target within 150ms merge. Crits, meaning hits that conditional bonuses (owl mark, web vulnerability, the Pack, Resonance or Hunter relics) raised by 25% or more, are gold and get `Damage_Crit`. Hits on the player are red. At most 40 on screen. Pause has an on/off toggle. |
 
 ### Assets to add to the repo
 Only the files used, copied into `assets/ui/` and `assets/icons/`:
