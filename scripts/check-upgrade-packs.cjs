@@ -120,6 +120,22 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await calm.screenshot({path: 'output/upgrade-packs/landscape-legendary.png'});
     assert.deepEqual(calm.errors, []);
     await calm.close();
+    // --- relic choice: NEW badge, stack roll-up, and the pick flies to the HUD relic row ---
+    const rl = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const texts = () => state(rl, () => { const s = __survivorTest.scene, out = []; s.draw(); s.ui.walk(o => { if (o.type === 'Text' && o.visible && /^(NEW|×\d+)$/.test(o.text)) out.push(o.text); }); return out.sort(); });
+    await state(rl, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.relics.equipped = ['veil', 'veil'];
+      s.relics.reward('shrine_challenge'); s.relics.open(); s.relics.offers = [s.relics.offers.find(o => o.id !== 'veil'), SurvivorRelics.items.find(o => o.id === 'veil'), s.relics.offers.find(o => o.id !== 'veil' && o !== s.relics.offers[0]) || SurvivorRelics.items.find(o => o.id === 'boots')].filter(Boolean).slice(0, 3); s.draw(); });
+    const early = await texts();
+    assert(early.includes('NEW') && early.includes('×2'), 'Unowned relics show NEW; an owned stack shows its current count: ' + early);
+    await wait(500); const later = await texts();
+    assert(later.includes('×3') && !later.includes('×2'), 'The owned stack rolls up 2 → 3: ' + later);
+    await rl.screenshot({path: 'output/upgrade-packs/relic-choice.png'});
+    const fly = await state(rl, () => { const s = __survivorTest.scene; s.relics.choose(1); s.draw(); const f = s.juice.flights.find(f => f.key === 'relic_veil'), cell = s.hud.layout.relics.find(r => r.id === 'veil');
+      return {mode: s.mode, flight: !!f, to: f && [Math.round(f.to.x), Math.round(f.to.y)], cell: cell && [cell.x + 10, cell.y + 10]}; });
+    assert.equal(fly.mode, 'playing'); assert.equal(fly.flight, true, 'The chosen relic flies');
+    assert.deepEqual(fly.to, fly.cell, 'It flies to its cell in the HUD relic row');
+    assert.deepEqual(rl.errors, []);
+    await rl.context().close();
     console.log('Upgrade packs: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

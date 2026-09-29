@@ -12,7 +12,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;
@@ -120,6 +120,10 @@
       this.play('Pack_Flip',w/2,this.s.screens.layout.packCard??200,{ui:true,scale:3,tint:parseInt(SurvivorPacks.COLORS[e.size].slice(1),16)});}
     onPackApply(e){const hand=this.s.screens.layout.hand||[];
       e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.flyTo('upgrade_'+id,from,this.slotPoint(this.ownerOf(id)),{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});});}
+    // The chosen relic flies from its card to its cell in the HUD relic row (the row is laid out on the next draw).
+    onRelic(e){const card=this.s.screens.layout.cards?.[e.index];if(!card)return;this.s.draw();
+      const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
+      this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});}
     // Aura: Ignite once, Loop while the level-up screen is up, then Fade once.
     updateAura(now){
       const a=this.aura;if(!a){this.auraSprites?.forEach(s=>s.setVisible(false));return;}
