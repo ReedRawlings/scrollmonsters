@@ -140,9 +140,10 @@ const { gameURL, launchOptions, offscreenTexts } = require('./survivor-test-util
       const labels = await page.evaluate(() => {
         const s = __survivorTest.scene, labels = [];
         s.ui.walk(object => { if (object.visible && object.type === 'Text' && object.text.includes('CHOOSE')) labels.push(object.text); });
-        return labels;
+        return {labels, rings: Object.values(s.juice.rings).filter(r => r.ring.visible).length};
       });
-      assert.equal(labels.length, 2);
+      // Playtest 2026-09-29: no text over the map; the two capture rings are the only cue.
+      assert.equal(labels.labels.length, 0); assert.equal(labels.rings, 2);
       assert.deepEqual(await offscreenTexts(page), [], 'Capture choices fit the viewport');
       await page.screenshot({ path: `output/reliability-v26/capture-options-${mobile ? 'mobile' : 'desktop'}.png` });
       const captured = await page.evaluate(() => {
