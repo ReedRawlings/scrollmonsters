@@ -13,9 +13,9 @@ Success means:
 
 ## Non-negotiable rules
 
-1. **Presentation never changes the simulation.** Juice code reads game state and never writes to it. Cosmetic randomness uses `Math.random()`, never the seeded `this.rand()`.
+1. **Presentation never changes the simulation.** Juice code reads game state and never writes to it. Cosmetic randomness uses the juice module's own RNG. Never the seeded `this.rand()`, and never `Math.random()`, which the simulation itself uses for den, chest and nest placement. Never Phaser's `camera.shake()` or new `Text` objects from a reward handler either: both draw from `Math.random()`.
 2. **Logic first, animation after.** Captures, unlocks, upgrades and pack cards apply on the tick they happen. Animations show what already changed, and cutting one short breaks nothing.
-3. **Freezes pause through `mode`.** Hit-stop and reveal screens stop `tick()` the way the level-up screen does today. They never stretch `STEP` or `elapsed`.
+3. **Pauses never stretch time.** Hit-stop holds the real-time loop in `update()`; the starter unlock screen uses `mode='unlock'`, opened from the real-time loop. Neither affects `window.advanceTime`, and neither stretches `STEP` or `elapsed`.
 4. **Reduced motion** turns off shake, freezes, flashes and the menu pan. Fades stay.
 
 ## Scope
@@ -41,7 +41,7 @@ Out of scope, as follow-ups: `legacy.html` (the Theme Wood Bestiary in `game.js`
 | Relics | Stay a separate, build-defining reward. They come **only** from completing the interactive shrine, and elites and caches no longer drop them. The existing choose-1-of-3 flow (`mode='relic'`) is kept and restyled: DarkMode cards with relic icons, a shining "NEW" badge, a stack count that rolls up (for example 2 → 3), and the chosen relic flying to a relic row in the HUD. |
 | Party | Capped at the player plus 3 creatures, so the party bar has exactly 4 slots. |
 | Canvas | Portrait becomes a fixed **540×960 (9:16)** canvas, replacing 540×820, with `Phaser.Scale.FIT` kept. No `EXPAND`: the canvas size never changes, so pixel art always scales as one integer grid. Screens that aren't 9:16 get thin bars. All portrait layouts are redone for 960 height. Desktop landscape stays 960×640. |
-| HUD | Top-left: heart diamond, HP bar without numbers, XP bar with the level then the kill count (sword icon) to its right, until the run has a currency. Top-right: the timer as plain gold text with a dark outline, with no panel behind it, set down from the top edge. Under the bars, starting just right of the diamond's bottom point: the relic row. Relic icons sit directly on the field, with no tiles or boxes behind them, on a fixed pitch (20 logical px per slot, 4px gap). Each stack count is a white digit with a dark outline at the icon's bottom-right corner, shown only above 1. The row ends with one empty `Relic_Socket` for each shrine challenge not yet cleared (3 minus completed), so the player can see how many relics are left this run. The next socket lights gold while its challenge is armed or in combat. A new relic fills that socket; a stacked relic bumps its count and the socket fades out. Bottom: party bar with the player first, then creatures. |
+| HUD | Top-left: heart diamond, HP bar without numbers, XP bar with the level then the kill count (sword icon) to its right, until the run has a currency. Top-right: the timer as plain gold text with a dark outline, with no panel behind it, set down from the top edge. Under the bars, starting just right of the diamond's bottom point: the relic row. Relic icons sit directly on the field, with no tiles or boxes behind them, on a fixed pitch (20 logical px per slot, 4px gap). Each stack count is a white digit with a dark outline at the icon's bottom-right corner, shown only above 1. The HUD shows no empty relic slots: the shrine's own cracked states show how many challenges are left. Bottom: party bar with the player first, then creatures. |
 
 ## Open decisions
 

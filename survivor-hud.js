@@ -5,17 +5,17 @@
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
   const NAMES = {storm:'STORM LIZARD'};
   class SurvivorHud {
-    constructor(s){this.s=s;this.layout={slots:[],relics:[],sockets:[]};}
+    constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
     // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
     draw(w,h){
-      const s=this.s,ui=s.ui;this.layout={slots:[],relics:[],sockets:[]};
+      const s=this.s,ui=s.ui;this.layout={slots:[],relics:[]};
       this.status(ui);
       this.timer(ui,w);
       const rowBottom=this.relicRow(ui,w);
       this.partyBar(ui,w,h);
       let y=Math.max(86,rowBottom+6);
       if(s.encounters.boss?.hp>0)y=this.guardian(ui,w,y)+6;
-      if(s.noticeTime>0)y+=ui.notice(s.notice,w/2,y,w-24).height+6;
+      if(s.noticeTime>0&&s.mode==='playing')y+=ui.notice(s.notice,w/2,y,w-24).height+6;
       if(s.logStorageError||s.unlockError)ui.darkText('Local progress could not be saved',w/2,y+6,{align:'center',color:D().danger});
       if(s.mode==='playing')this.worldLabels(ui,w,h);
     }
@@ -40,16 +40,11 @@
       ui.darkText(t,w-32,17,{align:'right',color:D().gold});
     }
     relicRow(ui,w){
-      const s=this.s,sh=s.expedition.shrine,ids=[...new Set(s.relics.equipped)];
+      const s=this.s,ids=[...new Set(s.relics.equipped)];
       let i=0;const cell=()=>{const x=54+(i%RELICS_PER_ROW)*RELIC_PITCH,y=58+Math.floor(i/RELICS_PER_ROW)*RELIC_PITCH;i++;return {x,y};};
       for(const id of ids){const {x,y}=cell(),count=s.relics.count(id);this.layout.relics.push({id,count,x,y});
         ui.image('relic_'+id,x+2,y+2,16,16,{frame:[0,0,16,16]});
         if(count>1)ui.darkText(String(count),x+22,y+19,{align:'right'});}
-      const left=s.isExpedition?Math.max(0,3-sh.completed):0;
-      for(let n=0;n<left;n++){const {x,y}=cell(),armed=n===0&&sh.active&&!sh.needsExit&&(sh.inCombat||sh.progress>0);this.layout.sockets.push({x,y,armed});
-        // Placeholder until the artist's Relic_Socket: a thin diamond, gold while its challenge is live.
-        const g=ui.graphics(),cx=x+10,cy=y+10;g.lineStyle(3,0x120a1a,1).strokePoints([{x:cx,y:cy-5},{x:cx+5,y:cy},{x:cx,y:cy+5},{x:cx-5,y:cy}],true);
-        g.lineStyle(1,armed?0xffc41b:0xcfc3de,armed?1:.7).strokePoints([{x:cx,y:cy-5},{x:cx+5,y:cy},{x:cx,y:cy+5},{x:cx-5,y:cy}],true);}
       return i?58+Math.ceil(i/RELICS_PER_ROW)*RELIC_PITCH:58; // bottom of the last occupied row
     }
     partyBar(ui,w,h){
@@ -59,13 +54,23 @@
         if(type){if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32]});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
-          const charge=i===0?1-clamp(s.expansion.cooldown/3,0,1):1,bh=Math.round(34*charge);
+          const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
           if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');}}
       const cd=s.expansion.cooldown;
       if(s.mode==='playing')ui.pill(cd>0?'Dash '+cd.toFixed(1):'Dash',x0+total-72,y-24,72,20,()=>s.expansion.dash(),{id:'dash'});
       const styles=s.creatures.elements.dashOptions();
       if(s.mode==='playing'&&styles.length>1){const style=s.creatures.elements.dashStyle==='storm'?'lightning':s.creatures.elements.dashStyle;
         ui.pill('Dash: '+style,x0,y-22,96,18,()=>s.creatures.elements.cycleDash(),{id:'dash-style'});}
+    }
+    // 0 right after an attack, 1 when ready. Reads timers only.
+    chargeOf(type){
+      const s=this.s,k=(t,i)=>i>0?1-clamp(t/i,0,1):1;
+      if(type==='walker')return 1-clamp(s.expansion.cooldown/3,0,1);
+      if(type==='cat')return k(s.cat.attack,.85);
+      if(type==='owl')return s.owl?k(s.owl.attack,s.companionStats().owl.interval):1;
+      if(type==='beast'){const b=s.encounters.beast;return b?k(b.attack,s.companionStats().beast.interval):1;}
+      if(type==='frog'){const f=s.expedition.frog;return f?k(f.pulseClock,s.frogStats().shieldInterval):1;}
+      const a=s.creatures.allies[type];return a?k(a.attack,s.creatures.stats(type).interval):1;
     }
     guardian(ui,w,y){
       const b=this.s.encounters.boss,width=w-40;ui.darkPanel(20,y,width,22);

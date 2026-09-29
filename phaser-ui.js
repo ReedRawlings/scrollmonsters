@@ -275,18 +275,19 @@
       return this.object('WoodButton',()=>new WoodButton(this.scene,this),id ?? `pill:${x},${y}`)
         .layout(label,x,y,width,height,{texture:'dk_pill',borderX:3,borderY:3,scale:2,size:9,color,font:DARK.font,hoverTint:0xd6cdec,action});
     }
-    card(label,x,y,width,height,action,{detail,icon,iconFrame=[0,0,16,16],color=DARK.text,size=9,align='left',id}={}) {
+    card(label,x,y,width,height,action,{detail,icon,iconFrame=[0,0,16,16],badge,color=DARK.text,size=9,align='left',id}={}) {
       const labelX = icon ? 40 : 10;
       const button = this.object('WoodButton',()=>new WoodButton(this.scene,this),id ?? `card:${x},${y}`)
         .layout(label,x,y,width,height,{texture:'dk_slot',borderX:5,borderY:5,scale:2,size,color,font:DARK.font,hoverTint:0xd6cdec,
           align,labelX,labelY:detail?-height/2+12:0,action});
       if (icon) this.image(icon,x+8,y+(height-32)/2,32,32,{frame:iconFrame});
+      if (icon && badge) this.image(badge,x+26,y+(height-32)/2+20,14,14,{frame:[3,3,32,32]});
       button.detailText = detail ? this.darkText(detail,x+labelX,y+25,{color:DARK.muted,wrap:width-labelX-10}).setOrigin(0,0) : null;
       return button;
     }
     banner(text,centerX,y) {
       this.image('dk_banner',centerX-96,y,192,32);
-      this.darkText(text,centerX,y+15,{size:18,align:'center'});
+      return this.darkText(text,centerX,y+15,{size:18,align:'center'});
     }
     notice(text,centerX,y,maxWidth) {
       const label = this.darkText(text,centerX,0,{align:'center',wrap:maxWidth-20});

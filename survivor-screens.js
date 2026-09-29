@@ -12,6 +12,7 @@
       else if(s.mode==='won'||s.mode==='lost')this.ended(w,h);
       else if(s.mode==='upgrade')this.upgrade(w,h);
       else if(s.mode==='relic')this.relic(w,h);
+      else if(s.mode==='unlock')this.unlock(w,h);
     }
     // Buttons inside a black panel use the lighter item-slot art; black pills would vanish against it.
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
@@ -66,13 +67,25 @@
     }
     choicePanel(w,h,title,sub,count,cardH,extra=0){
       const pw=Math.min(w-12,h>w?300:440),ph=34+count*(cardH+6)+extra,px=(w-pw)/2,py=Math.max(30,(h-ph)/2+8);
-      this.dim(w,h);this.s.ui.darkPanel(px,py,pw,ph);this.s.ui.banner(title,w/2,py-18);
+      this.dim(w,h);this.s.ui.darkPanel(px,py,pw,ph);const banner=this.s.ui.banner(title,w/2,py-18);
       this.s.ui.darkText(sub,w/2,py+20,{align:'center',color:D().muted});
-      return {px,py,pw,ph};
+      return {px,py,pw,ph,banner};
     }
     upgrade(w,h){
-      const s=this.s,ui=s.ui,cardH=58,{px,py,pw}=this.choicePanel(w,h,'LEVEL UP','Level '+s.level+' · combat paused',s.choices.length,cardH);
-      s.choices.forEach((c,i)=>ui.card((i+1)+'. '+c.name,px+8,py+32+i*(cardH+6),pw-16,cardH,()=>s.chooseUpgrade(i),{detail:c.detail,id:'up'+i}));
+      const s=this.s,ui=s.ui,cardH=58,{px,py,pw,banner}=this.choicePanel(w,h,'LEVEL '+s.level,'Combat paused · pick an upgrade',s.choices.length,cardH);
+      const t=s.juice.since('upgrade');this.layout.cards=[];
+      // The "LEVEL N" pop: the banner title springs in as the cards deal.
+      if(!s.juice.reduced&&t<220){const k=t/220,c=1.7;banner.setScale(1+(c+1)*Math.pow(k-1,3)+c*Math.pow(k-1,2));}
+      s.choices.forEach((c,i)=>{
+        // Deal in: each card rises 14px and fades in, 70ms apart. Taps before LOCK_MS are ignored.
+        const k=s.juice.reduced?1:Math.max(0,Math.min(1,(t-i*70)/180)),e=1-Math.pow(1-k,3),x=px+8,y=py+32+i*(cardH+6);
+        ui.beginGroup('upcard'+i,{y:Math.round((1-e)*14)}).setAlpha(e);
+        const owner=s.juice.ownerOf(c.id);
+        ui.card((i+1)+'. '+c.name,x,y,pw-16,cardH,()=>{if(s.juice.since('upgrade')>=SurvivorScreens.LOCK_MS)s.chooseUpgrade(i);},
+          {detail:c.detail,icon:'upgrade_'+c.id,badge:owner==='walker'?null:'face_'+owner,id:'up'+i});
+        ui.endGroup();
+        this.layout.cards.push({x,y,w:pw-16,h:cardH});
+      });
     }
     relic(w,h){
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
@@ -80,6 +93,19 @@
         ui.card((i+1)+'. '+item.name+tag,px+8,py+32+i*(cardH+6),pw-16,cardH,()=>r.choose(i),{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});});
       this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
+    unlock(w,h){
+      const s=this.s,ui=s.ui,j=s.juice,type=s.unlockType,t=j.since('unlock'),cx=w/2,cy=h/2-10;
+      this.dim(w,h);ui.banner('NEW STARTER',cx,cy-130);
+      ui.image('Unlock_Rays',cx-96,cy-96,192,192,{frame:j.frameRect('Unlock_Rays',j.frameAt('Unlock_Rays',t,true))});
+      const fillAt=400,fillEnd=fillAt+j.meta('Unlock_Fill').n/j.meta('Unlock_Fill').fps*1000;
+      const face=ui.image('face_'+type,cx-38,cy-38,76,76);if(face){if(t<fillEnd)face.setTint(0x2a2238);else face.clearTint();}
+      if(t>=fillAt&&t<fillEnd)ui.image('Unlock_Fill',cx-48,cy-48,96,96,{frame:j.frameRect('Unlock_Fill',j.frameAt('Unlock_Fill',t-fillAt,false))});
+      const name=type==='storm'?'STORM LIZARD':String(type).toUpperCase();
+      ui.darkText(t<fillEnd?'???':name,cx,cy+64,{size:18,align:'center'});
+      ui.darkText('Now available as a starter',cx,cy+86,{align:'center',color:ScrollUI.DARK.muted});
+      if(t>=900)this.button('Continue',cx-60,cy+106,120,26,()=>s.closeUnlock(),'continue');
+    }
   }
+  SurvivorScreens.LOCK_MS = 370;
   window.SurvivorScreens = SurvivorScreens;
 })();

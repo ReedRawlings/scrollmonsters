@@ -78,7 +78,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     assert.equal(hud.slots.length, 4, 'Party bar always has 4 slots');
     assert.equal(hud.slots[0].type, 'walker', 'Player is the first slot');
     assert.equal(hud.slots[1].type, 'cat', 'Starter follows the player');
-    assert.equal(hud.sockets.length, 3, 'Three shrine sockets at the start of an expedition');
+    assert.equal(hud.sockets, undefined, 'The HUD draws no shrine sockets; the shrine sprite shows challenges left');
     // 13 relic stacks wrap inside the screen
     await state(tall, () => { const s = __survivorTest.scene; s.relics.equipped = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil','veil']; s.draw(); });
     hud = await state(tall, () => __survivorTest.scene.hud.layout);
@@ -106,11 +106,6 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     await tall.screenshot({path: 'output/ui-foundation/hud-portrait.png'});
     assert.deepEqual(tall.errors, []);
     await tall.close();
-
-    const trial = await open(browser, {width: 390, height: 844}, 'survivors.html?trial&test', true);
-    await state(trial, () => { const s = __survivorTest.scene; s.start(); s.draw(); });
-    assert.equal((await state(trial, () => __survivorTest.scene.hud.layout)).sockets.length, 0, 'No shrine sockets in the trial');
-    await trial.close();
 
     const land = await open(browser, {width: 1100, height: 760});
     assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 960, h: 640});
@@ -155,6 +150,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
       assert.deepEqual(await woodInUse(page), [], `Level-up uses DarkMode (${name})`);
       assert.deepEqual(await spilledDetails(page), [], `Level-up descriptions fit their cards (${name})`);
       await page.screenshot({path: `output/ui-foundation/levelup-${name}.png`});
+      await page.waitForTimeout(420); // level-up cards lock input while they deal in
       const p = await controlPoint(page, pick.label);
       if (mobile) await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y, {delay: 30});
       assert.equal(await state(page, () => __survivorTest.scene.mode), 'playing');
