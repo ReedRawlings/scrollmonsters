@@ -186,6 +186,30 @@ async function expeditionEvents(browser, juiceOn) {
     assert.equal(await state(sh, () => __survivorTest.scene.juice.chunks), 0, 'Shards and rubble clean up');
     assert.deepEqual(sh.errors, []);
     await sh.close();
+    // --- creature charge bars follow their attack timers ---
+    const ch = await open(browser, {width: 390, height: 844}, 'survivors.html?test', {mobile: true});
+    const charge = await state(ch, () => { const s = __survivorTest.scene; s.start(); s.cat.attack = .85; s.draw(); const a = s.hud.layout.slots[1].charge; s.cat.attack = 0; s.draw(); return [a, s.hud.layout.slots[1].charge]; });
+    assert.deepEqual(charge, [0, 1], 'The cat slot empties after an attack and refills');
+    // --- restart mid-effect clears everything ---
+    const clean = await state(ch, () => { const s = __survivorTest.scene; s.xp = s.xpNeeded(); s.checkLevel(); s.draw(); s.juice.freeze(5000);
+      s.juice.flyTo('relic_veil', {x: 0, y: 0}, {x: 100, y: 100}); s.juice.unlocks.push('mouse'); s.start(); s.draw();
+      return {fx: s.juice.fx.length, flights: s.juice.flights.length, frozen: s.juice.frozen(), aura: s.juice.aura, unlocks: s.juice.unlocks.length}; });
+    assert.deepEqual(clean, {fx: 0, flights: 0, frozen: false, aura: null, unlocks: 0}, 'Restart clears juice state');
+    // --- reward spam stays bounded ---
+    const spam = await state(ch, () => { const s = __survivorTest.scene; for (let i = 0; i < 40; i++) { s.reward('capture', {type: 'mouse', x: s.player.x, y: s.player.y}); s.reward('shrine', {tier: 3, final: true, x: s.player.x, y: s.player.y}); } s.draw(); return s.juice.fx.length; });
+    assert(spam <= 60, `Live juice sprites stay bounded (${spam})`);
+    await wait(2500);
+    assert.equal(await state(ch, () => { const s = __survivorTest.scene; s.draw(); return s.juice.fx.length + s.juice.flights.length; }), 0, 'Everything cleans up');
+    assert.deepEqual(ch.errors, []);
+    await ch.close();
+    // --- reduced motion: no freeze or shake, flows still complete ---
+    const rm = await open(browser, {width: 1100, height: 760}, 'survivors.html?test', {realtime: true, reducedMotion: 'reduce', starters: ['cat']});
+    await state(rm, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.player.inv = 999; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); });
+    await rm.waitForFunction(() => __survivorTest.scene.mode === 'unlock', null, {timeout: 6000});
+    assert.equal(await state(rm, () => __survivorTest.scene.juice.frozen()), false, 'Reduced motion never freezes');
+    await state(rm, () => __survivorTest.scene.closeUnlock());
+    assert.equal(await state(rm, () => __survivorTest.scene.mode), 'playing');
+    await rm.close();
     console.log('PASS: juice');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

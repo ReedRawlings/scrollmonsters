@@ -54,13 +54,23 @@
         if(type){if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32]});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
-          const charge=i===0?1-clamp(s.expansion.cooldown/3,0,1):1,bh=Math.round(34*charge);
+          const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
           if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');}}
       const cd=s.expansion.cooldown;
       if(s.mode==='playing')ui.pill(cd>0?'Dash '+cd.toFixed(1):'Dash',x0+total-72,y-24,72,20,()=>s.expansion.dash(),{id:'dash'});
       const styles=s.creatures.elements.dashOptions();
       if(s.mode==='playing'&&styles.length>1){const style=s.creatures.elements.dashStyle==='storm'?'lightning':s.creatures.elements.dashStyle;
         ui.pill('Dash: '+style,x0,y-22,96,18,()=>s.creatures.elements.cycleDash(),{id:'dash-style'});}
+    }
+    // 0 right after an attack, 1 when ready. Reads timers only.
+    chargeOf(type){
+      const s=this.s,k=(t,i)=>i>0?1-clamp(t/i,0,1):1;
+      if(type==='walker')return 1-clamp(s.expansion.cooldown/3,0,1);
+      if(type==='cat')return k(s.cat.attack,.85);
+      if(type==='owl')return s.owl?k(s.owl.attack,s.companionStats().owl.interval):1;
+      if(type==='beast'){const b=s.encounters.beast;return b?k(b.attack,s.companionStats().beast.interval):1;}
+      if(type==='frog'){const f=s.expedition.frog;return f?k(f.pulseClock,s.frogStats().shieldInterval):1;}
+      const a=s.creatures.allies[type];return a?k(a.attack,s.creatures.stats(type).interval):1;
     }
     guardian(ui,w,y){
       const b=this.s.encounters.boss,width=w-40;ui.darkPanel(20,y,width,22);
