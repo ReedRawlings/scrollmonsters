@@ -47,6 +47,7 @@
       this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
       for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
       for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+id+'.png');
+      for(const [key,m] of Object.entries(FX_SHEETS))this.load.image(key,m.src);
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
@@ -68,7 +69,7 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(3000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.juice=new SurvivorJuice(this);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
@@ -122,8 +123,11 @@
       this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:Math.random()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
+    openUnlock(type){this.unlockType=type;this.mode='unlock';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
+    closeUnlock(){if(this.mode!=='unlock')return;this.unlockType=null;this.mode='playing';this.accumulator=0;this.draw();}
     chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
-    start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.resetState();this.run={id:crypto.randomUUID(),version:2,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
+    start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.resetState();this.juice.reset();this.run={id:crypto.randomUUID(),version:2,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
+    reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
     saveRun(){
@@ -328,8 +332,16 @@
       if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if(this.elapsed>=DURATION&&this.encounters.boss?.hp<=0){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
       if(!this.run?.finished)this.sampleRun();
     }
-    update(time,delta){if(!this.manual&&!window.__vt_pending){this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}this.draw();}
-    draw(){if(!this.ui)return;const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
+    update(time,delta){
+      if(!this.manual&&!window.__vt_pending){
+        this.juice.realtime();
+        // Hit-stop holds the real-time loop only; STEP and elapsed never stretch and advanceTime is never frozen.
+        if(this.juice.frozen())this.accumulator=0;
+        else{this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}
+      }
+      this.draw();
+    }
+    draw(){if(!this.ui)return;this.juice.observe();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
       this.playerShadow.setPosition(p.x,p.y+15).setDepth(p.y-1);this.catShadow.setVisible(this.catActive).setPosition(c.x,c.y+13).setDepth(c.y-1);
@@ -354,7 +366,7 @@
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
       if(['title','paused','won','lost','upgrade','relic'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.ui.endGroup();
-      this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
+      this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
     snapshot(){return {field:this.field,dash:{cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; origin top-left; x right, y down',world:{width:WORLD,height:WORLD},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles,enemies:this.enemies.slice(0,40).map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows or touch drag; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
