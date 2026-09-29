@@ -13,9 +13,9 @@ Success means:
 
 ## Non-negotiable rules
 
-1. **Presentation never changes the simulation.** Juice code reads game state and never writes to it. Cosmetic randomness uses `Math.random()`, never the seeded `this.rand()`.
+1. **Presentation never changes the simulation.** Juice code reads game state and never writes to it. Cosmetic randomness uses the juice module's own RNG. Never the seeded `this.rand()`, and never `Math.random()`, which the simulation itself uses for den, chest and nest placement. Never Phaser's `camera.shake()` or new `Text` objects from a reward handler either: both draw from `Math.random()`.
 2. **Logic first, animation after.** Captures, unlocks, upgrades and pack cards apply on the tick they happen. Animations show what already changed, and cutting one short breaks nothing.
-3. **Freezes pause through `mode`.** Hit-stop and reveal screens stop `tick()` the way the level-up screen does today. They never stretch `STEP` or `elapsed`.
+3. **Pauses never stretch time.** Hit-stop holds the real-time loop in `update()`; the starter unlock screen uses `mode='unlock'`, opened from the real-time loop. Neither affects `window.advanceTime`, and neither stretches `STEP` or `elapsed`.
 4. **Reduced motion** turns off shake, freezes, flashes and the menu pan. Fades stay.
 
 ## Scope
