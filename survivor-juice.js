@@ -9,13 +9,17 @@
       this.s=s;this.enabled=true;this.reduced=s.ui.reducedMotion;this.seed=(Date.now()>>>0)||1;
       this.front=s.add.container(0,0).setScrollFactor(0).setDepth(10002).setScale(UI); // logical UI space, above the HUD
       this.handlers={};this.played=[];
+      // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
+      this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.upgrade=e=>this.onUpgrade(e);
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
     reset(){
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
-      this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;
+      for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
+      this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -47,9 +51,10 @@
       this.s.tweens.add({targets:c,alpha:0,duration:ms,onComplete:()=>this.stop(fx)});
     }
     popText(text,x,y,{size=18,color='#ffc41b'}={}){
-      const t=this.s.add.text(x,y,text,{fontFamily:'NovelMix',fontSize:size,color}).setOrigin(.5).setStroke('#120a1a',2);this.front.add(t);
+      const t=this.texts[this.nextText++%this.texts.length];this.s.tweens.killTweensOf(t);
+      t.setText(text).setFontSize(size).setColor(color).setPosition(x,y).setAlpha(1).setScale(1).setVisible(true);
       if(!this.reduced){t.setScale(.4);this.s.tweens.add({targets:t,scale:1,duration:220,ease:'Back.Out'});}
-      this.s.tweens.add({targets:t,y:y-14,alpha:0,delay:700,duration:300,onComplete:()=>t.destroy()});
+      this.s.tweens.add({targets:t,y:y-14,alpha:0,delay:700,duration:300,onComplete:()=>t.setVisible(false)});
       return t;
     }
     flyTo(key,from,to,{size=32,onLand}={}){
@@ -74,11 +79,39 @@
         f.sprite.setFrame(this.frameName(f.key,this.frameAt(f.key,t,f.loop)));}
       this.advanceFlights(now);
       if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(0,0);
+      this.updateAura(now);
       this.updateWorld?.(now);
     }
     // Called from scene.update() only while the real-time sim runs (never from advanceTime).
     realtime(){
       if(this.s.mode==='playing'&&this.unlocks.length&&this.now()>=this.unlockAt&&!this.frozen())this.s.openUnlock(this.unlocks.shift());
+    }
+    ownerOf(id){
+      if(/^mouse/.test(id))return 'mouse';if(/^mole/.test(id))return 'mole';if(/^bear/.test(id))return 'bear';
+      if(/^fire|^comboFire/.test(id))return 'salamander';if(/^web|^comboWeb|^comboShield/.test(id))return 'spider';if(/^storm|^comboStorm/.test(id))return 'storm';
+      if(['sweep','pull','claws'].includes(id))return 'cat';if(['marks','feather','split','owlPower','owlSpeed'].includes(id))return 'owl';
+      if(/^beast|^slam$/.test(id))return 'beast';if(['bubble','frogPower','chorus'].includes(id))return 'frog';
+      return 'walker';
+    }
+    slotPoint(type){const slots=this.s.hud.layout.slots,slot=slots.find(v=>v.type===type)||slots[0];return {x:slot.x+24,y:slot.y+26};}
+    onLevelUp(e){
+      this.aura={phase:'Ignite',start:this.now()};this.note('LevelUp_Aura_Ignite_Back');
+    }
+    onUpgrade(e){
+      const card=this.s.screens.layout.cards?.[e.index];if(!card)return;
+      this.freeze(260);
+      const to=this.slotPoint(this.ownerOf(e.id));
+      this.flyTo('upgrade_'+e.id,{x:card.x+24,y:card.y+card.h/2},to,{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});
+    }
+    // Aura: Ignite once, Loop while the level-up screen is up, then Fade once.
+    updateAura(now){
+      const a=this.aura;if(!a){this.auraSprites?.forEach(s=>s.setVisible(false));return;}
+      const s=this.s,p=s.player,key=b=>'LevelUp_Aura_'+a.phase+'_'+b,t=now-a.start,m=this.meta(key('Back'));
+      if(!m.loop&&t>=m.n/m.fps*1000){if(a.phase==='Ignite')this.aura={phase:'Loop',start:now};else if(a.phase==='Fade')this.aura=null;return this.updateAura(now);}
+      if(a.phase==='Loop'&&s.mode!=='upgrade'){this.aura={phase:'Fade',start:now};return this.updateAura(now);}
+      this.auraSprites??=[s.add.sprite(0,0,key('Back')),s.add.sprite(0,0,key('Front'))];
+      ['Back','Front'].forEach((b,i)=>{const sp=this.auraSprites[i],k=key(b),mm=this.meta(k);
+        sp.setVisible(this.enabled).setTexture(k,this.frameName(k,this.frameAt(k,t))).setOrigin(mm.ax/mm.fw,mm.ay/mm.fh).setScale(3).setPosition(p.x,p.y+24).setDepth(p.y+(i?21:19));});
     }
   }
   window.SurvivorJuice = SurvivorJuice;

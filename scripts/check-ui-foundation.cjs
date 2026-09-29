@@ -150,6 +150,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
       assert.deepEqual(await woodInUse(page), [], `Level-up uses DarkMode (${name})`);
       assert.deepEqual(await spilledDetails(page), [], `Level-up descriptions fit their cards (${name})`);
       await page.screenshot({path: `output/ui-foundation/levelup-${name}.png`});
+      await page.waitForTimeout(420); // level-up cards lock input while they deal in
       const p = await controlPoint(page, pick.label);
       if (mobile) await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y, {delay: 30});
       assert.equal(await state(page, () => __survivorTest.scene.mode), 'playing');

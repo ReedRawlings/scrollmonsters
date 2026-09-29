@@ -48,6 +48,7 @@
       for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
       for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+id+'.png');
       for(const [key,m] of Object.entries(FX_SHEETS))this.load.image(key,m.src);
+      for(const id of UPGRADE_ICON_IDS)this.load.image('upgrade_'+id,'assets/icons/upgrades/'+id+'.png');
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
@@ -78,7 +79,7 @@
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
       this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();});
-      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?this.relics.choose(i-1):this.chooseUpgrade(i-1));
+      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?this.relics.choose(i-1):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
       this.input.keyboard.on('keydown-ESC',()=>this.pause());
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
@@ -238,12 +239,13 @@
       this.xp-=this.xpNeeded();this.level++;
       const pool=this.upgradePool();this.choices=[];
       while(this.choices.length<3)this.choices.push(pool.splice(Math.floor(this.rand()*pool.length),1)[0]);
-      this.logEvent('level_up',{level:this.level,offered:this.choices.map(c=>c.id)});this.saveRun();this.mode='upgrade';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;
+      this.logEvent('level_up',{level:this.level,offered:this.choices.map(c=>c.id)});this.reward('levelup',{level:this.level});this.saveRun();this.mode='upgrade';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;
     }
     chooseUpgrade(index){
       if(this.mode!=='upgrade'||!this.choices[index])return;
       const id=this.choices[index].id;this.upgrades[id]++;this.logEvent('upgrade_chosen',{upgrade:id,rank:this.upgrades[id]});
       if(id==='hide'){this.maxHp+=8;this.player.hp=Math.min(this.maxHp,this.player.hp+8);}
+      this.reward('upgrade',{id,index});
       this.choices=[];this.mode='playing';this.input.keyboard.resetKeys();this.joy=null;
       this.checkLevel();this.saveRun();this.draw();
     }

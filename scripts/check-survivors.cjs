@@ -25,6 +25,7 @@ run('trial movement, collision, pause, combat, leveling, endings, history and to
  await mobile.waitForFunction(()=>!__survivorTest.scene.joy);
  const released=await mobile.evaluate(()=>{const s=__survivorTest.scene,x=s.player.x,y=s.player.y;advanceTime(500);return {x,y,afterX:s.player.x,afterY:s.player.y};});assert.equal(released.afterX,released.x);assert.equal(released.afterY,released.y);
  const upgrade=await mobile.evaluate(()=>{const s=__survivorTest.scene;s.xp=s.xpNeeded();s.checkLevel();s.draw();const choice=s.choices[0];return {id:choice.id,before:s.upgrades[choice.id]||0,label:'1. '+choice.name};});
+ await mobile.waitForTimeout(420); // level-up cards lock input while they deal in
  const point=await controlPoint(mobile,upgrade.label);
  await mobile.touchscreen.tap(point.x,point.y);
  await mobile.waitForFunction(()=>__survivorTest.scene.mode==='playing');
