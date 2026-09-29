@@ -7,7 +7,7 @@
         const runs=JSON.parse(localStorage.getItem('scrollmonsters-survivor-runs-v1')||'[]');if(Array.isArray(runs))for(const run of runs){if(run.summary?.owl==='ally')unlocked.push('owl');if(run.summary?.encounters?.beast==='ally')unlocked.push('beast');for(const e of run.events||[])for(const t of TYPES)if(e.type===t+'_captured')unlocked.push(t);}
       }catch{}const result=[...new Set(unlocked)];try{localStorage.setItem(KEY,JSON.stringify(result));}catch{}return result;
     }
-    constructor(s){this.s=s;this.chests=[];this.chestClock=20;this.chestsOpened=0;this.chestXp=0;this.frog=null;this.catCapture=null;this.second=false;this.phase=-1;this.eliteSpawned=false;this.extraEliteSpawned=false;this.lateStrength=false;this.supportPulses=0;this.shieldBlocks=0;this.pulse=0;this.shrine={x:s.worldSize/2,y:s.worldSize*.2625,active:false,triggered:false,done:false,progress:0,completed:0,inCombat:false,needsExit:false};this.shrineSprite=s.add.sprite(s.worldSize/2,s.worldSize*.2625-12,'dungeonProps','shrineAltar').setScale(3).setDepth(425).setVisible(false);this.frogSprite=s.add.sprite(0,0,'frog').setScale(3).setVisible(false);}
+    constructor(s){this.s=s;this.chests=[];this.chestClock=20;this.chestsOpened=0;this.chestXp=0;this.frog=null;this.catCapture=null;this.second=false;this.phase=-1;this.eliteSpawned=false;this.extraEliteSpawned=false;this.lateStrength=false;this.supportPulses=0;this.shieldBlocks=0;this.pulse=0;this.shrine={x:s.worldSize/2,y:s.worldSize*.2625,active:false,triggered:false,done:false,progress:0,completed:0,inCombat:false,needsExit:false};this.shrineSprite=s.add.sprite(s.worldSize/2,s.worldSize*.2625+30,'ShrineStates',s.juice.frameName('ShrineStates',0)).setOrigin(.5,31/32).setScale(3).setDepth(425).setVisible(false);this.frogSprite=s.add.sprite(0,0,'frog').setScale(3).setVisible(false);}
     destroy(){for(const c of this.chests)c.sprite.destroy();this.frogSprite.destroy();this.shrineSprite.destroy();}
     has(type){if(['mouse','mole','bear','salamander','spider','storm'].includes(type))return !!this.s.creatures.allies[type];return type==='cat'?this.s.catActive||!!this.catCapture:type==='owl'?!!this.s.owl:type==='beast'?!!this.s.encounters.beast:!!this.frog;}
     party(){return TYPES.filter(t=>['mouse','mole','bear','salamander','spider','storm'].includes(t)?this.s.creatures.allies[t]?.state==='ally':t==='cat'?this.s.catActive:t==='owl'?this.s.owl?.state==='ally':t==='beast'?this.s.encounters.beast?.state==='ally':this.frog?.state==='ally');}
@@ -80,7 +80,7 @@
     completeShrine(e){const s=this.s,sh=this.shrine;if(!sh.inCombat||e.shrineTier!==sh.completed+1)return;
       sh.completed++;sh.inCombat=false;sh.done=sh.completed===3;sh.active=!sh.done;s.relics.reward(sh.done?'final_shrine':'shrine_challenge');sh.needsExit=true;sh.progress=0;
       const healed=sh.completed===1?Math.min(12,s.maxHp-s.player.hp):0;s.player.hp+=healed;const xp=s.xpNeeded();s.gainXP(xp,false);
-      s.logEvent('shrine_completed',{tier:sh.completed,heal:healed,xp});s.announce(sh.done?'Shrine exhausted. Final bonus upgrade earned!':'Bonus upgrade earned! Leave the circle before the next challenge.');
+      s.logEvent('shrine_completed',{tier:sh.completed,heal:healed,xp});s.reward('shrine',{tier:sh.completed,final:sh.done,x:sh.x,y:sh.y});s.announce(sh.done?'Shrine exhausted. Final bonus upgrade earned!':'Bonus upgrade earned! Leave the circle before the next challenge.');
     }
 
     strengthen(e){if(e.lateStrong)return;e.lateStrong=true;e.hp*=1.2;e.maxHp*=1.2;}
@@ -89,8 +89,7 @@
     enemyType(){const s=this.s;if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.elapsed>=570)return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
     draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);if(f.state!=='ready')g.lineStyle(2,0x8ce7ae).strokeCircle(f.x,f.y,23);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
       
-      const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setTint(sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff);
-      if(s.isExpedition&&s.elapsed>=90){g.lineStyle(3,sh.done?0x66716e:sh.inCombat?0xffa066:0xb2eddf).strokeCircle(sh.x,sh.y,70);for(let i=0;i<3;i++)g.fillStyle(i<sh.completed?0x66716e:0xffd36b).fillCircle(sh.x-16+i*16,sh.y+46,4);if(sh.progress>0)g.lineStyle(6,0xffd36b).beginPath().arc(sh.x,sh.y,70,-Math.PI/2,-Math.PI/2+Math.PI*2*sh.progress/6).strokePath();}
+      const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setFrame(s.juice.frameName('ShrineStates',sh.completed)).setTint(sh.inCombat?0xffd8b0:0xffffff);
     }
     drawUI(w,h){}
     summary(){return {chestsOpened:this.chestsOpened,chestXp:this.chestXp,chests:this.chests.map(({x,y,xp,opened})=>({x,y,xp,opened})),starter:this.s.starter,party:this.party(),phase:this.phaseName(),secondNests:this.second,extraEliteSpawned:this.extraEliteSpawned,supportPulses:this.supportPulses,frogSupport:this.s.frogStats(),shieldBlocks:this.shieldBlocks,shrine:{...this.shrine},frog:this.frog?{state:this.frog.state,x:this.frog.x,y:this.frog.y,progress:this.frog.progress}:null};}

@@ -11,7 +11,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.upgrade=e=>this.onUpgrade(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);
       this.reset();
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
@@ -19,7 +19,7 @@
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
-      this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;
+      this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -136,6 +136,26 @@
       if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}
       this.s.time.delayedCall(500,()=>{if(!face.active)return;const from={x:face.x,y:face.y};face.destroy();
         this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1})});});
+    }
+    updateShrine(now){
+      const s=this.s,sh=s.expedition.shrine;if(!this.enabled||!s.isExpedition||s.elapsed<90)return;
+      this.ring('shrine',sh.x,sh.y,sh.done?0:sh.progress/6,{tint:sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff,alpha:sh.done?.35:1});
+    }
+    // A pixel chunk flung on an arc, landing below its start, then blinking out. No rotation keeps it on the pixel grid.
+    chunk(key,x,y,{dist=[50,130],lift=[40,90],sizes=[2,6]}={}){
+      if(this.fx.length>=MAX_FX)return;
+      const r=(a,b)=>a+this.rand()*(b-a),sp=this.s.add.sprite(x,y,key,this.frameName(key,Math.floor(r(sizes[0],sizes[1])))).setScale(3).setDepth(y+40).setFlipX(this.rand()<.5);
+      const fx={sprite:sp,key:'flash',start:this.now(),loop:true};this.fx.push(fx);this.chunks++;
+      const a=r(0,Math.PI*2),dx=Math.cos(a)*r(dist[0],dist[1]),land=r(8,26)+Math.max(0,Math.sin(a))*20,h=r(lift[0],lift[1]),dur=r(560,820);
+      this.s.tweens.addCounter({from:0,to:1,duration:dur,onUpdate:tw=>{const t=tw.getValue(),k=Math.min(1,t/.75);sp.setPosition(x+dx*k,y-4*h*k*(1-k)+land*k);sp.setAlpha(t<.86?1:(Math.floor(t*25)%2?0:1));},
+        onComplete:()=>{this.stop(fx);this.chunks--;}});
+    }
+    onShrine(e){
+      const sp=this.s.expedition.shrineSprite,cx=e.x,cy=sp.y-60;
+      this.flashCopy(sp,e.final?180:120);
+      if(e.final){this.freeze(110);this.jitter(3,200);this.play('Spark_Light',cx,cy,{scale:1,depth:sp.depth+2});}
+      for(let i=0;i<(e.final?14:4);i++)this.chunk('P_Shard',cx+(this.rand()*16-8),cy+(this.rand()*16-10),e.final?{sizes:i<4?[2,3]:[3,6]}:{dist:[24,56],lift:[20,40],sizes:[3,6]});
+      if(e.final)for(let i=0;i<6;i++)this.chunk('P_Rock',cx+(this.rand()*24-12),sp.y-6,{dist:[30,80],lift:[16,40],sizes:[3,6]});
     }
   }
   window.SurvivorJuice = SurvivorJuice;

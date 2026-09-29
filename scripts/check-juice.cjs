@@ -166,6 +166,26 @@ async function expeditionEvents(browser, juiceOn) {
     await wait(420); await state(both, () => __survivorTest.scene.chooseUpgrade(0));
     await both.waitForFunction(() => __survivorTest.scene.mode === 'unlock', null, {timeout: 4000});
     await both.close();
+    // --- shrine: state frames, capture-ring placeholder, crack on clears 1-2, shatter on clear 3 ---
+    const sh = await open(browser, {width: 1100, height: 760});
+    const frames2 = await state(sh, () => { const s = __survivorTest.scene; s.start(); const e = s.expedition; s.elapsed = 120; const out = []; // start() builds a new expedition
+      for (let c = 0; c <= 3; c++) { e.shrine.completed = c; e.shrine.done = c === 3; s.draw(); out.push(e.shrineSprite.frame.name); }
+      e.shrine.completed = 0; e.shrine.done = false; e.shrine.active = true; e.shrine.progress = 3; s.draw();
+      return {out, ring: s.juice.rings.shrine?.fill.frame.name}; });
+    assert.deepEqual(frames2.out, ['f0', 'f1', 'f2', 'f3'], 'ShrineStates frame = challenges completed');
+    assert.equal(frames2.ring, 'f8', 'Shrine charge fill = round(progress/6*16)');
+    const crack = await state(sh, () => { const s = __survivorTest.scene, e = s.expedition; s.juice.played.length = 0;
+      e.shrine.inCombat = true; e.completeShrine({shrineTier: 1}); s.draw(); return {chunks: s.juice.chunks, spark: s.juice.played.includes('Spark_Light')}; });
+    assert(crack.chunks >= 3 && crack.chunks <= 6 && !crack.spark, 'A first clear cracks with a few shards and no light burst');
+    const shatter = await state(sh, () => { const s = __survivorTest.scene, e = s.expedition; s.player.x = e.shrine.x; s.player.y = e.shrine.y + 150; e.shrine.completed = 2; e.shrine.inCombat = true; e.shrine.needsExit = false;
+      e.completeShrine({shrineTier: 3}); s.draw(); return {chunks: s.juice.chunks, spark: s.juice.played.includes('Spark_Light'), frame: e.shrineSprite.frame.name, frozen: s.juice.frozenUntil > 0}; });
+    assert(shatter.chunks >= 15 && shatter.spark && shatter.frame === 'f3' && shatter.frozen, 'The third clear shatters');
+    await wait(180); // let the camera follow the player to the shrine and the burst develop
+    await sh.screenshot({path: 'output/juice/shrine-shatter.png'});
+    await wait(1600);
+    assert.equal(await state(sh, () => __survivorTest.scene.juice.chunks), 0, 'Shards and rubble clean up');
+    assert.deepEqual(sh.errors, []);
+    await sh.close();
     console.log('PASS: juice');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
