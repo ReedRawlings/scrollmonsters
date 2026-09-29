@@ -128,7 +128,8 @@
     }
     openUnlock(type){this.unlockType=type;this.mode='unlock';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
     closeUnlock(){if(this.mode!=='unlock')return;this.unlockType=null;this.mode='playing';this.accumulator=0;this.draw();}
-    chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
+    // Title presentation state (starterFrom/starterAt/lockedTap) only drives the menu's flip and hints.
+    chooseStarter(id){if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
     start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.seed=this.runSeed();this.resetState();this.juice.reset();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}

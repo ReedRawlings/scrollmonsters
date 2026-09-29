@@ -75,6 +75,33 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.deepEqual(late, [], 'The picked card is gone after the hold');
     assert.deepEqual(pk.errors, []);
     await pk.close();
+
+    // --- home screen: < > arrows, hero flip, sliding selection, locked shake, BEGIN brackets ---
+    for (const [name, viewport, mobile] of [['portrait', {width: 390, height: 844}, true], ['landscape', {width: 1100, height: 760}, false]]) {
+      const home = await open(browser, viewport, {mobile, init: () => localStorage.setItem('scrollmonsters-starters-v1', JSON.stringify(['owl', 'beast', 'frog']))});
+      const tap = async label => { const p = await controlPoint(home, label); if (mobile) await home.touchscreen.tap(p.x, p.y); else await home.mouse.click(p.x, p.y); };
+      const hero = () => state(home, () => { const s = __survivorTest.scene; s.draw(); return {starter: s.starter, ...s.screens.layout.hero}; });
+      assert.equal(await state(home, () => __survivorTest.scene.mode), 'title');
+      const order = await state(home, () => { const s = __survivorTest.scene; return SurvivorExpansion.roster.map(([id]) => id).filter(id => s.unlocked.includes(id)); });
+      const first = (await hero()).starter, next = order[(order.indexOf(first) + 1) % order.length];
+      await tap('>'); await wait(40); const flipping = await hero();
+      assert.equal(flipping.starter, next, '> steps to the next unlocked creature'); assert(flipping.scaleX < 1, 'The hero face flips on change');
+      await wait(400); const settled = await hero();
+      assert.deepEqual([settled.scaleX, settled.key], [1, 'face_' + next], 'The flip lands on the new face');
+      await tap('<'); await wait(400); assert.equal((await hero()).starter, first, '< steps back');
+      for (let i = 0; i < 5; i++) { await tap('>'); await wait(30); }
+      await wait(400); const rapid = await hero();
+      assert.deepEqual([rapid.scaleX, rapid.key], [1, 'face_' + rapid.starter], 'rapid arrows never leave the hero mid-flip');
+      await home.screenshot({path: `output/feedback/home-${name}.png`});
+      const locked = await state(home, () => { const s = __survivorTest.scene, before = s.starter, id = SurvivorExpansion.roster.map(([k]) => k).find(k => !s.unlocked.includes(k));
+        s.chooseStarter(id); s.draw(); const texts = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible) texts.push(o.text); }); return {same: s.starter === before, q: texts.includes('???'), hint: texts.some(t => /Capture one/.test(t))}; });
+      assert.deepEqual(locked, {same: true, q: true, hint: true}, 'locked faces never change the starter and explain how to unlock');
+      const brackets = await state(home, () => { const s = __survivorTest.scene, b = s.screens.layout.beginBrackets, c = s.screens.layout.begin; return b && c && b.join() === c.join(); });
+      assert.equal(brackets, true, 'BEGIN always shows its selection brackets');
+      assert.deepEqual(await offscreenTexts(home), [], `${name}: home fits the screen`);
+      assert.deepEqual(home.errors, []);
+      await home.context().close();
+    }
     console.log('Feedback: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

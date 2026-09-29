@@ -19,22 +19,36 @@
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
     dim(w,h){const ui=this.s.ui;ui.rect(0,0,w,h,'#0b0710b0');ui.hitArea(0,0,w,h,()=>{},'modal-blocker');}
     title(w,h){
-      const s=this.s,ui=s.ui,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter;
+      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced;
       this.dim(w,h);
       const L=portrait
         ?{banner:[w/2,26],hero:[87,72],name:[w/2,186],desc:[w/2,204,240],grid:[24,228],begin:[55,340,160,44],field:[55,398,76,26],hist:[139,398,76,26]}
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
+      const ease=k=>1+2.2*Math.pow(k-1,3)+1.2*Math.pow(k-1,2),bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
+        for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+bw+4,y-4,-1,1],[x-4,y+bh+4,1,-1],[x+bw+4,y+bh+4,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);};
       ui.banner('SCROLL MONSTERS',...L.banner);
-      const [hx,hy]=L.hero;ui.panel('dk_slot',hx,hy,96,96,5,2);ui.image('face_'+sel,hx+10,hy+10,76,76);
-      ui.darkText(pretty(sel).toUpperCase(),L.name[0],L.name[1],{size:18,align:'center'});
-      const info=roster.find(([id])=>id===sel);
-      ui.darkText(info?info[1]:'',L.desc[0],L.desc[1],{align:'center',color:D().muted,wrap:L.desc[2]}).setOrigin(.5,0);
-      roster.forEach(([id],i)=>{const x=L.grid[0]+(i%5)*46,y=L.grid[1]+Math.floor(i/5)*46,known=s.unlocked.includes(id);this.layout.faces.push({id,x,y,size:38,known});
-        const face=ui.image('face_'+id,x,y,38,38);if(face){if(known)face.clearTint();else face.setTint(0x2a2238);}
-        ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);
-        if(id===sel){const g=ui.graphics();g.lineStyle(2,0xffffff,1);
-          for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+42,y-4,-1,1],[x-4,y+42,1,-1],[x+42,y+42,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);}});
+      // Hero flip (prototype menu): squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
+      const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
+      const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
+      const face=ui.image(key,hx+48,hy+48-lift,Math.max(1,76*sx),76,{center:true});this.layout.hero={scaleX:Math.round(sx*1000)/1000,key};
+      if(!red&&t>=80&&t<400&&this.sparkAt!==s.starterAt){this.sparkAt=s.starterAt;for(let i=0;i<8;i++){const a=i*Math.PI/4+j.rand()*.5,r=30+j.rand()*24;j.play('Reward_Trail',hx+48+Math.cos(a)*r,hy+48+Math.sin(a)*r,{ui:true,scale:1});}}
+      const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
+      ui.pill('<',hx-41,hy+34,30,28,()=>step(-1),{id:'prev'});ui.pill('>',hx+107,hy+34,30,28,()=>step(1),{id:'next'});
+      // Name and description slide up as they fade in; a locked tap shows how to unlock instead.
+      const lock=s.lockedTap,info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
+      ui.darkText(lock?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
+      ui.darkText(lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
+      const pos=i=>({x:L.grid[0]+(i%5)*46,y:L.grid[1]+Math.floor(i/5)*46}),ids=roster.map(([id])=>id);
+      roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
+        if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
+        this.layout.faces.push({id,x,y,size:38,known});
+        const f=ui.image('face_'+id,x,y,38,38);if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
+        ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);});
+      // The selection brackets slide from the previous face over 150ms.
+      const to=pos(ids.indexOf(sel)),from=s.starterFrom?pos(ids.indexOf(s.starterFrom)):to,bk=red?1:Math.min(1,t/150),be=bk>=1?1:ease(bk);
+      bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,38,38);
       const [bx,by,bw,bh]=L.begin;ui.card('BEGIN',bx,by,bw,bh,()=>s.start(),{color:D().gold,size:18,align:'center',id:'begin'});
+      bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx,by,bw,bh];this.layout.beginBrackets=[bx,by,bw,bh];
       const other=s.field==='desert'?'woods':'desert';
       ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
