@@ -22,16 +22,17 @@
     update(){const s=this.s;if(s.mode!=='playing')return;const item=this.items.find(p=>dist(p,s.player)<PICKUP);if(item)this.open(item);}
     open(item){
       const s=this.s;this.items=this.items.filter(p=>p!==item);item.sprite.destroy();
-      const pool=s.upgradePool(),byId=new Map(pool.map(u=>[u.id,u]));
-      // A card that stopped being offerable since the drop (once-only taken, creature gone) is redrawn from today's pool.
-      const cards=item.cards.map(id=>byId.get(id)||this.draw(pool,1)[0]).map(u=>({id:u.id,name:u.name,detail:u.detail}));
-      for(const c of cards)s.grantUpgrade(c.id);
+      // Grant card by card against a fresh pool: a card that stopped being offerable (a once-only already taken,
+      // here or earlier; a creature gone) is redrawn, and each copy shows its own rank step.
+      const cards=item.cards.map(id=>{const pool=s.upgradePool(),u=pool.find(v=>v.id===id)||this.draw(pool,1)[0];s.grantUpgrade(u.id);return {id:u.id,name:u.name,detail:u.detail};});
       this.opened++;s.logEvent('pack_opened',{source:item.source,size:item.size,cards:cards.map(c=>c.id)});
       this.reveal={size:item.size,cards,x:item.x,y:item.y,start:s.juice.now(),kept:0,flippedAt:null,doneAt:null};
       s.mode='pack';s.joy=null;s.input.keyboard.resetKeys();s.accumulator=0;
       s.reward('pack',{size:item.size,cards:cards.map(c=>c.id),x:item.x,y:item.y});
     }
-    close(){const s=this.s;if(s.mode!=='pack')return;this.reveal=null;s.mode='playing';s.joy=null;s.input.keyboard.resetKeys();s.checkLevel();s.saveRun();}
+    // A reveal that ends while the window is out of focus lands on pause, never on unattended combat.
+    close(){const s=this.s;if(s.mode!=='pack')return;this.reveal=null;s.joy=null;s.input.keyboard.resetKeys();
+      if(this.blurred){this.blurred=false;s.mode='paused';}else{s.mode='playing';s.checkLevel();}s.saveRun();}
     // --- reveal (real time; presentation state only) ---
     act(){
       const r=this.reveal,now=this.s.juice.now();if(!r||this.s.mode!=='pack'||now-r.start<SurvivorPacks.LOCK(r.cards.length)||r.doneAt!==null)return;

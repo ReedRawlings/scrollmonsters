@@ -79,13 +79,13 @@
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
       this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='pack')this.packs.act();});
-      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?this.relics.choose(i-1):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
+      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?(this.juice.since('relic')>=SurvivorScreens.LOCK_MS&&this.relics.choose(i-1)):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
       this.input.keyboard.on('keydown-ESC',()=>this.pause());
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
       this.input.keyboard.on('keydown-SPACE',()=>{if(this.mode==='pack')this.packs.act();else this.expansion.dash();});this.input.keyboard.on('keydown-SHIFT',()=>this.expansion.dash());
       this.input.keyboard.on('keydown-F',()=>{if(this.scale.isFullscreen)this.scale.stopFullscreen();else this.scale.startFullscreen();});
-      this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='playing'){this.mode='paused';this.draw();}});
+      this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='pack')this.packs.blurred=true;if(this.mode==='playing'){this.mode='paused';this.draw();}});
       this.scale.on('resize',()=>this.draw());
       window.addEventListener('pagehide',()=>this.saveRun());
       this.resetState();this.mode='title';this.draw();

@@ -110,9 +110,9 @@
         if(!face)ui.image('Pack_CardBack',dx,cy,dw,ch,{frame:j.frameRect('Pack_CardBack',ri)});
         else{ui.darkPanel(dx,cy,dw,ch);ui.rect(dx+6,cy+6,Math.max(0,dw-12),4,color);
           if(k>=1){const owner=j.ownerOf(card.id),key='upgrade_'+card.id;
-            if(s.textures.exists(key))ui.image(key,cx+36,cy+18,48,48,{frame:j.frameRect(key,j.frameAt(key,now,true))});
-            ui.darkText(card.name,cx+cw/2,cy+80,{align:'center',wrap:cw-16});
-            ui.darkText(card.detail,cx+cw/2,cy+100,{align:'center',color:ScrollUI.DARK.muted,wrap:cw-16}).setOrigin(.5,0);
+            if(s.textures.exists(key))ui.image(key,cx+40,cy+14,40,40,{frame:j.frameRect(key,j.frameAt(key,now,true))});
+            ui.darkText(card.name,cx+cw/2,cy+64,{align:'center',wrap:cw-12});
+            ui.darkText(card.detail,cx+cw/2,cy+76,{align:'center',color:ScrollUI.DARK.muted,wrap:cw-12}).setOrigin(.5,0);
             ui.darkText(owner==='walker'?'WHOLE TEAM':owner.toUpperCase(),cx+cw/2,cy+ch-14,{align:'center',color});}}
         if(r.size>1&&!j.reduced&&!face)ui.image('Pack_Sheen',cx+((t%1800)/1800)*(cw-48),cy,48,ch,{frame:j.frameRect('Pack_Sheen',j.frameAt('Pack_Sheen',now,true)),alpha:.5});
       }
@@ -126,11 +126,14 @@
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
       const t=s.juice.since('relic');this.layout.cards=[];
       r.offers.forEach((item,i)=>{const owned=r.count(item.id),y=py+32+i*(cardH+6);this.layout.cards.push({x:px+8,y,w:pw-16,h:cardH});
-        ui.card((i+1)+'. '+item.name,px+8,y,pw-16,cardH,()=>r.choose(i),{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});
+        // Deal in like the upgrade cards; taps before LOCK_MS are ignored so a pick is never blind.
+        const k=s.juice.reduced?1:Math.max(0,Math.min(1,(t-i*70)/180)),e=1-Math.pow(1-k,3);ui.beginGroup('relcard'+i,{y:Math.round((1-e)*14)}).setAlpha(e);
+        ui.card((i+1)+'. '+item.name,px+8,y,pw-16,cardH,()=>{if(s.juice.since('relic')>=SurvivorScreens.LOCK_MS)r.choose(i);},{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});
         const bx=px+pw-14,by=y+10;
         if(!owned){const glow=s.juice.reduced?1:.65+.35*Math.sin(t/160);ui.darkText('NEW',bx,by,{align:'right',color:ScrollUI.DARK.gold}).setAlpha(glow);}
         else{const rolled=t>=400,label=ui.darkText('×'+(rolled?owned+1:owned),bx,by,{align:'right',color:rolled?ScrollUI.DARK.gold:ScrollUI.DARK.text});
-          if(rolled&&!s.juice.reduced&&t<520)label.setScale(1+.4*(1-(t-400)/120));}});
+          if(rolled&&!s.juice.reduced&&t<520)label.setScale(1+.4*(1-(t-400)/120));}
+        ui.endGroup();});
       this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
     unlock(w,h){

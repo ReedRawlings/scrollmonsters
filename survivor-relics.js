@@ -22,7 +22,7 @@
     name(id){return ITEMS.find(v=>v.id===id).name;}
     has(id){return this.equipped.includes(id);}
     reward(source){this.queue.push(source);this.s.logEvent('relic_reward',{source});}
-    open(){if(!this.queue.length)return false;const s=this.s;this.source=this.queue.shift();const pool=[...ITEMS];this.offers=[];while(this.offers.length<3&&pool.length)this.offers.push(pool.splice(Math.floor(s.rand()*pool.length),1)[0]);this.selected=null;s.mode='relic';s.joy=null;s.input.keyboard.resetKeys();s.logEvent('relic_offered',{source:this.source,choices:this.offers.map(i=>i.id)});s.saveRun();return true;}
+    open(){if(!this.queue.length)return false;const s=this.s;this.source=this.queue.shift();const pool=[...ITEMS];this.offers=[];while(this.offers.length<3&&pool.length)this.offers.push(pool.splice(Math.floor(s.rand()*pool.length),1)[0]);this.selected=null;s.mode='relic';s.joy=null;s.input.keyboard.resetKeys();s.logEvent('relic_offered',{source:this.source,choices:this.offers.map(i=>i.id)});s.saveRun();s.reward('relicoffer');return true;}
     choose(i){if(this.s.mode!=='relic')return;const item=this.offers[i];if(item)this.equip(item);}
     equip(item){this.equipped.push(item.id);this.s.logEvent('relic_equipped',{relic:item.id,stack:this.count(item.id),source:this.source});const index=this.offers.indexOf(item);this.close();this.s.reward('relic',{id:item.id,index});}
     shieldBlocked(){if(this.has('drum')){this.drum=3+2*(this.count('drum')-1);this.s.announce('Guardian’s Drum: party haste!');}}

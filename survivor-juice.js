@@ -12,7 +12,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;

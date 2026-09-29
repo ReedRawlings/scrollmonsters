@@ -136,6 +136,44 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.deepEqual(fly.to, fly.cell, 'It flies to its cell in the HUD relic row');
     assert.deepEqual(rl.errors, []);
     await rl.context().close();
+
+    // --- final review fixes ---
+    const fx = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const once = await state(fx, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
+      const id = ['pull', 'marks', 'split', 'slam', 'mouseJump'].find(k => s.upgradePool().some(u => u.id === k)); if (!id) return {id};
+      const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 3; p.cards = [id, id, 'feet']; s.packs.open(p);
+      const ids = s.packs.reveal.cards.map(c => c.id); s.packs.close(); return {id, rank: s.upgrades[id], copies: ids.filter(k => k === id).length, n: ids.length}; });
+    assert(once.id, 'A once-only upgrade is offerable at the start');
+    assert.deepEqual([once.rank, once.copies, once.n], [1, 1, 3], 'A once-only upgrade is never granted twice from one pack; the duplicate is redrawn');
+    const ranks = await state(fx, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
+      const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 3; p.cards = ['partyDamage', 'partyDamage', 'feet']; s.packs.open(p);
+      const d = s.packs.reveal.cards.map(c => c.detail); s.packs.close(); return d; });
+    assert.notEqual(ranks[0], ranks[1], 'Two copies of one upgrade show their own rank step');
+    // Relic choice: taps and keys inside the deal-in are ignored.
+    await state(fx, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.relics.reward('shrine_challenge'); s.checkLevel(); s.draw(); });
+    await fx.keyboard.press('Digit1');
+    assert.equal(await state(fx, () => __survivorTest.scene.mode), 'relic', 'A key inside the relic deal-in is ignored');
+    await wait(420); await fx.keyboard.press('Digit1');
+    assert.equal(await state(fx, () => __survivorTest.scene.mode), 'playing', 'After the deal-in the key picks');
+    // Losing focus during a reveal: it ends paused, not unattended.
+    const blur = await state(fx, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; const p = s.packs.drop(s.player.x, s.player.y, 'test'); s.tick(1 / 60);
+      const r = s.packs.reveal; r.start -= 5000; s.game.events.emit('blur'); for (const _ of r.cards) { s.packs.act(); r.flippedAt -= 500; s.packs.act(); } r.doneAt -= 500; s.packs.realtime(); return s.mode; });
+    assert.equal(blur, 'paused', 'A reveal that finishes while the window is out of focus ends paused');
+    // The longest detail in any team's pool stays above the owner label on the reveal card.
+    const fit = await state(fx, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
+      for (const t of ['salamander','spider','storm']) s.expedition.release(t, s.player.x + 60, s.player.y, true);
+      for (const t of ['mouse','mole','bear']) s.creatures.release(t, s.player.x - 60, s.player.y, true);
+      s.expedition.release('owl', s.player.x, s.player.y + 60, true); s.expedition.release('beast', s.player.x, s.player.y - 60, true); s.expedition.release('frog', s.player.x + 90, s.player.y, true);
+      const longest = s.upgradePool().sort((a, b) => b.detail.length - a.detail.length)[0];
+      const p = s.packs.drop(s.player.x, s.player.y, 'test'); s.packs.open(p); const r = s.packs.reveal; r.cards[0] = {id: longest.id, name: longest.name, detail: longest.detail}; r.start -= 5000; r.flippedAt = s.juice.now() - 1000; s.draw();
+      const box = t => { const b = t.getBounds(); return {top: b.y, bottom: b.y + b.height}; }; let detail; const caps = [];
+      s.ui.walk(o => { if (o.type !== 'Text' || !o.visible) return; if (o.text.replace(/\n/g, ' ').startsWith(longest.detail.slice(0, 12))) detail = box(o); if (/^(WHOLE TEAM|[A-Z]+)$/.test(o.text)) caps.push(box(o)); });
+      const owner = caps.filter(b => detail && b.top > detail.top).sort((a, b) => a.top - b.top)[0];
+      return {detail, owner, text: longest.detail}; });
+    assert(fit.detail && fit.owner && fit.detail.bottom <= fit.owner.top, 'Long card text stays clear of the owner label: ' + JSON.stringify(fit));
+    await fx.screenshot({path: 'output/upgrade-packs/long-detail.png'});
+    assert.deepEqual(fx.errors, []);
+    await fx.context().close();
     console.log('Upgrade packs: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
