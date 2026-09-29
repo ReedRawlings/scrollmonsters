@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const MAX = 40, MERGE_MS = 150, DIGITS = 5, LIFE = 700, CRIT_LIFE = 900, RISE = 18, POP_MS = 120, FADE_MS = 250, DEPTH = 9990;
+  const MAX = 40, MERGE_MS = 150, MERGE_SPAN = 600, BURSTS = 8, DIGITS = 5, LIFE = 700, CRIT_LIFE = 900, RISE = 18, POP_MS = 120, FADE_MS = 250, DEPTH = 9990;
   const WHITE = 0xffffff, GOLD = 0xffc41b, RED = 0xef5266;
   // World-space damage numbers from the NovelMix digit strip. Presentation only: never writes game state.
   // Every object is made once here (40 numbers x 5 digits) and reused; nothing is created per hit.
@@ -15,7 +15,8 @@
     list(){return this.pool.filter(n=>n.live).map(n=>({value:n.value,crit:n.crit,hurt:n.hurt,x:n.x,y:n.y,scale:n.box.scaleX,depth:n.box.depth}));}
     show(target,amount,{crit=false,hurt=false}={}){
       const now=this.j.now();
-      let n=this.pool.find(v=>v.live&&v.target===target&&now-v.last<=MERGE_MS);
+      // Merge only within a short span, so a target under steady fire gets fresh numbers where it now stands.
+      let n=this.pool.find(v=>v.live&&v.target===target&&now-v.last<=MERGE_MS&&now-v.born<=MERGE_SPAN);const wasCrit=!!n?.crit;
       if(n){n.sum+=amount;n.crit||=crit;}
       else{
         n=this.pool.find(v=>!v.live)||this.pool.reduce((a,b)=>a.last<=b.last?a:b); // full: recycle the oldest
@@ -23,7 +24,8 @@
       }
       n.last=now;n.value=Math.min(99999,Math.max(1,Math.round(n.sum)));
       this.layout(n);this.animate(n,now);
-      if(crit&&!this.j.reduced)this.j.play('Damage_Crit',n.x,n.y,{scale:2,depth:DEPTH-1});
+      // One burst when a number turns gold, from a small budget of its own so crits never crowd out reward juice.
+      if(crit&&!wasCrit&&!this.j.reduced&&this.j.fx.filter(f=>f.key==='Damage_Crit').length<BURSTS)this.j.play('Damage_Crit',n.x,n.y,{scale:2,depth:DEPTH-1});
     }
     layout(n){
       const str=String(n.value),tint=n.hurt?RED:n.crit?GOLD:WHITE;let x=0;

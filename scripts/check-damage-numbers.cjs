@@ -120,6 +120,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       return {scale: j.numbers.list()[0].scale, burst: j.played.includes('Damage_Crit')}; });
     assert.deepEqual(c, {scale: 3, burst: false}, 'Reduced motion: crit at its resting size, no Damage_Crit');
     await calm.close();
+
+    // --- crit bursts never starve reward juice; a steadily hit target gets fresh numbers ---
+    const busy = await open(browser, {width: 1100, height: 760});
+    const b = await state(busy, () => { const s = __survivorTest.scene, j = s.juice; s.start(); j.fx.slice().forEach(f => j.stop(f));
+      const one = {x: 200, y: 200}; for (let i = 0; i < 20; i++) j.damage(one, 1, 2);
+      const merged = j.fx.filter(f => f.key === 'Damage_Crit').length;
+      for (let i = 0; i < 80; i++) j.damage({x: 100 + i, y: 300}, 1, 2);
+      return {merged, crits: j.fx.filter(f => f.key === 'Damage_Crit').length, capture: !!j.play('Capture_Burst', 300, 300)}; });
+    assert.equal(b.merged, 1, 'Merged crit hits play one burst, not one per hit');
+    assert(b.crits <= 8, `Crit bursts have their own small budget (got ${b.crits})`);
+    assert.equal(b.capture, true, 'A crit-heavy fight still leaves room for capture juice');
+    const steady = await state(busy, async () => { const j = __survivorTest.scene.juice, boss = {x: 400, y: 400}; j.numbers.reset(); const before = j.numbers.spawned;
+      for (let i = 0; i < 10; i++) { j.damage(boss, 1); await new Promise(r => setTimeout(r, 100)); }
+      return j.numbers.spawned - before; });
+    assert(steady >= 2, `A target hit every 100ms for 1s gets fresh numbers, not one endless total (got ${steady})`);
+    assert.deepEqual(busy.errors, []);
+    await busy.close();
     console.log('Damage numbers: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
