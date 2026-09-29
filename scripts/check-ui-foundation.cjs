@@ -30,6 +30,34 @@ const state = (page, fn, arg) => page.evaluate(fn, arg);
     assert.deepEqual(phone.errors, []);
     await phone.close();
 
+    // --- DarkMode components render in a x2 group, hit-test correctly and enforce font sizes ---
+    const desk = await open(browser, {width: 1100, height: 760});
+    const comp = await state(desk, () => {
+      const s = __survivorTest.scene, ui = s.ui;
+      s.draw = () => {}; // freeze the scene's own UI so this test owns the display tree
+      window.__pillHits = 0;
+      ui.begin('component-test');
+      ui.beginGroup('x2', {scale: 2});
+      ui.darkPanel(10, 10, 200, 120);
+      ui.banner('TEST', 110, 14);
+      ui.pill('OK', 20, 60, 60, 20, () => window.__pillHits++);
+      ui.card('Card title', 90, 56, 110, 40, () => {}, {detail: 'detail text', icon: 'relic_veil'});
+      ui.darkText('hello', 20, 110, {size: 18});
+      let threw = false; try { ui.darkText('bad', 0, 0, {size: 12}); } catch { threw = true; }
+      ui.endGroup(); ui.end();
+      const need = ['dk_panel','dk_slot','dk_pill','dk_banner','dk_status','dk_zslot','dk_heart','killIcon','face_walker','face_storm','relic_veil','relic_pack'];
+      return {threw, missing: need.filter(k => !s.textures.exists(k)), font: document.fonts.check('9px NovelMix')};
+    });
+    assert.equal(comp.threw, true, 'darkText rejects sizes that are not multiples of 9');
+    assert.deepEqual(comp.missing, [], 'All DarkMode textures load');
+    assert.equal(comp.font, true, 'NovelMix is loaded');
+    const ok = await controlPoint(desk, 'OK');
+    await desk.mouse.click(ok.x, ok.y, {delay: 30});
+    assert.equal(await state(desk, () => window.__pillHits), 1, 'A pill inside the x2 group is clickable');
+    await desk.locator('canvas').screenshot({path: 'output/ui-foundation/components.png'});
+    assert.deepEqual(desk.errors, []);
+    await desk.close();
+
     console.log('PASS: UI foundation');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

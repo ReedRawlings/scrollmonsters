@@ -4,6 +4,9 @@
   const WORLD = 2304, DURATION = new URLSearchParams(location.search).has('trial')?120:600, STEP = 1 / 60, MAX_HP = 40;
   const RUN_HISTORY_KEY = 'scrollmonsters-survivor-runs-v1', RUN_HISTORY_BYTES = 2 * 1024 * 1024;
   const A = 'assets/Ninja Adventure - Asset Pack/';
+  const UI = 2; // every survivors UI element is laid out in logical space and drawn at 2x
+  const FACESETS = {walker:'Characters/EggBoy',cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
+  const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil'];
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
   const direction = (x,y) => Math.abs(x)>Math.abs(y) ? (x<0?2:3) : (y<0?1:0);
@@ -42,6 +45,11 @@
       this.load.image('woodButton',A+'Ui/Theme/Theme Wood/button_normal.png');
       this.load.font('NinjaPixel',encodeURI(A+'Ui/Font/NormalFont.ttf'));
       this.load.audio('hit',A+'Audio/Sounds/Menu/Accept4.wav');
+      for(const k of ['panel','slot','pill','banner','status','zslot','heart'])this.load.image('dk_'+k,'assets/ui/darkmode/'+k+'.png');
+      this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
+      this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
+      for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
+      for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+id+'.png');
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
