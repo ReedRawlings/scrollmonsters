@@ -68,6 +68,29 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert.equal(gated, 0, 'Disabled juice shows no numbers');
     assert.deepEqual(pool.errors, []);
     await pool.close();
+
+    // --- real hits drive numbers; the crit rule is combo bonuses only ---
+    const sim = await open(browser, {width: 1100, height: 760});
+    const h = await state(sim, () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
+      const foe = () => { s.enemies.length = 0; s.spawn('bear', s.player.x + 60, s.player.y); const e = s.enemies.at(-1); e.hp = e.maxHp = 999; e.enemyShield = false; return e; };
+      let e = foe(); j.numbers.reset(); s.hit(e, 3, 'cat', s.player); out.plain = j.numbers.list().map(n => [n.value, n.crit]);
+      e = foe(); j.numbers.reset(); e.markUntil = s.elapsed + 3; s.hit(e, 4, 'cat', s.player); out.marked = j.numbers.list().map(n => [n.value, n.crit]);
+      e = foe(); j.numbers.reset(); s.upgrades.partyDamage = 10; s.hit(e, 4, 'cat', s.player); s.upgrades.partyDamage = 0; out.flatBoost = j.numbers.list().map(n => n.crit);
+      e = foe(); j.numbers.reset(); e.enemyShield = true; s.hit(e, 4, 'cat', s.player); out.shielded = j.numbers.list().length;
+      j.numbers.reset(); s.player.inv = 0; s.shield = false; const hp = s.player.hp; s.encounters.damage(4, 'test'); out.hurt = j.numbers.list().map(n => [n.hurt, n.value]); out.taken = Math.round(hp - s.player.hp);
+      j.numbers.reset(); s.player.inv = 0; s.shield = true; s.encounters.damage(4, 'test'); out.blocked = j.numbers.list().length;
+      j.numbers.reset(); s.player.inv = 0; s.shield = false; e = foe(); e.x = s.player.x; e.y = s.player.y; e.contactDamage = 5; s.tick(1 / 60); out.contact = j.numbers.list().filter(n => n.hurt).length;
+      return out; });
+    assert.deepEqual(h.plain, [[3, false]], 'A plain cat hit shows its damage in white');
+    assert.deepEqual(h.marked, [[5, true]], 'An owl-marked hit (x1.25) is a gold crit');
+    assert.deepEqual(h.flatBoost, [false], 'partyDamage raises damage but never makes a crit');
+    assert.equal(h.shielded, 0, 'A hit eaten by an enemy shield shows nothing');
+    assert.deepEqual(h.hurt, [[true, h.taken]], 'Hits on the player show the damage actually taken, in red');
+    assert.equal(h.blocked, 0, 'A shield-blocked hit on the player shows nothing');
+    assert.equal(h.contact, 1, 'Contact damage shows a red number');
+    await sim.screenshot({path: 'output/damage-numbers/hits.png'});
+    assert.deepEqual(sim.errors, []);
+    await sim.close();
     console.log('Damage numbers: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
