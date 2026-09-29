@@ -30,6 +30,7 @@ async function expeditionEvents(browser, juiceOn) {
     while (s.elapsed < 420 && steps++ < 40000) {
       if (s.mode === 'relic') s.relics.choose(0);
       else if (s.mode === 'upgrade') s.chooseUpgrade(0);
+      else if (s.mode === 'pack') s.packs.close();
       else if (s.mode === 'unlock') s.closeUnlock();
       else if (s.mode !== 'playing') break;
       if (!released && s.elapsed >= 20) { released = true; s.expedition.release('mouse', s.player.x + 20, s.player.y, false); }
@@ -38,7 +39,7 @@ async function expeditionEvents(browser, juiceOn) {
       s.player.inv = 2; s.tick(1 / 60);
       if (steps % 30 === 0) s.draw(); // exercise every presentation path between ticks
     }
-    return JSON.stringify(s.run.events);
+    return JSON.stringify(s.run.events) + '|' + (on ? (s.juice.numbers.spawned > 0) : 'off');
   }, juiceOn);
   assert.deepEqual(page.errors, []);
   await page.close();
@@ -79,7 +80,8 @@ async function expeditionEvents(browser, juiceOn) {
     await live.close();
 
     // --- determinism: the juice never changes what happens in a run ---
-    const withJuice = await expeditionEvents(browser, true), without = await expeditionEvents(browser, false);
+    const [withJuice, shown] = (await expeditionEvents(browser, true)).split('|'), [without] = (await expeditionEvents(browser, false)).split('|');
+    assert.equal(shown, 'true', 'The fixed run actually shows damage numbers, so determinism covers them');
     for (const type of ['mouse_captured', 'level_up', 'upgrade_chosen', 'shrine_completed', 'relic_equipped']) assert(withJuice.includes(`"type":"${type}"`), `The fixed run exercises ${type}`);
     assert.equal((withJuice.match(/"shrine_completed"/g) || []).length, 3, 'All three shrine clears (crack, crack, shatter) happen');
     assert.equal(withJuice, without, 'Run event log is identical with juice on and off');

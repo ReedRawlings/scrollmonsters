@@ -12,6 +12,7 @@
       else if(s.mode==='won'||s.mode==='lost')this.ended(w,h);
       else if(s.mode==='upgrade')this.upgrade(w,h);
       else if(s.mode==='relic')this.relic(w,h);
+      else if(s.mode==='pack')this.pack(w,h);
       else if(s.mode==='unlock')this.unlock(w,h);
     }
     // Buttons inside a black panel use the lighter item-slot art; black pills would vanish against it.
@@ -48,13 +49,16 @@
         ids.forEach((id,i)=>{const cx=px+12+Math.floor(i/rows)*colW,cy=py+26+(i%rows)*20;ui.image('relic_'+id,cx,cy,16,16,{frame:[0,0,16,16]});
           ui.darkText(s.relics.name(id)+' ×'+s.relics.count(id),cx+22,cy+8,{color:D().muted});});
         this.button('Resume',w/2-50,py+ph-30,100,22,()=>s.pause(),'resume');
+        this.numbersToggle(w,py+ph+8);
         return;
       }
       const pw=Math.min(w-24,254),ph=178,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
       ['Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.'].forEach((t,i)=>ui.darkText(t,w/2,py+32+i*16,{align:'center',color:D().muted}));
       this.button('Resume',px+16,py+ph-68,pw-32,24,()=>s.pause(),'resume');
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
+      this.numbersToggle(w,py+ph+8);
     }
+    numbersToggle(w,y){const j=this.s.juice;this.s.ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});}
     ended(w,h){
       const s=this.s,ui=s.ui,won=s.mode==='won';this.dim(w,h);
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));
@@ -87,10 +91,49 @@
         this.layout.cards.push({x,y,w:pw-16,h:cardH});
       });
     }
+    // Upgrade pack reveal (prototype Moment 5). Cards are 120x170 logical: Pack_CardBack at 2x face down,
+    // a DarkMode panel with the rarity strip, spinning icon, name, detail and owner face up.
+    pack(w,h){
+      const s=this.s,ui=s.ui,j=s.juice,r=s.packs.reveal;if(!r)return;this.dim(w,h);
+      const now=j.now(),t=now-r.start,n=r.cards.length,ri={1:0,3:1,5:2}[r.size],color=SurvivorPacks.COLORS[r.size];
+      const tall=h>w,cw=120,ch=170,cx=Math.round((w-cw)/2),top=tall?96:40,cy=top+44;
+      this.layout.packCard=cy+ch/2;
+      ui.banner(SurvivorPacks.rarity(r.size).toUpperCase()+' PACK',w/2,top-8);
+      ui.darkText(n===1?'1 card':n+' cards',w/2,top+30,{align:'center',color});
+      // Face-down pile: the cards still to reveal, each landing 90ms apart during the deal-in.
+      for(let i=n-1;i>r.kept;i--){if(!j.reduced&&t<(n-1-i)*90)continue;const off=(i-r.kept)*3;
+        ui.image('Pack_CardBack',cx+off,cy+off,cw,ch,{frame:j.frameRect('Pack_CardBack',ri)});}
+      if(r.kept<n&&(j.reduced||t>=(n-1-r.kept)*90)){
+        const card=r.cards[r.kept],since=r.flippedAt===null?-1:now-r.flippedAt;
+        // Flip: squash the back to nothing over 90ms, then open the face over the next 90ms.
+        const k=since<0?1:j.reduced?1:since<90?1-since/90:Math.min(1,(since-90)/90),face=since>=(j.reduced?0:90),dw=Math.max(2,Math.round(cw*k)),dx=cx+Math.round((cw-dw)/2);
+        if(!face)ui.image('Pack_CardBack',dx,cy,dw,ch,{frame:j.frameRect('Pack_CardBack',ri)});
+        else{ui.darkPanel(dx,cy,dw,ch);ui.rect(dx+6,cy+6,Math.max(0,dw-12),4,color);
+          if(k>=1){const owner=j.ownerOf(card.id),key='upgrade_'+card.id;
+            if(s.textures.exists(key))ui.image(key,cx+40,cy+14,40,40,{frame:j.frameRect(key,j.frameAt(key,now,true))});
+            ui.darkText(card.name,cx+cw/2,cy+64,{align:'center',wrap:cw-12});
+            ui.darkText(card.detail,cx+cw/2,cy+76,{align:'center',color:ScrollUI.DARK.muted,wrap:cw-12}).setOrigin(.5,0);
+            ui.darkText(owner==='walker'?'WHOLE TEAM':owner.toUpperCase(),cx+cw/2,cy+ch-14,{align:'center',color});}}
+        if(r.size>1&&!j.reduced&&!face)ui.image('Pack_Sheen',cx+((t%1800)/1800)*(cw-48),cy,48,ch,{frame:j.frameRect('Pack_Sheen',j.frameAt('Pack_Sheen',now,true)),alpha:.5});
+      }
+      // Hand row: one slot per card; filled slots show the kept icon.
+      // Portrait: a row under the card. Landscape: a column beside it, clear of the party bar.
+      this.layout.hand=[];
+      for(let i=0;i<n;i++){const x=tall?Math.round(w/2+(i-(n-1)/2)*38-17):cx+cw+14,y=tall?cy+ch+18:cy+i*36;this.layout.hand.push({x:x+17,y:y+17});ui.darkPanel(x,y,34,34);
+        if(i<r.kept){const key='upgrade_'+r.cards[i].id;if(s.textures.exists(key))ui.image(key,x+1,y+1,32,32,{frame:[0,0,16,16]});}}
+    }
     relic(w,h){
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
-      r.offers.forEach((item,i)=>{const owned=r.count(item.id),tag=owned?' · '+owned+' → '+(owned+1):' · NEW';
-        ui.card((i+1)+'. '+item.name+tag,px+8,py+32+i*(cardH+6),pw-16,cardH,()=>r.choose(i),{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});});
+      const t=s.juice.since('relic');this.layout.cards=[];
+      r.offers.forEach((item,i)=>{const owned=r.count(item.id),y=py+32+i*(cardH+6);this.layout.cards.push({x:px+8,y,w:pw-16,h:cardH});
+        // Deal in like the upgrade cards; taps before LOCK_MS are ignored so a pick is never blind.
+        const k=s.juice.reduced?1:Math.max(0,Math.min(1,(t-i*70)/180)),e=1-Math.pow(1-k,3);ui.beginGroup('relcard'+i,{y:Math.round((1-e)*14)}).setAlpha(e);
+        ui.card((i+1)+'. '+item.name,px+8,y,pw-16,cardH,()=>{if(s.juice.since('relic')>=SurvivorScreens.LOCK_MS)r.choose(i);},{detail:item.detail+' '+item.extra,icon:'relic_'+item.id,id:'relic'+i});
+        const bx=px+pw-14,by=y+10;
+        if(!owned){const glow=s.juice.reduced?1:.65+.35*Math.sin(t/160);ui.darkText('NEW',bx,by,{align:'right',color:ScrollUI.DARK.gold}).setAlpha(glow);}
+        else{const rolled=t>=400,label=ui.darkText('×'+(rolled?owned+1:owned),bx,by,{align:'right',color:rolled?ScrollUI.DARK.gold:ScrollUI.DARK.text});
+          if(rolled&&!s.juice.reduced&&t<520)label.setScale(1+.4*(1-(t-400)/120));}
+        ui.endGroup();});
       this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
     unlock(w,h){

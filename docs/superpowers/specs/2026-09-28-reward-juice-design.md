@@ -37,7 +37,7 @@ Out of scope, as follow-ups: `legacy.html` (the Theme Wood Bestiary in `game.js`
 | Pick pause | 260ms between tapping an upgrade and combat resuming. |
 | Starter unlock | Stops the game and waits for Continue. |
 | Rewards travel | Upgrade icons fly to the owning creature's slot in the bottom party bar, not to the creature in the world. |
-| Upgrade packs | Drop from elites, caches and shrine waves. Size by luck: 1 card 82%, 3 cards 17%, 5 cards 2%. Cards are drawn from the active team's upgrade pool and all are granted. Tap flips a card; a tap, a swipe or a one-second wait files it. No on-screen prompts. |
+| Upgrade packs | Drop from elites and caches (shrine clears keep giving a relic; there are no shrine waves). Size by luck: 1 card 81% (82/17/2 summed to 101%; common gave up the point), 3 cards 17%, 5 cards 2%. Cards are drawn from the active team's upgrade pool and all are granted. Tap flips a card; a tap, a swipe or a one-second wait files it. No on-screen prompts. |
 | Relics | Stay a separate, build-defining reward. They come **only** from completing the interactive shrine, and elites and caches no longer drop them. The existing choose-1-of-3 flow (`mode='relic'`) is kept and restyled: DarkMode cards with relic icons, a shining "NEW" badge, a stack count that rolls up (for example 2 → 3), and the chosen relic flying to a relic row in the HUD. |
 | Party | Capped at the player plus 3 creatures, so the party bar has exactly 4 slots. |
 | Canvas | Portrait becomes a fixed **540×960 (9:16)** canvas, replacing 540×820, with `Phaser.Scale.FIT` kept. No `EXPAND`: the canvas size never changes, so pixel art always scales as one integer grid. Screens that aren't 9:16 get thin bars. All portrait layouts are redone for 960 height. Desktop landscape stays 960×640. |
@@ -87,7 +87,7 @@ In `survivor-relics.js` and the shrine code in `survivor-expedition.js`:
 | Pack pickup | Cards granted immediately, `mode='pack'` | `Pack_Open`, then the stack, flip, hand row, then each icon flies to its slot. |
 | Shrine | `updateShrine()` and `completeShrine()` (timing unchanged) | The shrine sprite is `ShrineStates` with frame = completed (whole, cracked, badly cracked, shattered), replacing the altar prop and the three dots. For now the circle reuses `Capture_Ring` at 3x, and the charge reuses `Capture_Fill` with frame = round(progress ÷ 6 × 16). The ring fades to grey once the shrine shatters. Dedicated shrine circle art is a later follow-up. `Shrine_Summon` at the elite spawn, and `Shrine_EliteMark` over the elite. On the kill, the crystal flashes and moves to its next frame with a few VfxMix gold shards. The third clear is a full shatter: a 110ms freeze, `spark_04` light burst, shards and rubble, and a grey ring. |
 | Relic choice | Shrine completion calls `relics.reward('shrine')`, then `relics.open()` | DarkMode choice cards with relic icons, deal-in and input lock. On pick, the relic icon flies to the HUD relic row. |
-| Damage | `hit()` already applied | A number in world space. Hits on the same target within 150ms merge. Crits get `Damage_Crit`. At most 40 on screen. |
+| Damage | `hit()` already applied | A number in world space. Hits on the same target within 150ms merge. Crits, meaning hits that conditional bonuses (owl mark, web vulnerability, the Pack, Resonance or Hunter relics) raised by 25% or more, are gold and get `Damage_Crit`. Hits on the player are red. At most 40 on screen. Pause has an on/off toggle. |
 
 ### Assets to add to the repo
 Only the files used, copied into `assets/ui/` and `assets/icons/`:

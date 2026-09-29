@@ -23,7 +23,7 @@ run('ten-minute expedition, party progression, support, shrine, finale and mobil
   // Keep scheduling active without combat/XP interference; remove targets after each tick.
   for(let i=0;i<36001;i++){
    for(const e of s.enemies)e.sprite.setVisible(false);s.enemies=[];for(const p of s.pickups)p.sprite.setVisible(false);s.pickups=[];
-   if(s.mode==='upgrade')s.chooseUpgrade(0);if(s.mode==='relic')s.relics.skip();s.tick(1/60);
+   if(s.mode==='upgrade')s.chooseUpgrade(0);if(s.mode==='pack')s.packs.close();if(s.mode==='relic')s.relics.skip();s.tick(1/60);
    if(i===18000)atFive={time:s.elapsed,boss:!!s.encounters.boss,mode:s.mode};
   }
   const finale={time:s.elapsed,bossHp:s.encounters.boss.hp,phase:s.expedition.phase,mode:s.mode,elite:s.expedition.eliteSpawned};

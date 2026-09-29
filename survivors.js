@@ -74,18 +74,18 @@
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
-      this.input.on('pointerdown',(p,over)=>{if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
+      this.input.on('pointerdown',(p,over)=>{if(this.mode==='pack'){this.packs.act();return;}if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
       this.input.on('pointermove',p=>{if(this.joy?.id===p.id){this.joy.dx=p.x-this.joy.x;this.joy.dy=p.y-this.joy.y;}});
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
-      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();});
-      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?this.relics.choose(i-1):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
+      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='pack')this.packs.act();});
+      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?(this.juice.since('relic')>=SurvivorScreens.LOCK_MS&&this.relics.choose(i-1)):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
       this.input.keyboard.on('keydown-ESC',()=>this.pause());
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
-      this.input.keyboard.on('keydown-SPACE',()=>this.expansion.dash());this.input.keyboard.on('keydown-SHIFT',()=>this.expansion.dash());
+      this.input.keyboard.on('keydown-SPACE',()=>{if(this.mode==='pack')this.packs.act();else this.expansion.dash();});this.input.keyboard.on('keydown-SHIFT',()=>this.expansion.dash());
       this.input.keyboard.on('keydown-F',()=>{if(this.scale.isFullscreen)this.scale.stopFullscreen();else this.scale.startFullscreen();});
-      this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='playing'){this.mode='paused';this.draw();}});
+      this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='pack')this.packs.blurred=true;if(this.mode==='playing'){this.mode='paused';this.draw();}});
       this.scale.on('resize',()=>this.draw());
       window.addEventListener('pagehide',()=>this.saveRun());
       this.resetState();this.mode='title';this.draw();
@@ -125,7 +125,7 @@
       this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.elapsed=0;this.spawnTimer=.25;this.kills=0;this.spawned=0;this.peakEnemies=0;this.spawnCapSeconds=0;this.catKills=0;this.playerDamage=0;this.catDamage=0;this.damageTaken=0;this.accumulator=0;this.joy=null;
       Object.assign(this.player,{x:WORLD/2,y:WORLD/2,hp:MAX_HP,inv:0,fire:.1,dir:0});Object.assign(this.cat,{x:WORLD/2-42,y:WORLD/2+30,attack:0});
       this.owl=null;this.owlAppeared=false;this.owlDamage=0;this.haste=0;this.chorusTime=0;this.shield=false;this.notice='';this.noticeTime=0;this.nextHealAt=30;this.supplyAt=35;this.supplyIndex=0;this.level=1;this.xp=0;this.choices=[];this.upgrades={partyDamage:0,partySpeed:0,mousePower:0,mouseCount:0,mouseSpeed:0,mouseJump:0,molePower:0,moleArea:0,moleSpeed:0,moleEcho:0,moleSlow:0,bearPower:0,bearArea:0,bearSpeed:0,bearStun:0,bearGuard:0,claws:0,sweep:0,cast:0,feather:0,hide:0,feet:0,pull:0,split:0,slam:0,owlPower:0,owlSpeed:0,beastPower:0,beastSpeed:0,bubble:0,frogPower:0,chorus:0,marks:0};this.maxHp=40;this.stronger=false;
-      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
+      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.packs?.destroy();this.packs=new SurvivorPacks(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
     openUnlock(type){this.unlockType=type;this.mode='unlock';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
@@ -205,12 +205,12 @@
     // Impact loops use this so attacks that land on breakables smash them; aiming still uses combatTargets().
     hitTargets(){return this.greens?[...this.combatTargets(),...this.greens.targets()]:this.combatTargets();}
     target(from,range,anchor=from){let result=null,best=range;for(const e of this.combatTargets()){const d=distance(e,from);if(e.hp>0&&d<best&&distance(e,anchor)<range+50){best=d;result=e;}}return result;}
-    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}if(!relicEffect){amount*=1+.08*this.upgrades.partyDamage;amount=this.relics.modifyHit(e,amount,source);}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm'].includes(source))amount*=this.frogStats().damageMultiplier;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl')amount*=1.25;if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed)amount*=1+this.creatures.elements.stats('spider').vulnerability;if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
+    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}let boost=1;if(!relicEffect){amount*=1+.08*this.upgrades.partyDamage;const before=amount;amount=this.relics.modifyHit(e,amount,source);if(before>0)boost=amount/before;}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm'].includes(source))amount*=this.frogStats().damageMultiplier;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl'){amount*=1.25;boost*=1.25;}if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed){const web=1+this.creatures.elements.stats('spider').vulnerability;amount*=web;boost*=web;}if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;this.juice.damage(e,amount,boost);if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
       if(source==='cat')this.catDamage+=applied;else if(source==='owl')this.owlDamage+=applied;else if(source==='beast')this.encounters.beastDamage+=applied;else if(source in this.creatures.damage)this.creatures.damage[source]+=applied;else this.playerDamage+=applied;
       if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);}}if(this.encounters.hitSpecial(e))return;
       if(e===this.owl&&e.hp<=0){e.state='ready';e.progress=0;this.logEvent('owl_weakened');this.announce('Owl weakened! Stay inside its ring to capture.');return;}
       const dx=e.x-from.x,dy=e.y-from.y,d=Math.hypot(dx,dy)||1;if(!this.unstoppable(e)){if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.move(e,dx/d*12,dy/d*12);}
-      if(e.hp<=0){if(e.relicReward)this.relics.reward('roaming_elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
+      if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
     }
     announce(message){this.notice=message;this.noticeTime=4;}
     drop(type,x,y){const sprite=this.pooled(this.pickupPool,{xp:'shieldPickup',heal:'heart',haste:'frenzyPickup',shield:'shieldPickup',magnet:'magnetPickup',cleanse:'cleansePickup'}[type],type==='xp'?.3:type==='shield'?.85:1.7);this.pickups.push({type,x,y,life:type==='xp'?Infinity:25,sprite});}
@@ -240,17 +240,17 @@
       ,...(this.expedition.frog?.state==='ally'?[{id:'bubble',name:'Bubble Rhythm',detail:'Frog shields 20% faster per rank'},{id:'frogPower',name:'Bolstering Croak',detail:`Party damage +${10+5*u.frogPower}% → +${15+5*u.frogPower}%`},{id:'chorus',name:'Rallying Chorus',detail:`Shield pulse: 3s attack speed +${u.chorus?50+15*(u.chorus-1):0}% → +${50+15*u.chorus}%`}]:[])
     ].filter(choice=>!['claws','cast','owlPower','owlSpeed','beastPower','beastSpeed','mousePower','mouseSpeed','molePower','moleSpeed','bearPower','bearSpeed','firePower','fireSpeed','webPower','webSpeed','stormPower','stormSpeed'].includes(choice.id));}
     checkLevel(){
-      if(this.mode==='relic')return;if(this.relics.open())return;
+      if(this.mode==='relic'||this.mode==='pack')return;if(this.relics.open())return;
       if(this.xp<this.xpNeeded())return;
       this.xp-=this.xpNeeded();this.level++;
       const pool=this.upgradePool();this.choices=[];
       while(this.choices.length<3)this.choices.push(pool.splice(Math.floor(this.rand()*pool.length),1)[0]);
       this.logEvent('level_up',{level:this.level,offered:this.choices.map(c=>c.id)});this.reward('levelup',{level:this.level});this.saveRun();this.mode='upgrade';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;
     }
+    grantUpgrade(id){this.upgrades[id]++;if(id==='hide'){this.maxHp+=8;this.player.hp=Math.min(this.maxHp,this.player.hp+8);}}
     chooseUpgrade(index){
       if(this.mode!=='upgrade'||!this.choices[index])return;
-      const id=this.choices[index].id;this.upgrades[id]++;this.logEvent('upgrade_chosen',{upgrade:id,rank:this.upgrades[id]});
-      if(id==='hide'){this.maxHp+=8;this.player.hp=Math.min(this.maxHp,this.player.hp+8);}
+      const id=this.choices[index].id;this.grantUpgrade(id);this.logEvent('upgrade_chosen',{upgrade:id,rank:this.upgrades[id]});
       this.reward('upgrade',{id,index});
       this.choices=[];this.mode='playing';this.input.keyboard.resetKeys();this.joy=null;
       this.checkLevel();this.saveRun();this.draw();
@@ -305,7 +305,7 @@
       if(this.joy){dx=this.joy.dx/48;dy=this.joy.dy/48;if(Math.hypot(dx,dy)<.12)dx=dy=0;}
       const mag=Math.hypot(dx,dy);if(mag>1){dx/=mag;dy/=mag;}this.moving=mag>.01;const priorX=p.x,priorY=p.y;
       const dashing=this.expansion.move(dt,dx,dy);if(this.moving&&!dashing){p.dir=direction(dx,dy);this.move(p,dx*160.2*(1+.1*this.upgrades.feet)*(this.relics.slip>0?1.25:1)*(this.creatures.elements.slow>0?.7:1)*dt,dy*160.2*(1+.1*this.upgrades.feet)*(this.relics.slip>0?1.25:1)*(this.creatures.elements.slow>0?.7:1)*dt);const last=this.trail[this.trail.length-1];if(!last||distance(p,last)>9)this.trail.push({x:p.x,y:p.y});}
-      this.moving=Math.hypot(p.x-priorX,p.y-priorY)>.01;this.relics.update(dt);this.updateSupplies();
+      this.moving=Math.hypot(p.x-priorX,p.y-priorY)>.01;this.relics.update(dt);this.packs.update();this.updateSupplies();
       // Follow the player's traversable route instead of steering into a trunk.
       while(this.trail.length>1&&distance(c,this.trail[0])<12)this.trail.shift();
       if(this.trail.length>150)this.trail.splice(0,this.trail.length-150);
@@ -321,7 +321,7 @@
         if(e.phase==='windup'){if(e.clock<=0){e.phase='charge';e.clock=.62;}}
         else if(e.phase==='charge'){this.move(e,e.dx*(e.chargeSpeed||280)*dt,e.dy*(e.chargeSpeed||280)*dt);if(e.clock<=0){e.phase='seek';e.clock=2.8;}}
         else this.move(e,x/d*e.speed*dt*(e.slowUntil>this.elapsed?.5:1),y/d*e.speed*dt*(e.slowUntil>this.elapsed?.5:1));
-        if(distance(e,p)<e.r+p.r&&p.inv<=0){if(this.shield){this.expedition.shieldBlocked();this.shield=false;p.inv=.85;this.announce('Shield blocked a hit!');continue;}const amount=(e.contactDamage||(e.type==='beast'?12:7))*this.creatures.protection();p.hp=Math.max(0,p.hp-amount);this.damageTaken+=amount;this.logEvent('damage_taken',{enemy:e.type,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});p.inv=.85;this.move(p,-x/d*15,-y/d*15);}
+        if(distance(e,p)<e.r+p.r&&p.inv<=0){if(this.shield){this.expedition.shieldBlocked();this.shield=false;p.inv=.85;this.announce('Shield blocked a hit!');continue;}const amount=(e.contactDamage||(e.type==='beast'?12:7))*this.creatures.protection();p.hp=Math.max(0,p.hp-amount);this.damageTaken+=amount;this.juice.hurt(amount);this.logEvent('damage_taken',{enemy:e.type,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});p.inv=.85;this.move(p,-x/d*15,-y/d*15);}
       }
       this.separateEnemies(dt);
       for(const s of [...this.shots]){s.x+=s.dx*380*dt;s.y+=s.dy*380*dt;s.life-=dt;if(this.blocked(s.x,s.y,3,true))s.life=0;
@@ -342,14 +342,14 @@
     }
     update(time,delta){
       if(!this.manual&&!window.__vt_pending){
-        this.juice.realtime();
+        this.juice.realtime();this.packs.realtime();
         // Hit-stop holds the real-time loop only; STEP and elapsed never stretch and advanceTime is never frozen.
         if(this.juice.frozen())this.accumulator=0;
         else{this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}
       }
       this.draw();
     }
-    draw(){if(!this.ui)return;this.juice.observe();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
+    draw(){if(!this.ui)return;this.juice.observe();this.packs?.drawWorld();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
       this.playerShadow.setPosition(p.x,p.y+15).setDepth(p.y-1);this.catShadow.setVisible(this.catActive).setPosition(c.x,c.y+13).setDepth(c.y-1);
@@ -372,7 +372,7 @@
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:UI});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
-      if(['title','paused','won','lost','upgrade','relic','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      if(['title','paused','won','lost','upgrade','relic','pack','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.ui.endGroup();
       this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
