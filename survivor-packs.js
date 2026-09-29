@@ -1,0 +1,40 @@
+(() => {
+  'use strict';
+  const RARITY = {1:'Common',3:'Rare',5:'Legendary'}, COLORS = {1:'#5ed5f2',3:'#b58cff',5:'#ffd36b'}, PICKUP = 38;
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  // Upgrade packs. Sim side: size and cards are rolled with scene.rand() at the drop, and every card is granted
+  // on pickup. The reveal that follows is presentation only: it never changes what was granted.
+  class SurvivorPacks {
+    // Spec odds 82/17/2 sum to 101%; common gives up the extra point: 81 / 17 / 2.
+    static size(r){return r<.81?1:r<.98?3:5;}
+    static rarity(n){return RARITY[n];}
+    constructor(s){this.s=s;this.items=[];this.opened=0;this.reveal=null;}
+    destroy(){for(const p of this.items)p.sprite.destroy();this.items=[];this.reveal=null;}
+    // Without repeats while the pool lasts; a pool smaller than the pack refills.
+    draw(pool,n){const out=[];let left=[...pool];while(out.length<n){if(!left.length)left=[...pool];out.push(left.splice(Math.floor(this.s.rand()*left.length),1)[0]);}return out;}
+    drop(x,y,source){
+      const s=this.s,size=SurvivorPacks.size(s.rand()),cards=this.draw(s.upgradePool(),size).map(u=>u.id),key='Pack_Drop_'+RARITY[size];
+      const sprite=s.add.sprite(x,y,key,s.juice.frameName(key,0)).setOrigin(.5,19/20).setScale(3).setDepth(y);
+      const item={x,y,size,cards,source,sprite};this.items.push(item);
+      s.logEvent('pack_dropped',{source,size,cards,x:Math.round(x),y:Math.round(y)});return item;
+    }
+    // One pickup per tick, so overlapping packs open one after another.
+    update(){const s=this.s;if(s.mode!=='playing')return;const item=this.items.find(p=>dist(p,s.player)<PICKUP);if(item)this.open(item);}
+    open(item){
+      const s=this.s;this.items=this.items.filter(p=>p!==item);item.sprite.destroy();
+      const pool=s.upgradePool(),byId=new Map(pool.map(u=>[u.id,u]));
+      // A card that stopped being offerable since the drop (once-only taken, creature gone) is redrawn from today's pool.
+      const cards=item.cards.map(id=>byId.get(id)||this.draw(pool,1)[0]).map(u=>({id:u.id,name:u.name,detail:u.detail}));
+      for(const c of cards)s.grantUpgrade(c.id);
+      this.opened++;s.logEvent('pack_opened',{source:item.source,size:item.size,cards:cards.map(c=>c.id)});
+      this.reveal={size:item.size,cards,x:item.x,y:item.y,start:s.juice.now(),kept:0,flippedAt:null,doneAt:null};
+      s.mode='pack';s.joy=null;s.input.keyboard.resetKeys();s.accumulator=0;
+      s.reward('pack',{size:item.size,cards:cards.map(c=>c.id),x:item.x,y:item.y});
+    }
+    close(){const s=this.s;if(s.mode!=='pack')return;this.reveal=null;s.mode='playing';s.joy=null;s.input.keyboard.resetKeys();s.checkLevel();s.saveRun();}
+    // Ground packs bob through their idle sheet (presentation only).
+    drawWorld(){const j=this.s.juice;for(const p of this.items){const key=p.sprite.texture.key;p.sprite.setFrame(j.frameName(key,j.frameAt(key,j.now(),true)));}}
+  }
+  SurvivorPacks.COLORS = COLORS;
+  window.SurvivorPacks = SurvivorPacks;
+})();

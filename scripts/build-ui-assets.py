@@ -21,7 +21,9 @@ SHEETS = ROOT / 'assets/fx/sheets'
 # Sheets the juice uses, read from the artist's JSON so re-exports need no code change.
 FX_FROM_JSON = ['Capture_Ring', 'Capture_Fill', 'Capture_Burst', 'Reward_Trail', 'Slot_PowerUp',
     'LevelUp_Aura_Ignite_Back', 'LevelUp_Aura_Ignite_Front', 'LevelUp_Aura_Loop_Back', 'LevelUp_Aura_Loop_Front',
-    'LevelUp_Aura_Fade_Back', 'LevelUp_Aura_Fade_Front', 'Unlock_Rays', 'Unlock_Fill', 'Damage_Crit']
+    'LevelUp_Aura_Fade_Back', 'LevelUp_Aura_Fade_Front', 'Unlock_Rays', 'Unlock_Fill', 'Damage_Crit',
+    'Pack_Drop_Common', 'Pack_Drop_Rare', 'Pack_Drop_Legendary', 'Pack_Open_Common', 'Pack_Open_Rare', 'Pack_Open_Legendary',
+    'Pack_CardBack', 'Pack_Flip', 'Pack_Sheen']
 # Sheets without artist JSON: src, frame w/h, frames, fps, loop, anchor x/y.
 FX_EXTRA = {
     'ShrineStates': ('assets/fx/ShrineStates.png', 32, 32, 4, 1, False, 16, 31),
