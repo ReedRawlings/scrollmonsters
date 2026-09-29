@@ -122,6 +122,18 @@
       for(let i=0;i<n;i++){const x=tall?Math.round(w/2+(i-(n-1)/2)*38-17):cx+cw+14,y=tall?cy+ch+18:cy+i*36;this.layout.hand.push({x:x+17,y:y+17});ui.darkPanel(x,y,34,34);
         if(i<r.kept){const key='upgrade_'+r.cards[i].id;if(s.textures.exists(key))ui.image(key,x+1,y+1,32,32,{frame:[0,0,16,16]});}}
     }
+    // The picked upgrade card lingers through the 260ms hold: a brief flash, then it fades and shrinks away,
+    // so the icon flying to the party bar visibly lifts off it. Drawn in any mode; no hit areas.
+    dismiss(w,h){
+      const s=this.s,j=s.juice,p=j.picked;if(!p)return;const t=j.now()-p.at;if(t>=SurvivorScreens.HOLD_MS)return;
+      const {x,y,w:cw,h:ch}=p.card,k=t/SurvivorScreens.HOLD_MS,sc=j.reduced?1:1-.1*k,cx=x+cw/2,cy=y+ch/2,ui=s.ui;
+      ui.beginGroup('pickdismiss',{x:cx*(1-sc),y:cy*(1-sc),scale:sc}).setAlpha(1-k);
+      ui.panel('dk_slot',x,y,cw,ch,5,2);
+      if(s.textures.exists('upgrade_'+p.id))ui.image('upgrade_'+p.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});
+      ui.darkText(p.label,x+40,y+12);ui.darkText(p.detail,x+40,y+25,{color:D().muted,wrap:cw-50}).setOrigin(0,0);
+      if(!j.reduced&&t<60)ui.rect(x,y,cw,ch,'#ffffff'+Math.round((1-t/60)*128).toString(16).padStart(2,'0'));
+      ui.endGroup();
+    }
     relic(w,h){
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
       const t=s.juice.since('relic');this.layout.cards=[];
@@ -150,5 +162,6 @@
     }
   }
   SurvivorScreens.LOCK_MS = 370;
+  SurvivorScreens.HOLD_MS = 260;
   window.SurvivorScreens = SurvivorScreens;
 })();

@@ -24,7 +24,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -112,6 +112,7 @@
     onUpgrade(e){
       const card=this.s.screens.layout.cards?.[e.index];if(!card)return;
       this.freeze(260);
+      const choice=this.s.choices[e.index];this.picked={card:{...card},label:(e.index+1)+'. '+(choice?.name||''),detail:choice?.detail||'',id:e.id,at:this.now()};
       const to=this.slotPoint(this.ownerOf(e.id));
       this.flyTo('upgrade_'+e.id,{x:card.x+24,y:card.y+card.h/2},to,{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});
     }

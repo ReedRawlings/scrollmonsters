@@ -58,6 +58,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await cz.screenshot({path: 'output/feedback/capture-ring.png'});
     assert.deepEqual(cz.errors, []);
     await cz.close();
+
+    // --- the picked upgrade card lingers for the 260ms hold and its icon lifts off it ---
+    const pk = await open(browser);
+    await state(pk, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.xp = s.xpNeeded(); s.checkLevel(); s.draw(); });
+    await wait(450);
+    const names = await state(pk, () => __survivorTest.scene.choices.map((c, i) => (i + 1) + '. ' + c.name));
+    const cp = await controlPoint(pk, names[0]); await pk.mouse.click(cp.x, cp.y); await wait(80);
+    const mid = await state(pk, names => { const s = __survivorTest.scene; s.draw(); const shown = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible && names.includes(o.text) && o.alpha > 0.05) { let a = o.alpha; for (let n = o.parentContainer; n; n = n.parentContainer) a *= n.alpha; if (a > 0.05) shown.push(o.text); } });
+      const f = s.juice.flights[0], c = s.juice.picked?.card; return {shown, from: f && f.from, card: c}; }, names);
+    await pk.screenshot({path: 'output/feedback/pick-dismiss.png'});
+    assert.deepEqual(mid.shown, [names[0]], 'Only the picked card stays on screen during the hold');
+    assert(mid.card && mid.from.x >= mid.card.x && mid.from.x <= mid.card.x + mid.card.w && mid.from.y >= mid.card.y && mid.from.y <= mid.card.y + mid.card.h, 'The icon lifts off the picked card');
+    await wait(350);
+    const late = await state(pk, names => { const s = __survivorTest.scene; s.draw(); const shown = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible && names.includes(o.text)) shown.push(o.text); }); return shown; }, names);
+    assert.deepEqual(late, [], 'The picked card is gone after the hold');
+    assert.deepEqual(pk.errors, []);
+    await pk.close();
     console.log('Feedback: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

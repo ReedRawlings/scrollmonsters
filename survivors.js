@@ -371,6 +371,7 @@
       this.ui.beginGroup('ui2x',{scale:UI});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
       if(['title','paused','won','lost','upgrade','relic','pack','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      this.screens.dismiss(logical.w,logical.h);
       this.ui.endGroup();
       this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
