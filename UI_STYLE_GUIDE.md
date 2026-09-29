@@ -23,7 +23,7 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 ### HUD (`survivor-hud.js`)
 - Top-left status frame: heart, HP bar (no numbers), XP bar, `LV n`, sword icon and kill count.
 - Top-right: gold timer and the `II` pause pill.
-- Under the bars: relic row (20px icons on a 24px pitch, 8 per row, counts only above 1) followed by one diamond socket per shrine challenge left; the next socket is gold while its challenge is live.
+- Under the bars: relic row (20px icons on a 24px pitch, 8 per row, counts only above 1). No empty slots; the shrine sprite shows challenges left.
 - Bottom: party bar of 4 Zelda slots, player first. The player's charge bar shows the dash cooldown; slots are not tappable. A `Dash` pill sits above the right end of the bar.
 
 ### Screens (`survivor-screens.js`)

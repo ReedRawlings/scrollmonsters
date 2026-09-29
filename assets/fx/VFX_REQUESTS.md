@@ -58,13 +58,6 @@ Colors already in use: idle mint `#b2eddf`, charge gold `#ffd36b`, in combat ora
 - **Look:** a small shard of the shrine's gold crystal, bobbing and glinting.
 - **Spec:** 12×12 · 6 frames · 8fps · loop · anchor bottom-center (6,11).
 
-### Relic_Socket
-- **Where:** UI. This is the empty slot in the HUD relic row: one for each shrine challenge still to clear. The prototype draws a thin diamond as a placeholder.
-- **Look:** a faint, empty outline of the shrine's crystal, with no box or background behind it.
-  - **Frame 0:** dormant.
-  - **Frame 1:** armed, lit gold while its challenge is active.
-- **Spec:** 16×16 · 2 frames · anchor center.
-
 ## Nice to have
 
 - **Capture affinity variants:** tinted versions of `Capture_Ring`, `Capture_Fill` and `Capture_Burst` for Feral (red), Bloom (green) and Arcane (cyan). The current sheets are warm gold for everything.

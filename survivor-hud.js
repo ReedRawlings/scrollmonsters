@@ -5,10 +5,10 @@
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
   const NAMES = {storm:'STORM LIZARD'};
   class SurvivorHud {
-    constructor(s){this.s=s;this.layout={slots:[],relics:[],sockets:[]};}
+    constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
     // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
     draw(w,h){
-      const s=this.s,ui=s.ui;this.layout={slots:[],relics:[],sockets:[]};
+      const s=this.s,ui=s.ui;this.layout={slots:[],relics:[]};
       this.status(ui);
       this.timer(ui,w);
       const rowBottom=this.relicRow(ui,w);
@@ -40,16 +40,11 @@
       ui.darkText(t,w-32,17,{align:'right',color:D().gold});
     }
     relicRow(ui,w){
-      const s=this.s,sh=s.expedition.shrine,ids=[...new Set(s.relics.equipped)];
+      const s=this.s,ids=[...new Set(s.relics.equipped)];
       let i=0;const cell=()=>{const x=54+(i%RELICS_PER_ROW)*RELIC_PITCH,y=58+Math.floor(i/RELICS_PER_ROW)*RELIC_PITCH;i++;return {x,y};};
       for(const id of ids){const {x,y}=cell(),count=s.relics.count(id);this.layout.relics.push({id,count,x,y});
         ui.image('relic_'+id,x+2,y+2,16,16,{frame:[0,0,16,16]});
         if(count>1)ui.darkText(String(count),x+22,y+19,{align:'right'});}
-      const left=s.isExpedition?Math.max(0,3-sh.completed):0;
-      for(let n=0;n<left;n++){const {x,y}=cell(),armed=n===0&&sh.active&&!sh.needsExit&&(sh.inCombat||sh.progress>0);this.layout.sockets.push({x,y,armed});
-        // Placeholder until the artist's Relic_Socket: a thin diamond, gold while its challenge is live.
-        const g=ui.graphics(),cx=x+10,cy=y+10;g.lineStyle(3,0x120a1a,1).strokePoints([{x:cx,y:cy-5},{x:cx+5,y:cy},{x:cx,y:cy+5},{x:cx-5,y:cy}],true);
-        g.lineStyle(1,armed?0xffc41b:0xcfc3de,armed?1:.7).strokePoints([{x:cx,y:cy-5},{x:cx+5,y:cy},{x:cx,y:cy+5},{x:cx-5,y:cy}],true);}
       return i?58+Math.ceil(i/RELICS_PER_ROW)*RELIC_PITCH:58; // bottom of the last occupied row
     }
     partyBar(ui,w,h){
