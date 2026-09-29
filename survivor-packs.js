@@ -32,9 +32,24 @@
       s.reward('pack',{size:item.size,cards:cards.map(c=>c.id),x:item.x,y:item.y});
     }
     close(){const s=this.s;if(s.mode!=='pack')return;this.reveal=null;s.mode='playing';s.joy=null;s.input.keyboard.resetKeys();s.checkLevel();s.saveRun();}
+    // --- reveal (real time; presentation state only) ---
+    act(){
+      const r=this.reveal,now=this.s.juice.now();if(!r||this.s.mode!=='pack'||now-r.start<SurvivorPacks.LOCK(r.cards.length)||r.doneAt!==null)return;
+      if(r.flippedAt===null){r.flippedAt=now;this.s.reward('packflip',{index:r.kept,size:r.size});}
+      else if(now-r.flippedAt>=SurvivorPacks.FLIP_MS)this.keep(now);
+    }
+    keep(now){const r=this.reveal;r.kept++;r.flippedAt=null;if(r.kept>=r.cards.length)r.doneAt=now;}
+    // Called from the scene's real-time loop (and by tests): auto-file after a second, then apply and resume.
+    realtime(){
+      const r=this.reveal;if(!r||this.s.mode!=='pack')return;const now=this.s.juice.now();
+      if(r.flippedAt!==null&&now-r.flippedAt>=SurvivorPacks.KEEP_MS)this.keep(now);
+      if(r.doneAt!==null&&now-r.doneAt>=SurvivorPacks.APPLY_MS){const cards=r.cards.map(c=>c.id);this.s.reward('packapply',{cards});this.close();}
+    }
     // Ground packs bob through their idle sheet (presentation only).
     drawWorld(){const j=this.s.juice;for(const p of this.items){const key=p.sprite.texture.key;p.sprite.setFrame(j.frameName(key,j.frameAt(key,j.now(),true)));}}
   }
   SurvivorPacks.COLORS = COLORS;
+  SurvivorPacks.LOCK = n => Math.max(300, 90 * n + 120);
+  Object.assign(SurvivorPacks, {FLIP_MS: 180, KEEP_MS: 1000, APPLY_MS: 250});
   window.SurvivorPacks = SurvivorPacks;
 })();

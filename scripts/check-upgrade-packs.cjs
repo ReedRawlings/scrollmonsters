@@ -91,6 +91,35 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     console.log('policy run:', {shrines, offers, dropped: run.filter(t => t === 'pack_dropped').length, opened: run.filter(t => t === 'pack_opened').length});
     assert.deepEqual(src.errors, []);
     await src.close();
+    // --- reveal: deal-in lock, tap flips, tap or 1s files, then icons fly and combat resumes ---
+    const rv = await open(browser, {width: 390, height: 844}, {mobile: true});
+    await state(rv, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 3; p.cards = p.cards.concat(s.packs.draw(s.upgradePool(), 2).map(u => u.id)).slice(0, 3); s.tick(1 / 60); s.draw(); });
+    const R = () => state(rv, () => { const s = __survivorTest.scene; s.packs.realtime(); s.draw(); const r = s.packs.reveal; return r ? {kept: r.kept, flipped: r.flippedAt !== null, mode: s.mode} : {mode: s.mode, flights: s.juice.flights.length}; });
+    await rv.touchscreen.tap(195, 420);
+    assert.deepEqual(await R(), {kept: 0, flipped: false, mode: 'pack'}, 'deal-in lock: an early tap does nothing');
+    await wait(600); await rv.screenshot({path: 'output/upgrade-packs/stack.png'});
+    await rv.touchscreen.tap(195, 420); await wait(250);
+    assert.deepEqual(await R(), {kept: 0, flipped: true, mode: 'pack'}, 'A tap flips the top card');
+    assert(await state(rv, () => __survivorTest.scene.juice.played.includes('Pack_Flip')), 'The flip flashes');
+    await rv.screenshot({path: 'output/upgrade-packs/flipped.png'});
+    await rv.touchscreen.tap(195, 420);
+    assert.deepEqual(await R(), {kept: 1, flipped: false, mode: 'pack'}, 'A second tap files it into the hand');
+    await rv.touchscreen.tap(195, 420); await wait(1150);
+    assert.deepEqual(await R(), {kept: 2, flipped: false, mode: 'pack'}, 'A flipped card files itself after one second');
+    await rv.keyboard.press('Enter'); await wait(250); await rv.keyboard.press('Enter');
+    let end = await R(); assert.equal(end.mode, 'pack', 'Still showing the full hand for a moment');
+    await rv.screenshot({path: 'output/upgrade-packs/hand.png'});
+    await wait(300); end = await R();
+    assert.deepEqual(end, {mode: 'playing', flights: 3}, 'After the last card, each icon flies to its slot and combat resumes');
+    assert.deepEqual(rv.errors, []);
+    await rv.context().close();
+    // Landscape and reduced motion: the whole reveal fits, and no flip flash plays.
+    const calm = await open(browser, {width: 1100, height: 760}, {reducedMotion: 'reduce'});
+    const c = await state(calm, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 5; p.cards = s.packs.draw(s.upgradePool(), 5).map(u => u.id); s.tick(1 / 60); s.packs.reveal.start -= 1000; s.juice.played.length = 0; s.packs.act(); s.draw(); return {flash: s.juice.played.includes('Pack_Flip'), hand: s.screens.layout.hand.length}; });
+    assert.deepEqual(c, {flash: false, hand: 5}, 'Reduced motion: no flip flash; five hand slots');
+    await calm.screenshot({path: 'output/upgrade-packs/landscape-legendary.png'});
+    assert.deepEqual(calm.errors, []);
+    await calm.close();
     console.log('Upgrade packs: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

@@ -74,16 +74,16 @@
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
-      this.input.on('pointerdown',(p,over)=>{if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
+      this.input.on('pointerdown',(p,over)=>{if(this.mode==='pack'){this.packs.act();return;}if(this.mode==='playing'&&!over.length&&!this.joy)this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0};});
       this.input.on('pointermove',p=>{if(this.joy?.id===p.id){this.joy.dx=p.x-this.joy.x;this.joy.dy=p.y-this.joy.y;}});
       const release=p=>{if(this.joy?.id===p.id)this.joy=null;};
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
-      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();});
+      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='pack')this.packs.act();});
       for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?this.relics.choose(i-1):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
       this.input.keyboard.on('keydown-ESC',()=>this.pause());
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
-      this.input.keyboard.on('keydown-SPACE',()=>this.expansion.dash());this.input.keyboard.on('keydown-SHIFT',()=>this.expansion.dash());
+      this.input.keyboard.on('keydown-SPACE',()=>{if(this.mode==='pack')this.packs.act();else this.expansion.dash();});this.input.keyboard.on('keydown-SHIFT',()=>this.expansion.dash());
       this.input.keyboard.on('keydown-F',()=>{if(this.scale.isFullscreen)this.scale.stopFullscreen();else this.scale.startFullscreen();});
       this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='playing'){this.mode='paused';this.draw();}});
       this.scale.on('resize',()=>this.draw());
@@ -338,7 +338,7 @@
     }
     update(time,delta){
       if(!this.manual&&!window.__vt_pending){
-        this.juice.realtime();
+        this.juice.realtime();this.packs.realtime();
         // Hit-stop holds the real-time loop only; STEP and elapsed never stretch and advanceTime is never frozen.
         if(this.juice.frozen())this.accumulator=0;
         else{this.accumulator+=Math.min(delta/1000,.1);while(this.accumulator>=STEP){this.tick(STEP);this.accumulator-=STEP;}}
@@ -368,7 +368,7 @@
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:UI});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
-      if(['title','paused','won','lost','upgrade','relic','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      if(['title','paused','won','lost','upgrade','relic','pack','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.ui.endGroup();
       this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }

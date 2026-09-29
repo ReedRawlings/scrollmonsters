@@ -12,6 +12,7 @@
       else if(s.mode==='won'||s.mode==='lost')this.ended(w,h);
       else if(s.mode==='upgrade')this.upgrade(w,h);
       else if(s.mode==='relic')this.relic(w,h);
+      else if(s.mode==='pack')this.pack(w,h);
       else if(s.mode==='unlock')this.unlock(w,h);
     }
     // Buttons inside a black panel use the lighter item-slot art; black pills would vanish against it.
@@ -89,6 +90,37 @@
         ui.endGroup();
         this.layout.cards.push({x,y,w:pw-16,h:cardH});
       });
+    }
+    // Upgrade pack reveal (prototype Moment 5). Cards are 120x170 logical: Pack_CardBack at 2x face down,
+    // a DarkMode panel with the rarity strip, spinning icon, name, detail and owner face up.
+    pack(w,h){
+      const s=this.s,ui=s.ui,j=s.juice,r=s.packs.reveal;if(!r)return;this.dim(w,h);
+      const now=j.now(),t=now-r.start,n=r.cards.length,ri={1:0,3:1,5:2}[r.size],color=SurvivorPacks.COLORS[r.size];
+      const tall=h>w,cw=120,ch=170,cx=Math.round((w-cw)/2),top=tall?96:40,cy=top+44;
+      this.layout.packCard=cy+ch/2;
+      ui.banner(SurvivorPacks.rarity(r.size).toUpperCase()+' PACK',w/2,top-8);
+      ui.darkText(n===1?'1 card':n+' cards',w/2,top+30,{align:'center',color});
+      // Face-down pile: the cards still to reveal, each landing 90ms apart during the deal-in.
+      for(let i=n-1;i>r.kept;i--){if(!j.reduced&&t<(n-1-i)*90)continue;const off=(i-r.kept)*3;
+        ui.image('Pack_CardBack',cx+off,cy+off,cw,ch,{frame:j.frameRect('Pack_CardBack',ri)});}
+      if(r.kept<n&&(j.reduced||t>=(n-1-r.kept)*90)){
+        const card=r.cards[r.kept],since=r.flippedAt===null?-1:now-r.flippedAt;
+        // Flip: squash the back to nothing over 90ms, then open the face over the next 90ms.
+        const k=since<0?1:j.reduced?1:since<90?1-since/90:Math.min(1,(since-90)/90),face=since>=(j.reduced?0:90),dw=Math.max(2,Math.round(cw*k)),dx=cx+Math.round((cw-dw)/2);
+        if(!face)ui.image('Pack_CardBack',dx,cy,dw,ch,{frame:j.frameRect('Pack_CardBack',ri)});
+        else{ui.darkPanel(dx,cy,dw,ch);ui.rect(dx+6,cy+6,Math.max(0,dw-12),4,color);
+          if(k>=1){const owner=j.ownerOf(card.id),key='upgrade_'+card.id;
+            if(s.textures.exists(key))ui.image(key,cx+36,cy+18,48,48,{frame:j.frameRect(key,j.frameAt(key,now,true))});
+            ui.darkText(card.name,cx+cw/2,cy+80,{align:'center',wrap:cw-16});
+            ui.darkText(card.detail,cx+cw/2,cy+100,{align:'center',color:ScrollUI.DARK.muted,wrap:cw-16}).setOrigin(.5,0);
+            ui.darkText(owner==='walker'?'WHOLE TEAM':owner.toUpperCase(),cx+cw/2,cy+ch-14,{align:'center',color});}}
+        if(r.size>1&&!j.reduced&&!face)ui.image('Pack_Sheen',cx+((t%1800)/1800)*(cw-48),cy,48,ch,{frame:j.frameRect('Pack_Sheen',j.frameAt('Pack_Sheen',now,true)),alpha:.5});
+      }
+      // Hand row: one slot per card; filled slots show the kept icon.
+      // Portrait: a row under the card. Landscape: a column beside it, clear of the party bar.
+      this.layout.hand=[];
+      for(let i=0;i<n;i++){const x=tall?Math.round(w/2+(i-(n-1)/2)*38-17):cx+cw+14,y=tall?cy+ch+18:cy+i*36;this.layout.hand.push({x:x+17,y:y+17});ui.darkPanel(x,y,34,34);
+        if(i<r.kept){const key='upgrade_'+r.cards[i].id;if(s.textures.exists(key))ui.image(key,x+1,y+1,32,32,{frame:[0,0,16,16]});}}
     }
     relic(w,h){
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
