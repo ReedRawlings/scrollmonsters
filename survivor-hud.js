@@ -35,7 +35,8 @@
     }
     timer(ui,w){
       const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${s.isExpedition?'10:00':'2:00'}`;
-      if(s.mode==='playing')ui.pill('II',w-26,8,20,16,()=>s.pause(),{id:'pause'});
+      // The drawn pill stays small; a thumb-sized zone behind it catches near misses.
+      if(s.mode==='playing'){ui.hitArea(w-40,0,40,34,()=>s.pause(),'pause-target');ui.pill('II',w-26,8,20,16,()=>s.pause(),{id:'pause'});}
       ui.darkText(t,w-32,17,{align:'right',color:D().gold});
     }
     relicRow(ui,w){

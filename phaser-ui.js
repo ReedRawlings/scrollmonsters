@@ -14,6 +14,8 @@
     return { color: c.color, alpha: c.alpha / 255 };
   };
   // DarkMode (survivors) palette. NovelMix is a 9px pixel font: only 9 and 18 keep it on the pixel grid.
+  // NovelMix has no arrow glyph; the browser would draw an anti-aliased fallback. Game data keeps its arrows.
+  const novelText = value => String(value).replace(/→/g,'>');
   const DARK = { font:'NovelMix', ink:'#120a1a', text:'#ffffff', muted:'#b9b0d0', gold:'#ffc41b', teal:'#2dc5c0', danger:'#ef5266' };
   class WoodPanel extends Phaser.GameObjects.Container {
     constructor(scene) {
@@ -70,7 +72,7 @@
       const font = options.font || 'NinjaPixel', align = options.align || 'center';
       const signature = [label, options.size, options.color, width, font, align].join('|');
       if (signature !== this.labelKey) {
-        const shown = font === 'NinjaPixel' ? displayText(label) : String(label);
+        const shown = font === 'NinjaPixel' ? displayText(label) : novelText(label);
         this.label.setData('label',String(label)).setFontFamily(font).setText(shown).setFontSize(options.size).setColor(options.color);
         // Pixel fonts other than NinjaPixel are never squashed; their layouts must fit.
         this.label.setScale(font === 'NinjaPixel' ? Math.min(1,(width-16)/Math.max(1,this.label.width)) : 1, 1);
@@ -259,10 +261,10 @@
     darkText(value,x,y,{size=9,color=DARK.text,align='left',outline=true,wrap=0,id}={}) {
       if (size % 9) throw Error('NovelMix sizes must be multiples of 9: ' + size);
       const object = this.object('DarkText',()=>new Phaser.GameObjects.Text(this.scene,0,0,'',{fontFamily:DARK.font,fontSize:9,color:DARK.text}),id);
-      const signature = [value,size,color,outline,wrap].join('|');
+      const signature = [value,size,color,outline,wrap,align].join('|');
       if (object.styleKey !== signature) {
-        object.setData('label',String(value)).setFontSize(size).setColor(color).setStroke(DARK.ink,outline?2:0)
-          .setWordWrapWidth(wrap||null).setLineSpacing(2).setText(String(value));
+        object.setData('label',String(value)).setAlign(align).setFontSize(size).setColor(color).setStroke(DARK.ink,outline?2:0)
+          .setWordWrapWidth(wrap||null).setLineSpacing(2).setText(novelText(value));
         object.styleKey = signature;
       }
       object.setOrigin(align==='center'?0.5:align==='right'?1:0,0.5).setPosition(x,y).setScale(1).setAlpha(1);

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const {chromium} = require('playwright');
-const {gameURL, launchOptions, controlPoint, listControls, offscreenTexts} = require('./survivor-test-utils.cjs');
+const {gameURL, launchOptions, controlPoint, listControls, offscreenTexts, missingGlyphs} = require('./survivor-test-utils.cjs');
 
 async function open(browser, viewport, path = 'survivors.html?test', mobile = false) {
   const page = await browser.newPage({viewport, isMobile: mobile, hasTouch: mobile}), errors = [];
@@ -169,6 +169,51 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
       assert.deepEqual(page.errors, []);
       await page.close();
     }
+
+    // --- every upgrade and every relic text fits its card and uses glyphs NovelMix has ---
+    for (const [name, viewport, mobile] of [['portrait', {width: 390, height: 844}, true], ['landscape', {width: 1100, height: 760}, false]]) {
+      const page = await open(browser, viewport, 'survivors.html?test', mobile);
+      const counts = await state(page, () => { const s = __survivorTest.scene; s.start();
+        for (const t of ['salamander','spider','storm']) s.expedition.release(t, s.player.x + 60, s.player.y, true);
+        for (const t of ['mouse','mole','bear']) s.creatures.release(t, s.player.x - 60, s.player.y, true);
+        for (const k of Object.keys(s.upgrades)) if (typeof s.upgrades[k] === 'number') s.upgrades[k] = 9; // long rank numbers
+        window.__allUpgrades = s.upgradePool(); window.__allRelics = SurvivorRelics.items;
+        return {upgrades: __allUpgrades.length, relics: __allRelics.length}; });
+      assert(counts.upgrades >= 8 && counts.relics === 13, `Pool is broad enough (${JSON.stringify(counts)})`);
+      for (let i = 0; i < counts.upgrades; i += 3) {
+        await state(page, i => { const s = __survivorTest.scene; s.choices = __allUpgrades.slice(i, i + 3); s.mode = 'upgrade'; s.draw(); }, i);
+        assert.deepEqual(await spilledDetails(page), [], `Upgrade details fit (${name}, from ${i})`);
+        assert.deepEqual(await missingGlyphs(page), [], `Upgrade text uses NovelMix glyphs (${name}, from ${i})`);
+      }
+      for (let i = 0; i < counts.relics; i += 3) {
+        await state(page, i => { const s = __survivorTest.scene; s.relics.offers = __allRelics.slice(i, i + 3); s.relics.equipped = s.relics.offers.map(r => r.id); s.mode = 'relic'; s.draw(); }, i);
+        assert.deepEqual(await spilledDetails(page), [], `Relic details fit (${name}, from ${i})`);
+        assert.deepEqual(await missingGlyphs(page), [], `Relic text uses NovelMix glyphs (${name}, from ${i})`);
+        assert.deepEqual(await offscreenTexts(page), [], `Relic choice fits (${name}, from ${i})`);
+      }
+      assert.deepEqual(page.errors, []);
+      await page.close();
+    }
+
+    // --- centred multi-line labels centre every line (capture label, wrapped notice) ---
+    const align = await open(browser, {width: 390, height: 844}, 'survivors.html?test', true);
+    const ragged = await state(align, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
+      s.creatures.release('mouse', s.player.x + 80, s.player.y, false); // a capture-ready creature shows a two-line label
+      s.announce('Bonus upgrade earned! Leave the circle before the next challenge.'); s.draw();
+      const out = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible && o.originX === 0.5 && o.style.fontFamily === 'NovelMix' && o.getWrappedText(o.text).length > 1 && o.style.align !== 'center') out.push(o.text); });
+      return out; });
+    assert.deepEqual(ragged, [], 'Centred multi-line labels are centre-aligned');
+    await align.close();
+
+    // --- the pause control has a thumb-sized target around the small II pill ---
+    const thumb = await open(browser, {width: 390, height: 844}, 'survivors.html?trial&test', true);
+    await state(thumb, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.draw(); });
+    const ii = await controlPoint(thumb, 'II');
+    const perLogical = await state(thumb, () => { const s = __survivorTest.scene; return 2 * s.game.canvas.getBoundingClientRect().width / s.scale.width; });
+    await thumb.touchscreen.tap(ii.x - 13 * perLogical, ii.y + 11 * perLogical); // just outside the drawn pill
+    assert.equal(await state(thumb, () => __survivorTest.scene.mode), 'paused', 'A near miss on the pause pill still pauses');
+    assert.equal(await state(thumb, () => __survivorTest.scene.joy), null);
+    await thumb.close();
 
     console.log('PASS: UI foundation');
   } finally { await browser.close(); }

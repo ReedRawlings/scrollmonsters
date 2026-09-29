@@ -64,4 +64,32 @@ async function run(name, check, path = 'survivors.html?test') {
     console.log('PASS: ' + name);
   } finally {await browser.close();}
 }
-module.exports = {gameURL, launchOptions, clickButton, controlPoint, listControls, offscreenTexts, run};
+// Code points a TrueType font actually draws (cmap format 4), so tests can catch fallback glyphs.
+function fontCodePoints(file) {
+  const b = require('node:fs').readFileSync(file), u16 = o => b.readUInt16BE(o), i16 = o => b.readInt16BE(o), u32 = o => b.readUInt32BE(o);
+  let cmap = 0; for (let i = 0, n = u16(4); i < n; i++) if (b.toString('latin1', 12 + i * 16, 16 + i * 16) === 'cmap') cmap = u32(20 + i * 16);
+  const points = new Set();
+  for (let i = 0, n = u16(cmap + 2); i < n; i++) {
+    const t = cmap + u32(cmap + 8 + i * 8); if (u16(t) !== 4) continue;
+    const seg = u16(t + 6) / 2, ends = t + 14, starts = ends + seg * 2 + 2, deltas = starts + seg * 2, ranges = deltas + seg * 2;
+    for (let k = 0; k < seg; k++) {
+      const end = u16(ends + k * 2), start = u16(starts + k * 2), delta = i16(deltas + k * 2), range = u16(ranges + k * 2);
+      for (let c = start; c <= end && c !== 0xffff; c++) {
+        const glyph = range ? u16(ranges + k * 2 + range + (c - start) * 2) : (c + delta) & 0xffff;
+        if (glyph) points.add(c);
+      }
+    }
+  }
+  return points;
+}
+// Characters in visible NovelMix text that the font has no glyph for (the browser would draw a fallback).
+async function missingGlyphs(page) {
+  const points = fontCodePoints(require('node:path').join(__dirname, '../assets/ui/font_medium_9px.ttf'));
+  const texts = await page.evaluate(() => { const out = []; __survivorTest.scene.ui.walk(o => {
+    let shown = true; for (let n = o; n; n = n.parentContainer) if (!n.visible) shown = false;
+    if (shown && o.type === 'Text' && o.style.fontFamily === 'NovelMix') out.push(o.text); }); return out; });
+  const missing = new Set();
+  for (const t of texts) for (const ch of t) if (!/\s/.test(ch) && !points.has(ch.codePointAt(0))) missing.add(ch);
+  return [...missing];
+}
+module.exports = {missingGlyphs, gameURL, launchOptions, clickButton, controlPoint, listControls, offscreenTexts, run};

@@ -21,13 +21,9 @@ const historyKey = 'scrollmonsters-survivor-runs-v1';
       await page.waitForFunction(() => window.__phaserReady);
       const controls = () => listControls(page);
       const click = async (x, y) => { if (mobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y, { delay: 60 }); };
-      const clickCanvas = async (x, y) => {
-        const box = await page.locator('canvas').boundingBox();
-        const size = await page.evaluate(() => ({ w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height }));
-        await click(box.x + x * box.width / size.w, box.y + y * box.height / size.h);
-      };
       await page.evaluate(() => { const s = __survivorTest.scene; s.start(); s.pause(); });
-      assert((await controls()).some(button => button.label === 'Run history / export'));
+      const historyBefore = (await controls()).find(button => button.label === 'Run history / export');
+      assert(historyBefore, 'Pause shows Run history / export');
       await page.evaluate(() => {
         const s = __survivorTest.scene;
         s.relics.equipped = ['boots', 'stone', 'ricochet', 'repulsion', 'slipstream', 'bloodroot', 'pack', 'resonance', 'echo', 'drum', 'hunter', 'spite', 'veil'];
@@ -35,12 +31,8 @@ const historyKey = 'scrollmonsters-survivor-runs-v1';
       });
       const buttons = await controls();
       assert.deepEqual(buttons.map(button => button.label), ['Resume']);
-      const oldHistoryPosition = await page.evaluate(() => {
-        const s = __survivorTest.scene;
-        return { x: s.scale.width / 2, y: Math.max(96, (s.scale.height - 335) / 2) + 271 };
-      });
       const url = page.url();
-      await clickCanvas(oldHistoryPosition.x, oldHistoryPosition.y);
+      await click(historyBefore.x, historyBefore.y); // where the history button was before the relic screen covered it
       await page.waitForTimeout(100);
       assert.equal(page.url(), url, 'covered history button must not navigate');
       assert.equal(await page.evaluate(() => { advanceTime(1000); return __survivorTest.scene.mode; }), 'paused');

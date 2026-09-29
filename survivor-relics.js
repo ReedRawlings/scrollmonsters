@@ -56,5 +56,6 @@
     draw(){const s=this.s,p=s.player,g=s.fx;if(this.has('boots'))g.lineStyle(2,this.charge>=2?0xffd36b:0xb9cba5,.8).beginPath().arc(p.x,p.y,34,-Math.PI/2,-Math.PI/2+Math.PI*this.charge).strokePath();if(this.has('stone')&&this.still>0)g.lineStyle(3,0xc8b0ff,.7).strokeCircle(p.x,p.y,22+this.still*3);if(this.slip>0)g.lineStyle(3,0x8eefff,.8).strokeEllipse(p.x,p.y+15,48,18);const c=this.cache;this.cacheSprite.setVisible(!!c&&!c.claimed);if(c)this.cacheSprite.setPosition(c.x,c.y).setDepth(c.y+15);}
     summary(){return {equipped:[...this.equipped],stacks:Object.fromEntries([...new Set(this.equipped)].map(id=>[id,this.count(id)])),drumSeconds:this.drum,pendingEchoes:this.echoes.length,nextCache:this.nextCache,nextElite:this.nextElite,offers:this.offers.map(i=>i.id),pending:[...this.queue],charge:this.charge,standingSeconds:this.still,slipSeconds:this.slip,cache:this.cache?{...this.cache}:null};}
   }
+  SurvivorRelics.items=ITEMS;
   window.SurvivorRelics=SurvivorRelics;
 })();
