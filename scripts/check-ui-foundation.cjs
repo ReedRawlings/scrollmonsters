@@ -112,6 +112,28 @@ const state = (page, fn, arg) => page.evaluate(fn, arg);
     await narrow.screenshot({path: 'output/ui-foundation/hud-tall-phone.png'});
     await narrow.close();
 
+    // --- title, pause and end screens fit in both orientations ---
+    for (const [name, viewport, mobile] of [['portrait', {width: 390, height: 844}, true], ['landscape', {width: 1100, height: 760}, false]]) {
+      const page = await open(browser, viewport, 'survivors.html?test', mobile);
+      await state(page, () => localStorage.setItem('scrollmonsters-starters-v1', JSON.stringify(['cat', 'owl', 'storm'])));
+      await page.reload(); await page.waitForFunction(() => window.__phaserReady);
+      const labels = (await listControls(page)).map(c => c.label);
+      assert(labels.includes('BEGIN') && labels.includes('History'), 'Title shows BEGIN and History');
+      assert(!labels.includes('Legacy') && !labels.some(l => /trial|expedition/i.test(l)), 'Legacy and trial switch are gone');
+      assert.deepEqual(await offscreenTexts(page), [], `Title fits (${name})`);
+      await page.screenshot({path: `output/ui-foundation/title-${name}.png`});
+      await state(page, () => { const s = __survivorTest.scene; s.start(); s.pause(); });
+      assert.deepEqual(await offscreenTexts(page), [], `Pause fits (${name})`);
+      await state(page, () => { const s = __survivorTest.scene; s.relics.equipped = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil']; s.draw(); });
+      assert.deepEqual(await offscreenTexts(page), [], `Pause with 13 relics fits (${name})`);
+      await page.screenshot({path: `output/ui-foundation/pause-relics-${name}.png`});
+      await state(page, () => { const s = __survivorTest.scene; s.mode = 'lost'; s.draw(); });
+      assert.deepEqual(await offscreenTexts(page), [], `End screen fits (${name})`);
+      await page.screenshot({path: `output/ui-foundation/lost-${name}.png`});
+      assert.deepEqual(page.errors, []);
+      await page.close();
+    }
+
     console.log('PASS: UI foundation');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

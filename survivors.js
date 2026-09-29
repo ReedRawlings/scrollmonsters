@@ -71,7 +71,7 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(3000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.hud=new SurvivorHud(this);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(10000);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(10001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
@@ -125,6 +125,7 @@
       this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:Math.random()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
+    chooseStarter(id){if(!this.unlocked.includes(id))return;const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
     start(){if(this.run&&!this.run.finished)this.finishRun('restarted');this.resetState();this.run={id:crypto.randomUUID(),version:2,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
@@ -360,31 +361,13 @@
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:UI});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
+      if(['title','paused','won','lost'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.ui.endGroup();
-      if(this.mode==='relic'||(this.mode==='paused'&&this.relics.equipped.length)){
-        // Relics own this screen; do not create interactive pause controls underneath.
-      }else if(this.mode==='upgrade'){
+      if(this.mode==='upgrade'){
         const pw=Math.min(w-32,490),px=(w-pw)/2,py=(h-350)/2;this.panel(px,py,pw,350);
         this.label('LEVEL '+this.level+' · CHOOSE AN UPGRADE',w/2,py+22,compact?18:21,'#fff0b0','center');
         this.label('Combat paused · lasts for this run',w/2,py+54,15,'#e2ccb0','center');
         this.choices.forEach((choice,i)=>{this.button((i+1)+'. '+choice.name,px+24,py+88+i*81,pw-48,()=>this.chooseUpgrade(i));this.label(choice.detail,w/2,py+137+i*81,14,'#fff5d7','center');});
-      }else if(this.mode==='bestiary'){
-      }else if(this.mode==='title'){
-        const pw=Math.min(w-32,490),px=(w-pw)/2,py=Math.max(88,(h-480)/2);this.panel(px,py,pw,490);
-        this.label(this.isExpedition?'TEN-MINUTE EXPEDITION':'TWO-MINUTE TRIAL',w/2,py+22,compact?19:22,'#fff0b0','center');
-        this.expansion.starterGrid(px+18,py+55,pw-36);
-        const half=(pw-56)/2;
-        this.button(this.field==='desert'?'Desert':'Woodland',px+24,py+338,half,()=>location.assign('survivors.html?'+(this.isExpedition?'':'trial&')+'field='+(this.field==='desert'?'woods':'desert')));
-        this.button('Begin',px+32+half,py+338,half,()=>this.start());
-        this.button(this.isExpedition?'Switch to short trial':'Switch to expedition',px+24,py+386,pw-48,()=>location.assign('survivors.html?'+(this.isExpedition?'trial&':'')+'field='+this.field));
-        this.button('History',px+24,py+434,half,()=>location.assign('survivor-runs.html'));this.button('Legacy',px+32+half,py+434,half,()=>location.assign('legacy.html'));
-      }else if(this.mode!=='playing'){
-        const pw=Math.min(w-32,470),px=(w-pw)/2,py=Math.max(96,(h-335)/2);this.panel(px,py,pw,335);
-        const title={title:'THE WOODLAND TRIAL',paused:'TAKE A BREATHER',won:'EXPEDITION COMPLETE',lost:'EXPEDITION FAILED'}[this.mode];this.label(title,w/2,py+25,24,'#fff0b0','center');
-        let lines=this.mode==='title'?['Choose a nest. Recruit one companion.','Move with WASD or arrow keys.','On touch: drag anywhere to move.','Collect XP; choose upgrades on level-up.','Guardian at 1:30. Defeat it to finish.']:this.mode==='paused'?['Your run is paused.','Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.']:['Survived '+Math.floor(this.elapsed)+' seconds · '+this.kills+' defeated','Your damage: '+Math.round(this.playerDamage),'Cat: '+Math.round(this.catDamage)+' · Ally: '+Math.round(this.owlDamage+this.encounters.beastDamage+Object.values(this.creatures.damage).reduce((a,b)=>a+b,0)),'Damage taken: '+this.damageTaken];
-        lines.forEach((t,i)=>this.label(t,w/2,py+72+i*25,compact?15:17,'#e2ccb0','center'));
-        this.button(this.mode==='paused'?'Resume':'Choose starter / play again',px+30,py+220,pw-60,()=>{if(this.mode==='paused')this.pause();else{this.mode='title';this.draw();}});
-        this.button('Run history / export',px+30,py+269,pw-60,()=>{this.saveRun();location.assign('survivor-runs.html');});
       }
       this.relics.ui(w,h);this.expansion.ui(w,h);this.ui.end();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }

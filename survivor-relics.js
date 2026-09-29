@@ -19,6 +19,7 @@
     constructor(s){this.s=s;this.equipped=[];this.queue=[];this.offers=[];this.selected=null;this.charge=0;this.still=0;this.slip=0;this.drum=0;this.echoes=[];this.nextCache=45;this.cacheNumber=0;this.nextElite=240;this.cache=null;this.cacheSprite=s.add.sprite(0,0,'xpChest',0).setScale(4).setTint(0xd7b0ff).setVisible(false);}
     destroy(){this.cacheSprite.destroy();}
     count(id){return this.equipped.filter(v=>v===id).length;}
+    name(id){return ITEMS.find(v=>v.id===id).name;}
     has(id){return this.equipped.includes(id);}
     reward(source){this.queue.push(source);this.s.logEvent('relic_reward',{source});}
     open(){if(!this.queue.length)return false;const s=this.s;this.source=this.queue.shift();const pool=[...ITEMS];this.offers=[];while(this.offers.length<3&&pool.length)this.offers.push(pool.splice(Math.floor(s.rand()*pool.length),1)[0]);this.selected=null;s.mode='relic';s.joy=null;s.input.keyboard.resetKeys();s.logEvent('relic_offered',{source:this.source,choices:this.offers.map(i=>i.id)});s.saveRun();return true;}
@@ -53,7 +54,7 @@
     nearShot(b){if(!this.has('slipstream')||b.life<=0)return;const d=dist(b,this.s.player);if(d<42)b.closePass=true;if(b.closePass&&!b.dodged&&d>42&&d>(b.lastDistance||0)){b.dodged=true;this.slip=2+this.count('slipstream')-1;this.s.logEvent('relic_dodge');}b.lastDistance=d;}
     heal(amount){if(!this.has('bloodroot'))return;const s=this.s,r=80+(8-amount)*8;s.burst('fxWater',s.player.x,s.player.y,r/20,.5,0xffa0a0);for(const e of s.combatTargets())if(dist(e,s.player)<r+e.r)s.hit(e,6*this.count('bloodroot'),'player',s.player);s.logEvent('relic_heal_pulse',{radius:r});}
     draw(){const s=this.s,p=s.player,g=s.fx;if(this.has('boots'))g.lineStyle(2,this.charge>=2?0xffd36b:0xb9cba5,.8).beginPath().arc(p.x,p.y,34,-Math.PI/2,-Math.PI/2+Math.PI*this.charge).strokePath();if(this.has('stone')&&this.still>0)g.lineStyle(3,0xc8b0ff,.7).strokeCircle(p.x,p.y,22+this.still*3);if(this.slip>0)g.lineStyle(3,0x8eefff,.8).strokeEllipse(p.x,p.y+15,48,18);const c=this.cache;this.cacheSprite.setVisible(!!c&&!c.claimed);if(c)this.cacheSprite.setPosition(c.x,c.y).setDepth(c.y+15);}
-    ui(w,h){const s=this.s,c=this.cache,cam=s.cameras.main;if(this.equipped.length){if(s.mode==='paused'){const names=[...new Set(this.equipped)],pw=Math.min(w-24,510),x=(w-pw)/2,y=100;s.panel(x,y,pw,Math.min(h-130,490));s.label('RELIC COLLECTION',w/2,y+18,20,'#fff0b0','center');names.forEach((id,i)=>s.label(ITEMS.find(v=>v.id===id).name+' ×'+this.count(id),w/2,y+55+i*23,14,'#dcc2ff','center'));s.button('Resume',x+18,Math.min(h-95,y+420),pw-36,()=>s.pause());}};
+    ui(w,h){const s=this.s,c=this.cache,cam=s.cameras.main;
       if(s.mode!=='relic')return;const pw=Math.min(w-24,500),x=(w-pw)/2,y=Math.max(85,(h-430)/2);s.panel(x,y,pw,430);s.label('CHOOSE A RELIC',w/2,y+20,21,'#fff0b0','center');s.label('Combat paused · Stackable relics · This run only',w/2,y+51,13,'#e2ccb0','center');
       this.offers.forEach((item,i)=>{s.button((i+1)+'. '+item.name+' · '+(this.count(item.id)?'Stack '+this.count(item.id)+' → '+(this.count(item.id)+1):'New'),x+18,y+80+i*92,pw-36,()=>this.choose(i));s.label(item.detail,w/2,y+126+i*92,12,'#fff5d7','center');s.label(item.extra,w/2,y+142+i*92,12,'#fff5d7','center');});s.button('Leave reward',x+18,y+373,pw-36,()=>this.skip());
     }
