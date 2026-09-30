@@ -1,9 +1,9 @@
 (() => {
   'use strict';
   // Procedural Greens field. Pure data, no Phaser, so Node checks can run it for any seed.
-  // World units: the ground is 72x72 cells of 16px art drawn at 2x, so one cell is 32 world px.
-  const CELL = 32, N = 72, WORLD = CELL * N;
-  const SPAWN = {x: WORLD / 2, y: WORLD / 2}, SHRINE = {x: WORLD / 2, y: WORLD * .2625};
+  // Exact 4500-unit repeating field; cells preserve approximately 2x pixel-art scale.
+  const WORLD = 4500, N = 141, CELL = WORLD / N;
+  const SPAWN = {x: WORLD / 2, y: WORLD / 2};
 
   // Dual-grid lookup: corner pattern TL,TR,BL,BR (1 = grass) -> tile index in tilemap.png (4x4, row-major).
   const LAYOUT = ['GGDD GDDD DGDG GGGD', 'DDGD DDDD DGDD GDDG', 'GDGD DDDG DDGG DGGG', 'GDGG DGGD GGDG GGGG'];
@@ -39,19 +39,23 @@
     return (x, y) => .7 * o1(x, y) + .3 * o2(x, y);
   }
 
-  function generate(seed) {
+  function generate(seed, view={width:960,height:960}) {
     const rand = rng(seed ^ 0x9E3779B9), range = (a, b) => a + rand() * (b - a), int = (a, b) => Math.floor(range(a, b + 1)), pick = list => list[Math.floor(rand() * list.length)];
     const grid = new Uint8Array(N * N).fill(1), at = (x, y) => grid[y * N + x];
     const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < N && y < N) grid[y * N + x] = v; };
 
     // 1. Landmarks first (cell units) so paths can lead to them.
-    const c = N / 2, shrineCell = {x: SHRINE.x / CELL, y: SHRINE.y / CELL};
+    const c = N / 2;
+    let shrineCell;
+    do {shrineCell={x:range(8,N-8),y:range(8,N-8)};} while(dist(shrineCell,{x:c,y:c})<12);
+    const shrine={x:shrineCell.x*CELL,y:shrineCell.y*CELL};
+    const apart=(a,b)=>{const dx=Math.min(Math.abs(a.x-b.x),N-Math.abs(a.x-b.x))*CELL,dy=Math.min(Math.abs(a.y-b.y),N-Math.abs(a.y-b.y))*CELL;return dx>view.width+140||dy>view.height+140;};
     let slab = null;
     while (!slab) { const p = {x: range(9, N - 9), y: range(9, N - 9)}; if (dist(p, {x: c, y: c}) > 14 && dist(p, shrineCell) > 12) slab = p; }
     const dens = [];
     for (let i = 0; i < 600 && dens.length < 4; i++) {
       const p = {x: range(5, N - 5), y: range(5, N - 5)};
-      if (dist(p, {x: c, y: c}) > 9.5 && dist(p, shrineCell) > 6 && dist(p, slab) > 11 && dens.every(d => dist(d, p) > 10)) dens.push(p);
+      if (dist(p, {x: c, y: c}) > 9.5 && dist(p, shrineCell) > 6 && dist(p, slab) > 11 && dens.every(d => apart(d,p))) dens.push(p);
     }
 
     // 2. Scattered dirt patches; density and size vary per run.
@@ -111,9 +115,9 @@
 
     // Props, in world px. Solid things sit on grass and keep clear of each other and of the key spots.
     const world = p => ({x: p.x * CELL, y: p.y * CELL});
-    const out = {seed, grid, size: N, cell: CELL, info: {paths, clearings, spurs}, dens: dens.map(world), slab: world(slab),
+    const out = {seed, shrine, grid, size: N, cell: CELL, info: {paths, clearings, spurs}, dens: dens.map(world), slab: world(slab),
       treasure: {revealAt: Math.round(range(170, 420)), reward: rand() < .5 ? 'xp' : 'relic'}, blockers: [], breakables: [], decals: [], scarecrow: null};
-    const solid = [{...SPAWN, r: 150}, {...SHRINE, r: 130}, {...out.slab, r: 250}, ...out.dens.map(d => ({...d, r: 120}))];
+    const solid = [{...SPAWN, r: 150}, {...shrine, r: 130}, {...out.slab, r: 250}, ...out.dens.map(d => ({...d, r: 120}))];
     const grass = (x, y, r) => {
       for (let j = Math.floor((y - r) / CELL); j <= Math.floor((y + r) / CELL); j++) for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++)
         if (i < 0 || j < 0 || i >= N || j >= N || !at(i, j)) return false;
@@ -152,12 +156,12 @@
     return out;
   }
 
-  // Tile for display cell (i, j), which sits where data cells (i-1..i, j-1..j) meet. Edges clamp.
+  // Tile for display cell (i, j), which sits where data cells (i-1..i, j-1..j) meet. Edges wrap.
   function tileAt(map, i, j) {
-    const n = map.size, g = (x, y) => map.grid[Math.min(n - 1, Math.max(0, y)) * n + Math.min(n - 1, Math.max(0, x))];
+    const n = map.size, g = (x, y) => map.grid[((y%n+n)%n) * n + ((x%n+n)%n)];
     return TILE['' + g(i - 1, j - 1) + g(i, j - 1) + g(i - 1, j) + g(i, j)];
   }
 
-  const api = {generate, tileAt, CELL, N, WORLD, SPAWN, SHRINE, BLOCKERS, BREAKABLES};
+  const api = {generate, tileAt, CELL, N, WORLD, SPAWN, BLOCKERS, BREAKABLES};
   if (typeof module !== 'undefined') module.exports = api; else window.GreensMap = api;
 })();

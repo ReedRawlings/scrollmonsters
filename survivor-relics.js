@@ -16,7 +16,7 @@
   ];
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   class SurvivorRelics {
-    constructor(s){this.s=s;this.equipped=[];this.queue=[];this.offers=[];this.selected=null;this.charge=0;this.still=0;this.slip=0;this.drum=0;this.echoes=[];this.nextCache=45;this.cacheNumber=0;this.nextElite=240;this.cache=null;this.cacheSprite=s.add.sprite(0,0,'xpChest',0).setScale(4).setTint(0xd7b0ff).setVisible(false);}
+    constructor(s){this.s=s;this.equipped=[];this.queue=[];this.offers=[];this.selected=null;this.charge=0;this.still=0;this.slip=0;this.drum=0;this.echoes=[];this.nextCache=60;this.cacheNumber=0;this.nextElite=240;this.cache=null;this.cacheSprite=s.add.sprite(0,0,'xpChest',0).setScale(4).setTint(0xd7b0ff).setVisible(false);}
     destroy(){this.cacheSprite.destroy();}
     count(id){return this.equipped.filter(v=>v===id).length;}
     name(id){return ITEMS.find(v=>v.id===id).name;}
@@ -45,8 +45,8 @@
       if(!s.isExpedition)return;
       if(this.cache?.claimed&&s.elapsed>=this.nextCache)this.cache=null;
       if(s.elapsed>=this.nextElite&&s.elapsed<570){const e=s.spawn('beast');if(e){this.nextElite+=90;e.elite=true;e.packReward=true;e.hp=e.maxHp=90+Math.max(0,s.elapsed-240)*.6;e.contactDamage=14+Math.floor(s.elapsed/120);e.sprite.setScale(5);s.logEvent('relic_hunter_appeared');s.announce('Pack hunter approaching!');}}
-      if(!this.cache&&s.elapsed>=this.nextCache&&s.elapsed<570){let spot=null;for(let i=0;i<40;i++){const a=s.rand()*Math.PI*2,x=Math.max(100,Math.min(s.worldSize-100,s.player.x+Math.cos(a)*420)),y=Math.max(100,Math.min(s.worldSize-100,s.player.y+Math.sin(a)*420));if(!s.blocked(x,y,100)&&s.encounters.nests.every(n=>dist(n,{x,y})>120)&&dist(s.expedition.shrine,{x,y})>150){spot={x,y};break;}}if(spot){this.cacheNumber++;this.cache={...spot,guards:0,claimed:false,id:this.cacheNumber};s.logEvent('relic_cache_appeared',spot);this.cacheSprite.setFrame(0);s.announce(s.field==='desert'?'Buried supply cache revealed!':'Guarded supply cache discovered!');}}
-      const c=this.cache;if(c&&!c.claimed){if(dist(c,s.player)<240&&c.guards<3&&s.enemies.length<120){const a=c.guards*Math.PI*2/3,e=s.spawn('beast',c.x+Math.cos(a)*70,c.y+Math.sin(a)*70);if(e){e.cacheGuard=c.id;e.hp=e.maxHp=18*(1+s.elapsed/180);c.guards++;}}if(c.guards===3&&!s.enemies.some(e=>e.cacheGuard===c.id&&e.hp>0)&&dist(c,s.player)<45){c.claimed=true;this.nextCache=s.elapsed+75;this.cacheSprite.setFrame(1);s.packs.drop(c.x,c.y,s.field==='desert'?'buried_cache':'guarded_cache');}}
+      if(!this.cache&&s.elapsed>=this.nextCache&&s.elapsed<570){const spot=SurvivorWorld.eventPoint(s,100,p=>s.encounters.nests.every(n=>SurvivorWorld.distance(s,n,p)>120)&&SurvivorWorld.distance(s,s.expedition.shrine,p)>150);if(spot){this.cacheNumber++;this.cache={...spot,guards:0,claimed:false,id:this.cacheNumber};s.logEvent('relic_cache_appeared',spot);this.cacheSprite.setFrame(0);s.announce(s.field==='desert'?'Buried supply cache revealed!':'Guarded supply cache discovered!');}}
+      const c=this.cache;if(c&&!c.claimed){if(dist(c,s.player)<240&&c.guards<3&&s.enemies.length<s.enemyCap){const a=c.guards*Math.PI*2/3,e=s.spawn('beast',c.x+Math.cos(a)*70,c.y+Math.sin(a)*70);if(e){e.cacheGuard=c.id;e.hp=e.maxHp=18*(1+s.elapsed/180);c.guards++;}}if(c.guards===3&&!s.enemies.some(e=>e.cacheGuard===c.id&&e.hp>0)&&dist(c,s.player)<45){c.claimed=true;this.nextCache=s.elapsed+90;this.cacheSprite.setFrame(1);s.packs.drop(c.x,c.y,s.field==='desert'?'buried_cache':'guarded_cache');}}
     }
     shot(){const charged=this.has('boots')&&this.charge>=2;if(charged)this.charge=0;return {source:'player',damage:charged?2*(1+.5*this.count('boots')):2,pierce:charged?3:1,hits:new Set(),charged};}
     shotRate(){return (1+(this.has('stone')?this.still/2*.5*this.count('stone'):0))*(this.has('repulsion')?1-.3/this.count('repulsion'):1);}

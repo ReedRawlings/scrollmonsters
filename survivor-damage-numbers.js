@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const MAX = 40, MERGE_MS = 150, MERGE_SPAN = 600, BURSTS = 8, DIGITS = 5, LIFE = 700, CRIT_LIFE = 900, RISE = 18, POP_MS = 120, FADE_MS = 250, DEPTH = 9990;
+  const MAX = 40, MERGE_MS = 150, MERGE_SPAN = 600, BURSTS = 8, DIGITS = 5, LIFE = 700, CRIT_LIFE = 900, RISE = 18, POP_MS = 120, FADE_MS = 250, DEPTH = 999999990;
   const WHITE = 0xffffff, GOLD = 0xffc41b, RED = 0xef5266;
   // World-space damage numbers from the NovelMix digit strip. Presentation only: never writes game state.
   // Every object is made once here (40 numbers x 5 digits) and reused; nothing is created per hit.

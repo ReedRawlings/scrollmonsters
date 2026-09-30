@@ -56,11 +56,7 @@
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
           const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
           if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');}}
-      const cd=s.expansion.cooldown;
-      if(s.mode==='playing')ui.pill(cd>0?'Dash '+cd.toFixed(1):'Dash',x0+total-72,y-24,72,20,()=>s.expansion.dash(),{id:'dash'});
-      const styles=s.creatures.elements.dashOptions();
-      if(s.mode==='playing'&&styles.length>1){const style=s.creatures.elements.dashStyle==='storm'?'lightning':s.creatures.elements.dashStyle;
-        ui.pill('Dash: '+style,x0,y-22,96,18,()=>s.creatures.elements.cycleDash(),{id:'dash-style'});}
+
     }
     // 0 right after an attack, 1 when ready. Reads timers only.
     chargeOf(type){

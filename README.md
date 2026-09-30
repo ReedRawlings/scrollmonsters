@@ -4,7 +4,7 @@ The main game is now the survivor expedition: movement, collectible creature sta
 
 ## Play
 
-Run `python3 scripts/serve.py 5173`, then open http://localhost:5173. The root page opens the current game; `/survivors.html` remains supported. Move with WASD/arrows or touch drag. Dash with Space/Shift or the on-screen button. Attacks are automatic.
+Run `python3 scripts/serve.py 5173`, then open http://localhost:5173. The root page opens the current game; `/survivors.html` remains supported. Move with WASD/arrows or touch drag. Dash with Space on PC or a quick directional swipe and release on phones. Recruiting a creature automatically selects its dash. The 4,500 × 4,500 world loops in every direction. The player fires automatically toward the mouse or touch-drag direction; companions auto-target.
 
 ## Legacy version
 

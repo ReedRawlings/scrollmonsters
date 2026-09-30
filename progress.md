@@ -1157,3 +1157,69 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Targeted quota tests cover normal byte/count retention, quota retry, oversized run, complete exhaustion, non-quota errors, recovery and JSON export. Capture tests cover all ten species, dual-den destruction, channel pause/decay, loser cleanup, delayed rounds, duplicate prevention, trial limits and mobile labels.
 - Required skill harness ran; default/headed capture path still yields black images on this graphics setup. Dedicated Chromium/Metal inventory and capture screenshots were inspected in output/reliability-v26. A headed-only missing favicon request was corrected using the existing Cat portrait.
 - Remaining later priorities: sound/hit feedback and measurement-led spawn tuning. Broader historical documentation cleanup and legacy fixes are outside this implementation.
+
+## September 29 — current tree review
+- Added `GAME-REVIEW-2026-09-29.md` with current defects, stale code/comments, design gaps, reproduction notes, and priority order. No gameplay implementation was changed.
+- Current Survivors suite passed 24/24; all root JavaScript and CJS files passed syntax checks. Chromium/Metal gameplay capture rendered with no page errors. The required web-game client returned valid state but its SwiftShader screenshot was black.
+- Legacy browser requested 21 missing placeholder assets; both legacy npm browser checks failed on stale title coordinates, and `check-game.cjs` failed before assertions because its VM sandbox lacks `URLSearchParams`. Current-game follow-ups include preserving starter selection when changing fields, keyboard navigation, relic edge cases, and consolidating obsolete documentation.
+
+## September 30 — surrounding enemy pressure
+- Lowered player base movement from 160.2 to 150 units/second, preserving existing movement multipliers.
+- Added eight-sector weighted offscreen spawn selection, checking current and next camera bounds, world bounds, minimum player distance and obstacles. Invalid locations are skipped instead of clamped into view.
+- Recycle at most two distant ordinary seekers every 0.75 seconds, retaining health/state and spawn/kill accounting. Explicitly placed encounter enemies, elites, bosses, reward enemies, stunned enemies and committed attacks are excluded. Restart resets the recycle timer.
+- Added `check-swarm-spawning.cjs` to the suite: directional preference, safe edges, blocked spawning, health/accounting preservation, protected/visible enemies and exact movement. Passed. Updated the existing movement expectation to 150; its keyboard/touch/combat/pause/endings regression passed.
+- Required skill harness completed with valid gameplay state; its known SwiftShader black capture persists. Inspected a separate Chromium/Metal gameplay screenshot successfully; no browser errors in the focused check.
+- Next: human playtest directional pressure and recycling cadence before changing population targets, approach steering or crowd spacing.
+- Full existing suite finished with 23/24 passing on its initial run; the sole failure was the old speed assertion, corrected and independently rerun successfully. All 24 existing checks plus the new spawning check passed across these runs. Syntax and diff whitespace checks passed.
+
+## September 30 — player aiming and shorter protection
+- Player now fires continuously toward the mouse in camera space, or the touch movement stick direction. Touch release retains the last aim; fresh runs default downward. Companion targeting is unchanged. Player facing follows aim.
+- Damage and shield blocks grant 0.25 seconds of invulnerability; consuming a healing pickup refreshes protection to at least 0.25 seconds. Timer decay now happens before all damage systems, giving contact, projectile and hazard hits the same window.
+- Added check-player-aim.cjs to the suite: actual mouse/touch events, target-free firing, aimed impact, touch release, hit/heal protection expiry, contact and restart. Focused browser check passed. Inspected desktop and portrait Metal screenshots; no browser errors.
+- Required skill harness completed with valid gameplay state; its known SwiftShader black screenshot remains. The separate Metal desktop and touch captures rendered correctly and were inspected.
+- Next: playtest the shorter protection window against crowds and assess whether touch should eventually use a separate aim stick.
+- Final verification: all 25 existing suite checks passed, plus the new player-aim browser check (now registered for future full runs). JavaScript syntax and diff whitespace checks passed.
+
+## September 30 — 150 enemies and automatic gesture dash
+- Shared live-enemy cap is 150. Wave, den, mouse swarm, shrine and cache paths use the shared cap; spawn() enforces it for scripted elites too. Snapshot exposes enemyCap/enemyCount.
+- Removed Dash and Dash-style HUD buttons, cycleDash/dashOptions functionality, and Shift shortcut. Space keeps dash on desktop; player charge bar retains cooldown feedback.
+- Phone quick swipe/release (48 game pixels within 300ms) dashes along the swipe. Held drags keep ordinary movement/aim; taps do not dash. Existing mode/cooldown restrictions apply.
+- Completed recruitment and allied starter initialization automatically select Salamander/Spider/Storm dash or Normal for other species. In-progress elemental dashes retain their original effect until completion.
+- New check-dash-input covers cap/replacement, starter and sequential recruitment selection, absent controls/cycling, Space vs Shift, actual directional touch events, held drags and taps. Passed; mobile Metal screenshot inspected. Required skill client completed; its known black SwiftShader capture persists, with separate Metal capture verified.
+- Updated old touch movement tests to hold the drag beyond the swipe threshold and cap assertions to 150. Updated current control documentation. Next: playtest swipe threshold on a physical phone and crowd performance at 150.
+- Validation finished: initial full suite passed 25/27; the two old quick-touch expectations were updated to deliberate held drags and both reruns passed. All 27 current checks therefore passed across the full run and targeted reruns. Syntax and diff checks passed; no errors in the new browser check.
+
+## September 30 — larger looping world and event placement
+- Expanded both biomes to exactly 4500x4500 world units. Player coordinates continue through repeated tiles; camera bounds, movement/dash boundaries and edge-limited combat were removed. SurvivorWorld keeps one nearest periodic image of simulation bodies and art so collisions, chases, pickups and landmark state persist across joins.
+- Greens terrain now uses a periodic dual grid with nine culled layers. Visual QA found and fixed a scaled tile-culling gap; ground/decorative depth and effect/UI layers now remain valid for negative or repeated world coordinates.
+- Shrine position is seeded/randomized per run, reserving clear space in forest generation and checking desert collision. Dens use full camera width/height plus 140-unit art clearance, including across wrapping joins; planned and fallback den placements enforce the same rule.
+- XP chest first/subsequent attempts are 40–60s; guarded cache first attempt 60s, next cache 90s after claim. XP chests/caches use shared offscreen placement; hidden forest treasure waits until offscreen to reveal.
+- Mouse waves request 6,7,8,... units, adding one each scheduled iteration. Group placement retries blocked/offscreen positions; the 150-enemy cap still applies. Swarm members may recycle like ordinary wave enemies.
+- Added looping-world browser checks for all four joins, dash crossing, cross-join collision, persistent den HP, seeded shrine variation, desktop/phone den spacing, event timing/visibility and growing mouse counts. Forest corner/phone screenshots inspected after rendering fixes. Updated generator and old size/timing fixtures; generator passed 200 seeds.
+- Full suite initially passed 27/28; remaining pack test expected the old 45s cache. Updated to 60s and rerun passed. All 28 checks passed across full run and targeted reruns. Required skill harness completed with gameplay state; known SwiftShader black capture persists, separate Metal screenshots verified. Syntax/diff checks passed.
+- Next: physical-phone performance/playfeel checks for the larger world and repeated terrain. Existing user edits and unrelated Finder metadata changes were preserved.
+- Desert follow-up passed after multiple positive/negative wraps: clear randomized shrine, separated dens and offscreen cache. Desert Metal screenshot inspected. Bumped current-game script URLs to v34 so browser refresh loads the changed modules together.
+
+## September 30 — double shrine size
+- Doubled shrine art from 3x to 6x, including its ground-anchor offset and completion-effect origin.
+- Shrine summoning ring and progress fill now use 6x; creature capture rings retain 3x. Activation radius increased from 70 to 140 world units to match the enlarged ring.
+- Chromium check passed for sprite/ring/fill scales and progress inside/outside the new radius. Metal gameplay screenshot inspected; no page errors. Required skill harness ran; syntax and whitespace checks passed. Shrine/juice script cache versions bumped to35.
+
+## September 30 — enemy identities and rare variants
+- Added survivor-enemies.js to separate hostile visuals from recruited creature roles. Golems replace Bats (5% Forest at 1.25x HP/speed/damage); provisional Energy elite tuning is a separate 1% with 2x HP/damage and normal speed, pending user preference.
+- DemonRed replaces hostile Beast; elite DemonGreen renders at precisely 2x normal size. Orange/Black Ninja Mages replace hostile Owl, with 5% Black triple energy-ball spreads and matching aim warnings. Captures/ally sprites remain unchanged.
+- RedGladiator replaces hostile Bear with an equipped axe, a one-second warning and 0.7-second spinning attack (one 12-damage hit), preserving ally Bear behavior. Pooled axes hide on death and reset.
+- Added targeted browser checks; passing stats/thresholds, projectile spread, elite size, spin damage/pause and cleanup. In-game Metal screenshot inspected. Existing creature regression passed. Full suite and required skill harness underway.
+- Additional targeted checks passed for dodging the spin, entering late, one-hit limit, stationary committed attacks, mage projectile damage, and Forest multipliers after late-game scaling. Spin/windup now resist crowd-separation movement.
+- Required skill harness ran with valid gameplay state and no console errors; its canvas capture remains black even with Metal. Used the existing browser test helper's full-page Metal screenshot for visual QA instead; all enemy variants, triple orb spread, and equipped spinning axe are visible in output/enemy-variety/showcase.png.
+- Final validation: all 28 existing survivor checks passed, plus the new enemy-variety check (29 total across full suite and targeted run). Added enemy-variety to the maintained runner. Syntax and git diff whitespace checks passed. Energy Golem frequency/stats remain explicitly provisional; next step is human playtesting of mage spread pressure and Gladiator spin readability.
+
+## September 30 — shamans, summoned minions and rare Hunters
+- Used the three supplied shaman sheets. Yellow/green summon Skeleton characters; blue summons the animal Lion sprite (16x23 frames). Lion contact damage is 10 versus Skeleton's 5. Capturable creatures remain separate.
+- Added capped wave selection: shamans from90s, 3%/spawn, minimum25s spacing, maximum2 living; Hunters from120s, 0.5%/spawn, minimum45s spacing, maximum1 living. Both replace normal slots and stop arriving at570s.
+- Summons warn for1.2s, then create up to2 minions, with6s cooldown,4 living per owner and12 global. Obstacle/player clearance checked again at completion; caster death cancels pending casts; global enemy cap preserved.
+- Hunters approach into view, seek clear line of sight, aim1.5s with final0.4s locked, and fire a fast arrow before3.8s reload. Viewport-aware approach handles narrow phone screens. No shield-knight implementation.
+- Targeted browser checks passed for summons, caps, cancellation, pause/reset, damage ratio, rarity/cooldowns, LOS and aim locking. Desktop screenshot inspected. Full regression suite and phone checks underway; required skill harness completed.
+- Phone viewport check passed: offscreen Hunter moved into view before aiming and firing. Desktop and phone full-page Metal captures inspected. Skill harness state/input run passed with no errors; its known black canvas-capture issue persists, so visual verification used the existing browser-helper screenshot route.
+- Added summoners check to maintained runner. Syntax and whitespace checks passed. New specialist balance remains provisional; next human playtest should assess summoner priority pressure and Hunter frequency/telegraph readability.
+- Final validation: full existing suite29/29 passed, plus the new summoners check on desktop and phone (30 total checks across suite and targeted runs). No browser runtime/resource errors in the new test.

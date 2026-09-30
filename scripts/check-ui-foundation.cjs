@@ -88,21 +88,8 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     // long notices wrap inside the screen; a party member without a faceset falls back
     await state(tall, () => { const s = __survivorTest.scene; s.announce('Bonus upgrade earned! Leave the circle before the next challenge.'); const party = s.expedition.party; s.expedition.party = () => ['cat', 'nofaceset']; s.draw(); s.expedition.party = party; });
     assert.deepEqual(await offscreenTexts(tall), [], 'No HUD text leaves the canvas (portrait)');
-    // tapping the player slot does nothing; the Dash pill dashes; neither starts movement
-    const slot = await state(tall, () => { const s = __survivorTest.scene, r = s.hud.layout.slots[0], c = s.game.canvas.getBoundingClientRect(); return {x: c.left + (r.x + r.w / 2) * 2 * c.width / s.scale.width, y: c.top + (r.y + r.h / 2) * 2 * c.height / s.scale.height}; });
-    await tall.touchscreen.tap(slot.x, slot.y);
-    assert.equal(await state(tall, () => __survivorTest.scene.expansion.cooldown), 0, 'The player slot is not a dash control');
-    await state(tall, () => { __survivorTest.scene.joy = null; });
-    const dash = await controlPoint(tall, 'Dash');
-    // Hold the press: a leaked joystick would be live until release, which a plain tap would hide.
-    const touch = await tall.context().newCDPSession(tall);
-    await touch.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: dash.x, y: dash.y}]});
-    await tall.waitForTimeout(80);
-    assert.equal(await state(tall, () => __survivorTest.scene.joy), null, 'Pressing the Dash pill does not start movement');
-    await touch.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
-    await tall.waitForTimeout(80);
-    assert(await state(tall, () => __survivorTest.scene.expansion.cooldown > 0), 'The Dash pill dashes');
-    assert.equal(await state(tall, () => __survivorTest.scene.joy), null, 'The Dash pill does not start movement');
+    // Dash is gesture/keyboard-only; the player slot remains a cooldown display.
+    assert(!(await listControls(tall)).some(c=>c.label.startsWith('Dash')), 'No dash or dash-style buttons');
     await tall.screenshot({path: 'output/ui-foundation/hud-portrait.png'});
     assert.deepEqual(tall.errors, []);
     await tall.close();

@@ -8,7 +8,7 @@
   class SurvivorJuice {
     constructor(s){
       this.s=s;this.enabled=true;this.reduced=s.ui.reducedMotion;this.seed=(Date.now()>>>0)||1;
-      this.front=s.add.container(0,0).setScrollFactor(0).setDepth(10002).setScale(UI); // logical UI space, above the HUD
+      this.front=s.add.container(0,0).setScrollFactor(0).setDepth(1000000002).setScale(UI); // logical UI space, above the HUD
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
@@ -36,7 +36,7 @@
     frameName(key,i){const m=this.meta(key),n=clamp(Math.floor(i),0,m.n-1),name='f'+n,t=this.s.textures.get(key);if(!t.has(name))t.add(name,0,n*m.fw,0,m.fw,m.fh);return name;}
     frameRect(key,i){const m=this.meta(key),n=clamp(Math.floor(i),0,m.n-1);return [n*m.fw,0,m.fw,m.fh];}
     frameAt(key,ms,loop=this.meta(key).loop){const m=this.meta(key),f=Math.floor(Math.max(0,ms)/1000*m.fps);return loop?f%m.n:Math.min(f,m.n-1);}
-    play(key,x,y,{scale=3,ui=false,loop=false,depth=2900,tint,onDone}={}){
+    play(key,x,y,{scale=3,ui=false,loop=false,depth=800000000,tint,onDone}={}){
       if(!this.enabled||this.fx.length>=MAX_FX)return null;
       const m=this.meta(key),sp=this.s.add.sprite(x,y,key,this.frameName(key,0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(scale);
       if(tint!==undefined)sp.setTint(tint);
@@ -135,13 +135,13 @@
         sp.setVisible(this.enabled).setTexture(k,this.frameName(k,this.frameAt(k,t))).setOrigin(mm.ax/mm.fw,mm.ay/mm.fh).setScale(3).setPosition(p.x,p.y+24).setDepth(p.y+(i?21:19));});
     }
     // Sheet ring + fill at 3x in the world. Ids not drawn this frame are hidden (mark and sweep).
-    ring(id,x,y,fill01,{tint=0xffffff,alpha=1}={}){
+    ring(id,x,y,fill01,{tint=0xffffff,alpha=1,scale=3}={}){
       const now=this.now();let r=this.rings[id];
       if(!r){const m=this.meta('Capture_Ring');r=this.rings[id]={ring:this.s.add.sprite(0,0,'Capture_Ring',this.frameName('Capture_Ring',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3),
         fill:this.s.add.sprite(0,0,'Capture_Fill',this.frameName('Capture_Fill',0)).setOrigin(m.ax/m.fw,m.ay/m.fh).setScale(3)};}
       r.seen=true;
-      r.ring.setVisible(true).setPosition(x,y).setDepth(y-3).setTint(tint).setAlpha(alpha).setFrame(this.frameName('Capture_Ring',this.frameAt('Capture_Ring',now,true)));
-      r.fill.setVisible(fill01>0).setPosition(x,y).setDepth(y-2).setAlpha(alpha).setFrame(this.frameName('Capture_Fill',Math.round(clamp(fill01,0,1)*16)));
+      r.ring.setScale(scale).setVisible(true).setPosition(x,y).setDepth(y-3).setTint(tint).setAlpha(alpha).setFrame(this.frameName('Capture_Ring',this.frameAt('Capture_Ring',now,true)));
+      r.fill.setScale(scale).setVisible(fill01>0).setPosition(x,y).setDepth(y-2).setAlpha(alpha).setFrame(this.frameName('Capture_Fill',Math.round(clamp(fill01,0,1)*16)));
     }
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
@@ -163,7 +163,7 @@
     }
     updateShrine(now){
       const s=this.s,sh=s.expedition.shrine;if(!this.enabled||!s.isExpedition||s.elapsed<90)return;
-      this.ring('shrine',sh.x,sh.y,sh.done?0:sh.progress/6,{tint:sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff,alpha:sh.done?.35:1});
+      this.ring('shrine',sh.x,sh.y,sh.done?0:sh.progress/6,{scale:6,tint:sh.done?0x66716e:sh.inCombat?0xffa066:0xffffff,alpha:sh.done?.35:1});
     }
     // A pixel chunk flung on an arc, landing below its start, then blinking out. No rotation keeps it on the pixel grid.
     chunk(key,x,y,{dist=[50,130],lift=[40,90],sizes=[2,6]}={}){
@@ -175,7 +175,7 @@
         onComplete:()=>{this.stop(fx);this.chunks--;}});
     }
     onShrine(e){
-      const sp=this.s.expedition.shrineSprite,cx=e.x,cy=sp.y-60;
+      const sp=this.s.expedition.shrineSprite,cx=e.x,cy=sp.y-120;
       this.flashCopy(sp,e.final?180:120);
       if(e.final){this.freeze(110);this.jitter(3,200);this.play('Spark_Light',cx,cy,{scale:1,depth:sp.depth+2});}
       for(let i=0;i<(e.final?14:4);i++)this.chunk('P_Shard',cx+(this.rand()*16-8),cy+(this.rand()*16-10),e.final?{sizes:i<4?[2,3]:[3,6]}:{dist:[24,56],lift:[20,40],sizes:[3,6]});

@@ -31,19 +31,27 @@
       return name;
     }
     constructor(s) {
-      this.s = s; this.map = GreensMap.generate(s.seed); this.sprites = []; this.usedDens = new Set();
+      this.s = s; this.map = GreensMap.generate(s.seed,{width:s.cameras.main.width,height:s.cameras.main.height}); this.sprites = []; this.usedDens = new Set();
       const t = this.map.treasure;
       this.treasure = {...this.map.slab, revealAt: t.revealAt, reward: t.reward, revealed: false, opened: false, openTime: 0};
       this.buildGround(); this.buildProps();
     }
     buildGround() {
-      const m = this.map, n = m.size + 1, s = this.s;
+      const m = this.map, n = m.size, s = this.s;
       this.tilemap = s.make.tilemap({tileWidth: 16, tileHeight: 16, width: n, height: n});
       const tiles = this.tilemap.addTilesetImage('greensTiles', 'greensTiles', 16, 16, 0, 0);
       // Display tiles sit on the corners of data cells, so the layer is offset half a cell.
-      this.ground = this.tilemap.createBlankLayer('ground', tiles, -m.cell / 2, -m.cell / 2).setScale(SCALE).setDepth(-10);
+      this.grounds=[];
+      for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++){
+        const layer=this.tilemap.createBlankLayer('ground'+x+','+y,tiles,x*s.worldSize-m.cell/2,y*s.worldSize-m.cell/2).setScale(m.cell/16).setDepth(-1000000000).setCullPadding(12,12);
+        layer.loopX=x;layer.loopY=y;this.grounds.push(layer);
+      }
+      this.ground=this.grounds[4];
       // No per-tile flips: Phaser 4 tilemap layers draw flipped tiles incorrectly.
-      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) this.ground.putTileAt(GreensMap.tileAt(m, i, j), i, j);
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) for(const layer of this.grounds)layer.putTileAt(GreensMap.tileAt(m, i, j), i, j);
+    }
+    positionGround(){const s=this.s,m=this.map,bx=Math.floor(s.player.x/s.worldSize)*s.worldSize,by=Math.floor(s.player.y/s.worldSize)*s.worldSize;
+      for(const layer of this.grounds)layer.setPosition(bx+layer.loopX*s.worldSize-m.cell/2,by+layer.loopY*s.worldSize-m.cell/2);
     }
     sprite(kind, x, y, depth, origin = [.5, 1], i = 0) {
       const sp = this.s.add.sprite(x, y, 'greensAtlas', SurvivorGreens.frame(this.s, kind, i)).setOrigin(...origin).setScale(BIG.has(kind) ? SCALE * 2 : SCALE).setDepth(depth);
@@ -51,7 +59,7 @@
     }
     buildProps() {
       const m = this.map, s = this.s, foot = o => o.y + o.r * .6;
-      for (const d of m.decals) this.sprite(d.kind, d.x, d.y, -6, [.5, .5]);
+      for (const d of m.decals) this.sprite(d.kind, d.x, d.y, -999999999, [.5, .5]);
       for (const b of m.blockers) { this.sprite(b.kind, b.x, foot(b), foot(b)); s.obstacles.push({x: b.x, y: b.y, r: b.r}); }
       if (m.scarecrow) { const c = m.scarecrow; this.scarecrow = this.sprite('scarecrow', c.x, foot(c) + 6, foot(c)); s.obstacles.push({x: c.x, y: c.y, r: c.r}); }
       this.props = m.breakables.map(b => {
@@ -65,14 +73,14 @@
       // Six overlapping circles approximate the slab's footprint once it is revealed.
       this.slabColliders = [-1, 0, 1].flatMap(k => [-28, 44].map(dy => ({x: t.x + k * 104, y: t.y + dy, r: 80})));
     }
-    destroy() { for (const sp of this.sprites) sp.destroy(); this.ground.destroy(); this.tilemap.destroy(); }
+    destroy() { for (const sp of this.sprites) sp.destroy(); this.tilemap.destroy(); }
 
     // Nests take the map's den spots in order; the second wave gets the spots the first left free.
     denSpot(existing) {
-      const free = this.map.dens.filter((d, i) => !this.usedDens.has(i) && existing.every(n => dist(n, d) > 1));
+      const free = this.map.dens.filter((d, i) => !this.usedDens.has(i) && existing.every(n => SurvivorWorld.denApart(this.s,n,d)));
       const spot = free.find(d => dist(d, this.s.player) > 250) || free[0];
       if (!spot) return null;
-      this.usedDens.add(this.map.dens.indexOf(spot)); return {x: spot.x, y: spot.y};
+      this.usedDens.add(this.map.dens.indexOf(spot)); return SurvivorWorld.near(this.s,spot);
     }
 
     // Breakables take hits from attacks that land on them but are never picked as aim targets.
@@ -104,7 +112,7 @@
       const s = this.s, t = this.treasure;
       for (const e of this.props) { e.shake = Math.max(0, e.shake - dt); if (e.broken) e.breakTime = Math.max(0, e.breakTime - dt); }
       if (!s.isExpedition) return;
-      if (!t.revealed && s.elapsed >= t.revealAt) {
+      if (!t.revealed && s.elapsed >= t.revealAt && SurvivorWorld.offscreen(s,t,200)) {
         t.revealed = true; s.obstacles.push(...this.slabColliders);
         s.logEvent('treasure_revealed', {x: Math.round(t.x), y: Math.round(t.y)}); s.announce('Hidden treasure revealed!');
       }

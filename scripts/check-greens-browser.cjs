@@ -9,7 +9,7 @@ run('procedural Greens field: tilemap, dens, breakables and hidden treasure', as
     const solids = m.blockers.length + m.breakables.length + (m.scarecrow ? 1 : 0), obstacles = s.obstacles.length, layerKey = layer.tileset[0].image.key;
     const densFor = seed => { s.seed = seed; s.resetState(); return JSON.stringify(s.greens.map.dens); };
     const a = densFor(11), b = densFor(12), again = densFor(11);
-    return {tiles, expected: (m.size + 1) ** 2, obstacles, solids, differs: a !== b, repeats: a === again, layerKey};
+    return {tiles, expected: m.size ** 2, obstacles, solids, differs: a !== b, repeats: a === again, layerKey};
   });
   assert.equal(map.tiles, map.expected, 'every dual-grid display cell has a tile');
   assert.equal(map.layerKey, 'greensTiles');

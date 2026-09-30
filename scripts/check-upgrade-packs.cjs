@@ -72,7 +72,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const d = await state(src, () => { const s = __survivorTest.scene, out = {}; s.start(); s.spawnTimer = 999;
       s.elapsed = 330; s.relics.update(0); const hunter = s.enemies.find(e => e.packReward); out.hunterFlag = !!hunter;
       s.hit(hunter, 9999, 'player', s.player); out.hunter = [s.packs.items.length, s.relics.queue.length];
-      s.start(); s.elapsed = 45; s.relics.update(0); const cache = s.relics.cache; s.player.x = cache.x; s.player.y = cache.y;
+      s.start(); s.elapsed = 60; s.relics.update(0); const cache = s.relics.cache; s.player.x = cache.x; s.player.y = cache.y;
       for (let i = 0; i < 3; i++) s.relics.update(0); for (const g of s.enemies.filter(e => e.cacheGuard)) s.hit(g, 9999, 'player', s.player); s.relics.update(0);
       out.cache = [s.packs.items.length, s.relics.queue.length, s.packs.items[0]?.source];
       return out; });
