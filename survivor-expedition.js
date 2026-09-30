@@ -1,6 +1,7 @@
 (() => {
   const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm'],KEY='scrollmonsters-starters-v1';
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const CAPTURE_R = 140; // capture zone radius in world px (2x since the 2026-09-29 playtest)
   class Expedition {
     static readUnlocks(){
       let unlocked=['cat'];try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))unlocked.push(...saved.filter(t=>TYPES.includes(t)));
@@ -34,7 +35,7 @@
       if(!body||body.state!=='ready')return;
       const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?2:1;
       if(this.party().length>=roundLimit+1||(Number.isInteger(stage)&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
-      body.progress=dist(body,s.player)<70?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
+      body.progress=dist(body,s.player)<CAPTURE_R?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
       if(body.progress<2.5)return;
       body.state='ally';if(type==='cat'){s.catActive=true;this.catCapture=null;}
       if(Number.isInteger(stage)){
@@ -50,7 +51,7 @@
       const f=this.frog;if(f?.state==='ally'){const d=dist(f,s.player)||1;if(d>50)s.move(f,(s.player.x-f.x)/d*Math.min(d,220*dt),(s.player.y-f.y)/d*Math.min(d,220*dt),false);f.pulseClock-=dt;if(f.pulseClock<=0){f.pulseClock=s.frogStats().shieldInterval;s.shield=true;this.supportPulses++;this.pulse=.65;s.burst('fxWater',s.player.x,s.player.y,4,.65);if(s.upgrades.chorus)s.chorusTime=Math.max(s.chorusTime,3);s.logEvent('frog_pulse',{haste:!!s.upgrades.chorus});}}
       this.updateChests(dt);if(!s.isExpedition)return;
       const phase=Math.min(9,Math.floor(s.elapsed/60));if(phase!==this.phase){this.phase=phase;s.logEvent('encounter_phase',{phase:this.phaseName()});if(phase>0)s.announce(this.phaseName());}
-      if(s.elapsed>=150&&!this.second){this.second=true;const reserved=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage||0]).map(n=>n.type)),options=[...new Set(['frog',...s.nestDeck])].filter(t=>!this.has(t)&&!reserved.has(t)).slice(0,2);for(const [i,type] of options.entries())s.encounters.nests.push({kind:'nest',type,stage:1,activeAt:150,...s.encounters.denPosition(),r:35,hp:70,maxHp:70,clock:2+i,spawnCount:0,destroyed:false});s.logEvent('second_nests_appeared',{options});s.announce('A den of monsters appears');}
+      if(s.elapsed>=150&&!this.second){this.second=true;const reserved=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage||0]).map(n=>n.type)),options=[...new Set(['frog',...s.nestDeck])].filter(t=>!this.has(t)&&!reserved.has(t)).slice(0,2);for(const [i,type] of options.entries())s.encounters.nests.push({kind:'nest',type,stage:1,activeAt:150,...s.encounters.denPosition(),r:35,hp:70,maxHp:70,clock:2+i,spawnCount:0,destroyed:false});s.logEvent('second_nests_appeared',{options});s.headline('A den of monsters appears');}
       if(s.elapsed>=180&&!this.lateStrength){this.lateStrength=true;for(const e of s.enemies)this.strengthen(e);s.logEvent('late_enemy_strength');}
       if(s.elapsed>=210&&!this.eliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.hp=e.maxHp=65;e.sprite.setScale(5);e.speed*=1.1;this.eliteSpawned=true;s.logEvent('elite_appeared');s.announce('Elite Beast approaching!');}}
       if(s.elapsed>=120&&!this.extraEliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.packReward=true;e.hp=e.maxHp=45;e.sprite.setScale(4.5);e.speed*=1.15;this.extraEliteSpawned=true;s.logEvent('roaming_elite_appeared');s.announce('Roaming elite! Defeat it for an upgrade pack.');}}

@@ -19,46 +19,69 @@
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
     dim(w,h){const ui=this.s.ui;ui.rect(0,0,w,h,'#0b0710b0');ui.hitArea(0,0,w,h,()=>{},'modal-blocker');}
     title(w,h){
-      const s=this.s,ui=s.ui,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter;
+      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced;
       this.dim(w,h);
+      // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
+      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
         ?{banner:[w/2,26],hero:[87,72],name:[w/2,186],desc:[w/2,204,240],grid:[24,228],begin:[55,340,160,44],field:[55,398,76,26],hist:[139,398,76,26]}
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
+      const ease=k=>1+2.2*Math.pow(k-1,3)+1.2*Math.pow(k-1,2),bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
+        for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+bw+4,y-4,-1,1],[x-4,y+bh+4,1,-1],[x+bw+4,y+bh+4,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);};
       ui.banner('SCROLL MONSTERS',...L.banner);
-      const [hx,hy]=L.hero;ui.panel('dk_slot',hx,hy,96,96,5,2);ui.image('face_'+sel,hx+10,hy+10,76,76);
-      ui.darkText(pretty(sel).toUpperCase(),L.name[0],L.name[1],{size:18,align:'center'});
-      const info=roster.find(([id])=>id===sel);
-      ui.darkText(info?info[1]:'',L.desc[0],L.desc[1],{align:'center',color:D().muted,wrap:L.desc[2]}).setOrigin(.5,0);
-      roster.forEach(([id],i)=>{const x=L.grid[0]+(i%5)*46,y=L.grid[1]+Math.floor(i/5)*46,known=s.unlocked.includes(id);this.layout.faces.push({id,x,y,size:38,known});
-        const face=ui.image('face_'+id,x,y,38,38);if(face){if(known)face.clearTint();else face.setTint(0x2a2238);}
-        ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);
-        if(id===sel){const g=ui.graphics();g.lineStyle(2,0xffffff,1);
-          for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+42,y-4,-1,1],[x-4,y+42,1,-1],[x+42,y+42,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);}});
+      // Hero flip (prototype menu): squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
+      const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
+      const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
+      const face=ui.image(key,hx+48,hy+48-lift,Math.max(1,76*sx),76,{center:true});this.layout.hero={scaleX:Math.round(sx*1000)/1000,key};
+      if(!red&&t>=80&&t<400&&this.sparkAt!==s.starterAt){this.sparkAt=s.starterAt;for(let i=0;i<8;i++){const a=i*Math.PI/4+j.rand()*.5,r=30+j.rand()*24;j.play('Reward_Trail',ox+hx+48+Math.cos(a)*r,oy+hy+48+Math.sin(a)*r,{ui:true,scale:1});}}
+      const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
+      ui.pill('<',hx-41,hy+34,30,28,()=>step(-1),{id:'prev'});ui.pill('>',hx+107,hy+34,30,28,()=>step(1),{id:'next'});
+      // Name and description slide up as they fade in; a locked tap shows how to unlock instead.
+      const lock=s.lockedTap&&now-s.lockedTap.at<1500?s.lockedTap:null,info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
+      ui.darkText(lock?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
+      ui.darkText(lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
+      const pos=i=>({x:L.grid[0]+(i%5)*46,y:L.grid[1]+Math.floor(i/5)*46}),ids=roster.map(([id])=>id);
+      roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
+        if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
+        this.layout.faces.push({id,x:x+ox,y:y+oy,size:38,known}); // layout is recorded in screen space
+        const f=ui.image('face_'+id,x,y,38,38);if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
+        ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);});
+      // The selection brackets slide from the previous face over 150ms.
+      const to=pos(ids.indexOf(sel)),from=s.starterFrom?pos(ids.indexOf(s.starterFrom)):to,bk=red?1:Math.min(1,t/150),be=bk>=1?1:ease(bk);
+      bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,38,38);
       const [bx,by,bw,bh]=L.begin;ui.card('BEGIN',bx,by,bw,bh,()=>s.start(),{color:D().gold,size:18,align:'center',id:'begin'});
+      bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx+ox,by+oy,bw,bh];this.layout.beginBrackets=[bx+ox,by+oy,bw,bh];
       const other=s.field==='desert'?'woods':'desert';
       ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
+      if(!portrait)ui.endGroup();
     }
     paused(w,h){
       const s=this.s,ui=s.ui,ids=[...new Set(s.relics.equipped)];this.dim(w,h);
       if(ids.length){
         // Relic collection: one column in portrait, two in landscape so 13 relics fit 320 logical px.
-        const cols=w>h?2:1,rows=Math.ceil(ids.length/cols),pw=Math.min(w-16,cols===2?440:254),ph=64+rows*20+34,px=(w-pw)/2,py=Math.max(34,(h-ph)/2);
+        const cols=w>h?2:1,rows=Math.ceil(ids.length/cols),pw=Math.min(w-16,cols===2?440:254),ph=64+rows*20+34+28,px=(w-pw)/2,py=Math.max(34,(h-ph)/2);this.layout.pausePanel={x:px,y:py,w:pw,h:ph};
         ui.darkPanel(px,py,pw,ph);ui.banner('RELICS',w/2,py-16);
         const colW=(pw-24)/cols;
         ids.forEach((id,i)=>{const cx=px+12+Math.floor(i/rows)*colW,cy=py+26+(i%rows)*20;ui.image('relic_'+id,cx,cy,16,16,{frame:[0,0,16,16]});
           ui.darkText(s.relics.name(id)+' ×'+s.relics.count(id),cx+22,cy+8,{color:D().muted});});
-        this.button('Resume',w/2-50,py+ph-30,100,22,()=>s.pause(),'resume');
-        this.numbersToggle(w,py+ph+8);
+        this.button('Resume',w/2-50,py+ph-58,100,22,()=>s.pause(),'resume');
+        this.numbersToggle(w,py+ph-30);
         return;
       }
-      const pw=Math.min(w-24,254),ph=178,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
+      const pw=Math.min(w-24,w>h?340:254),ph=206,px=(w-pw)/2,py=(h-ph)/2;this.layout.pausePanel={x:px,y:py,w:pw,h:ph};ui.darkPanel(px,py,pw,ph);ui.banner('PAUSED',w/2,py-16);
       ['Move with WASD, arrows or touch drag.','R restarts · F fullscreen','Escape or P resumes.'].forEach((t,i)=>ui.darkText(t,w/2,py+32+i*16,{align:'center',color:D().muted}));
-      this.button('Resume',px+16,py+ph-68,pw-32,24,()=>s.pause(),'resume');
-      this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
-      this.numbersToggle(w,py+ph+8);
+      this.button('Resume',px+16,py+ph-96,pw-32,24,()=>s.pause(),'resume');
+      this.button('Run history / export',px+16,py+ph-66,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
+      this.numbersToggle(w,py+ph-30);
     }
-    numbersToggle(w,y){const j=this.s.juice;this.s.ui.pill('Damage numbers: '+(j.numbersOn?'On':'Off'),w/2-64,y,128,20,()=>j.setNumbers(!j.numbersOn),{id:'damage-numbers'});}
+    // Pause settings, inside the panel's bottom row: damage numbers everywhere; UI size on desktop (landscape) only.
+    numbersToggle(w,y){const s=this.s,j=s.juice,wide=w>this.s.uiSize().h,num=()=>j.setNumbers(!j.numbersOn),label='Damage numbers: '+(j.numbersOn?'On':'Off');
+      // Inside a black panel, so they use the lighter card art like the other panel buttons.
+      this.layout.settings=wide?{x:w/2-154,y,w:308,h:20}:{x:w/2-64,y,w:128,h:20};
+      if(!wide)return this.button(label,w/2-64,y,128,20,num,'set-numbers');
+      this.button(label,w/2-154,y,150,20,num,'set-numbers');
+      this.button('UI size: '+(j.uiLarge?'Large':'Normal'),w/2+4,y,150,20,()=>j.setUiLarge(!j.uiLarge),'set-ui-size');}
     ended(w,h){
       const s=this.s,ui=s.ui,won=s.mode==='won';this.dim(w,h);
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));
@@ -122,6 +145,18 @@
       for(let i=0;i<n;i++){const x=tall?Math.round(w/2+(i-(n-1)/2)*38-17):cx+cw+14,y=tall?cy+ch+18:cy+i*36;this.layout.hand.push({x:x+17,y:y+17});ui.darkPanel(x,y,34,34);
         if(i<r.kept){const key='upgrade_'+r.cards[i].id;if(s.textures.exists(key))ui.image(key,x+1,y+1,32,32,{frame:[0,0,16,16]});}}
     }
+    // The picked upgrade card lingers through the 260ms hold: a brief flash, then it fades and shrinks away,
+    // so the icon flying to the party bar visibly lifts off it. Drawn in any mode; no hit areas.
+    dismiss(w,h){
+      const s=this.s,j=s.juice,p=j.picked;if(!p)return;const t=j.now()-p.at;if(t>=SurvivorScreens.HOLD_MS)return;
+      const {x,y,w:cw,h:ch}=p.card,k=t/SurvivorScreens.HOLD_MS,sc=j.reduced?1:1-.1*k,cx=x+cw/2,cy=y+ch/2,ui=s.ui;
+      ui.beginGroup('pickdismiss',{x:cx*(1-sc),y:cy*(1-sc),scale:sc}).setAlpha(1-k);
+      ui.panel('dk_slot',x,y,cw,ch,5,2);
+      if(s.textures.exists('upgrade_'+p.id))ui.image('upgrade_'+p.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});
+      ui.darkText(p.label,x+40,y+12);ui.darkText(p.detail,x+40,y+25,{color:D().muted,wrap:cw-50}).setOrigin(0,0);
+      if(!j.reduced&&t<60)ui.rect(x,y,cw,ch,'#ffffff'+Math.round((1-t/60)*128).toString(16).padStart(2,'0'));
+      ui.endGroup();
+    }
     relic(w,h){
       const s=this.s,ui=s.ui,r=s.relics,cardH=h>w?80:60,{px,py,pw,ph}=this.choicePanel(w,h,'CHOOSE A RELIC','Shrine reward · this run only',r.offers.length,cardH,30);
       const t=s.juice.since('relic');this.layout.cards=[];
@@ -150,5 +185,6 @@
     }
   }
   SurvivorScreens.LOCK_MS = 370;
+  SurvivorScreens.HOLD_MS = 260;
   window.SurvivorScreens = SurvivorScreens;
 })();

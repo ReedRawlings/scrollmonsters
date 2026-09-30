@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "greens-procgen",
+      "url": "http://localhost:5190",
+      "port": 5190
+    }
+  ]
+}

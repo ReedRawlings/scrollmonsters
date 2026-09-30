@@ -3,7 +3,6 @@
   const D = () => ScrollUI.DARK;
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
-  const NAMES = {storm:'STORM LIZARD'};
   class SurvivorHud {
     constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
     // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
@@ -17,7 +16,6 @@
       if(s.encounters.boss?.hp>0)y=this.guardian(ui,w,y)+6;
       if(s.noticeTime>0&&s.mode==='playing')y+=ui.notice(s.notice,w/2,y,w-24).height+6;
       if(s.logStorageError||s.unlockError)ui.darkText('Local progress could not be saved',w/2,y+6,{align:'center',color:D().danger});
-      if(s.mode==='playing')this.captureLabels(ui,w,h);
     }
     status(ui){
       const s=this.s,p=s.player,hp=clamp(p.hp/s.maxHp,0,1),xp=clamp(s.xp/s.xpNeeded(),0,1);
@@ -77,13 +75,6 @@
       ui.rect(26,y+14,Math.max(0,(width-12)*b.hp/b.maxHp),3,'#ef5266');
       ui.darkText('GUARDIAN '+Math.ceil(b.hp)+' / '+b.maxHp,w/2,y+9,{align:'center',color:D().gold});
       return y+22;
-    }
-    // The only world label left: a capture in progress, where only one of two creatures can join.
-    captureLabels(ui,w,h){
-      const s=this.s,top=112,bottom=h-SLOT_H-30;
-      const capture=(type,b)=>{const p=s.toUI(b.x,b.y),t=ui.darkText('CAPTURE '+(NAMES[type]||type.toUpperCase())+' '+Math.round(b.progress/2.5*100)+'%\nCHOOSE 1 THIS ROUND',0,0,{align:'center',color:D().text}),half=t.width/2+4;t.setPosition(clamp(p.x,half,w-half),clamp(p.y-42,top,bottom));};
-      for(const [type,a] of Object.entries(s.creatures.allies))if(a.state==='ready')capture(type,a);
-      for(const [type,b] of [['frog',s.expedition.frog],['cat',s.expedition.catCapture],['beast',s.encounters.beast],['owl',s.owl]])if(b?.state==='ready')capture(type,b);
     }
   }
   window.SurvivorHud = SurvivorHud;
