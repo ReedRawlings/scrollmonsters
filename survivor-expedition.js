@@ -60,10 +60,10 @@
       if(this.chestClock<=0){this.chestClock=25+s.rand()*15;if(this.chests.filter(c=>!c.opened).length<3){
         for(let i=0;i<40;i++){const a=s.rand()*Math.PI*2,r=260+s.rand()*240,x=s.player.x+Math.cos(a)*r,y=s.player.y+Math.sin(a)*r;
           if(x<60||y<60||x>s.worldSize-60||y>s.worldSize-60||s.blocked(x,y,36)||dist({x,y},this.shrine)<110||s.encounters.nests.some(n=>dist({x,y},n)<100)||this.chests.some(c=>dist(c,{x,y})<90))continue;
-          const xp=8+Math.floor(s.elapsed/60)*2,sprite=s.add.sprite(x,y,'xpChest',0).setScale(3).setDepth(y+15);this.chests.push({x,y,xp,opened:false,life:0,sprite});s.logEvent('chest_spawned',{x:Math.round(x),y:Math.round(y),xp});break;
+          const xp=8+Math.floor(s.elapsed/60)*2,sprite=(s.greens?s.add.sprite(x,y,'greensAtlas',SurvivorGreens.frame(s,'chest',0)):s.add.sprite(x,y,'xpChest',0)).setScale(3).setDepth(y+15);this.chests.push({x,y,xp,opened:false,life:0,sprite});s.logEvent('chest_spawned',{x:Math.round(x),y:Math.round(y),xp});break;
         }
       }}
-      for(const c of this.chests){if(!c.opened&&dist(c,s.player)<38){c.opened=true;c.life=1.2;c.sprite.setFrame(1);const earned=s.gainXP(c.xp);this.chestsOpened++;this.chestXp+=earned;s.burst('fxHit',c.x,c.y,2,.5,0xffd36b);s.logEvent('chest_opened',{xp:earned,x:Math.round(c.x),y:Math.round(c.y)});s.announce('Treasure chest! +'+earned+' XP');}else if(c.opened)c.life-=dt;}
+      for(const c of this.chests){if(!c.opened&&dist(c,s.player)<38){c.opened=true;c.life=1.2;c.sprite.setFrame(s.greens?SurvivorGreens.frame(s,'chest',4):1);const earned=s.gainXP(c.xp);this.chestsOpened++;this.chestXp+=earned;s.burst('fxHit',c.x,c.y,2,.5,0xffd36b);s.logEvent('chest_opened',{xp:earned,x:Math.round(c.x),y:Math.round(c.y)});s.announce('Treasure chest! +'+earned+' XP');}else if(c.opened)c.life-=dt;}
       this.chests=this.chests.filter(c=>{if(!c.opened||c.life>0)return true;c.sprite.destroy();return false;});
     }
     shrineStats(){const tier=Math.min(2,this.shrine.completed);return {hp:[60,140,300][tier],damage:[12,18,26][tier],speed:[55,65,78][tier],chargeSpeed:[280,320,360][tier]};}
