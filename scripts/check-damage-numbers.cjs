@@ -101,7 +101,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       if (mobile) await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y);
       const t = await state(page, () => { const s = __survivorTest.scene; s.draw(); s.juice.damage({x: 0, y: 0}, 5);
         return {on: s.juice.numbersOn, shown: s.juice.numbers.list().length, saved: localStorage.getItem('scrollmonsters-survivor-settings-v1')}; });
-      assert.deepEqual(t, {on: false, shown: 0, saved: '{"damageNumbers":false}'}, `${name}: the toggle turns numbers off and saves it`);
+      assert.deepEqual(t, {on: false, shown: 0, saved: '{"damageNumbers":false,"uiLarge":false}'}, `${name}: the toggle turns numbers off and saves it`);
       await controlPoint(page, 'Damage numbers: Off');
       await page.reload(); await page.waitForFunction(() => window.__phaserReady);
       assert.equal(await state(page, () => __survivorTest.scene.juice.numbersOn), false, `${name}: off survives a reload`);

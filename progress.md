@@ -1223,3 +1223,9 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Phone viewport check passed: offscreen Hunter moved into view before aiming and firing. Desktop and phone full-page Metal captures inspected. Skill harness state/input run passed with no errors; its known black canvas-capture issue persists, so visual verification used the existing browser-helper screenshot route.
 - Added summoners check to maintained runner. Syntax and whitespace checks passed. New specialist balance remains provisional; next human playtest should assess summoner priority pressure and Hunter frequency/telegraph readability.
 - Final validation: full existing suite29/29 passed, plus the new summoners check on desktop and phone (30 total checks across suite and targeted runs). No browser runtime/resource errors in the new test.
+
+## September 30 — reconcile local main with origin/main
+- Local main's enemy/world update (1452c5a) diverged from the remote feedback merge (5d706fb). Merged the histories on main without creating a branch or rewriting commits.
+- Combined both test lists and retained the high world/UI draw depths with the incoming UI-size setting. Preserved the enlarged shrine while accepting the incoming enlarged creature-capture rings; updated the incoming shrine assertion accordingly.
+- Set repository-local pull.rebase=false so later pulls default to merging. Existing branches and worktrees were left intact.
+- Validation: all31 combined survivor checks passed, including enemy variants/summoners and incoming feedback coverage. Syntax/whitespace checks passed; merged-game screenshots visually reviewed. Required skill smoke harness ran; known black canvas capture persists, with full-page test screenshots used for visual verification.

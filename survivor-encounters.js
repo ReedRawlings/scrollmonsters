@@ -114,7 +114,7 @@
       }
     }
     update(dt){
-      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.announce('A den of monsters appears');}
+      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A den of monsters appears');}
       for(const n of this.nests)this.updateNest(n,dt);this.updateBeast(dt);this.updateBoss(dt);
       for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='hunter_arrow'?10:['owl_feather','mage_orb'].includes(b.source)?6:8,b.source);b.life=0;}this.s.relics.nearShot(b);}
       this.bullets=this.bullets.filter(b=>{if(b.life>0)return true;b.sprite.setVisible(false);return false;});

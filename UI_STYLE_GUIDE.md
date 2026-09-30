@@ -5,8 +5,8 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 ## Survivors: DarkMode
 
 ### Scale and space
-- Canvas: 540×960 portrait, 960×640 landscape, `Phaser.Scale.FIT`. Never `EXPAND`.
-- All UI is laid out in logical space (270×480 portrait, 480×320 landscape) inside the `ui2x` group, which is scaled ×2 (`UI` in `survivors.js`). World-anchored labels convert with `scene.toUI(x, y)`.
+- Canvas: 540×960 portrait, 1440×960 landscape (desktop), `Phaser.Scale.FIT`. Never `EXPAND`. The desktop canvas shows 1.5× more world each way so creatures read the same size as on a phone.
+- All UI is laid out in logical space inside the `ui2x` group, scaled by `scene.uiScale()`: portrait 2× (270×480); desktop Normal 2× (720×480, the default) or Large 3× (480×320), chosen in Pause → "UI size" and saved in `scrollmonsters-survivor-settings-v1`. Fixed-coordinate landscape screens (the title) sit in a centred 480×320 frame. World-anchored points convert with `scene.toUI(x, y)`.
 - Raster UI art is drawn at whole-number scale: nine-slices, status frame, party slots and the heart at 2 (logical); banner, icons and facesets at 1 or 2.
 
 ### Type
@@ -47,6 +47,14 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 - Dropped by roaming elites, pack hunters and claimed caches. Size by luck (seeded): 1 card Common 81% (`#5ed5f2`), 3 cards Rare 17% (`#b58cff`), 5 cards Legendary 2% (`#ffd36b`). The spec's 82/17/2 summed to 101%, so common gave up the extra point. Cards come from the active team's pool and are all granted the moment the pack is picked up; a card that stopped being offerable since the drop is redrawn.
 - Reveal (`mode='pack'`, combat paused): banner and count, a face-down pile dealt 90ms apart (input locked for max(300, 90×cards+120) ms), tap/ENTER/SPACE flips the top card (`Pack_Flip`), and another tap, a swipe or 1s files it into the hand (a row under the card in portrait, a column beside it in landscape). 250ms after the last card, each icon flies to its creature's party slot and combat resumes. No on-screen prompts.
 - Relics come only from shrine clears. The relic choice shows a pulsing gold NEW on unowned relics, rolls an owned stack up (×2 → ×3) 400ms in, and flies the chosen icon to its HUD relic cell.
+
+### Map text
+- No text over the world. The only header is "A den of monsters appears" (`scene.headline()`); `announce()` is a deliberate no-op. No upgrade, pickup, shrine, phase or capture labels — rings, sheets and the HUD carry that information.
+- Capture zones are 140 world px (ring and fill at 6×); the shrine circle stays at 3×.
+
+### Title motion
+- `<` and `>` beside the portrait step through unlocked creatures. A change flips the portrait (80ms squash, 220ms open with an 8px lift) with a sparkle burst; the selection brackets slide 150ms; name and description slide up while fading in. Locked faces shake and show "???" with how to unlock. BEGIN always wears the white corner brackets.
+- A picked upgrade card stays on screen through the 260ms hold (brief flash, then fade and shrink) so its icon visibly lifts off it.
 
 ### Assets
 - `scripts/build-ui-assets.py` regenerates `assets/ui/darkmode/*` and `assets/icons/relics/*` from the purchased packs. Ship only the crops; never commit the packs.

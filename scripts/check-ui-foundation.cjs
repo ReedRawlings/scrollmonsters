@@ -86,7 +86,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     assert(hud.relics.every(r => r.x >= 0 && r.x + 20 <= 270), 'Relic row stays inside 270 logical px');
     assert.equal(hud.relics.find(r => r.id === 'veil').count, 2);
     // long notices wrap inside the screen; a party member without a faceset falls back
-    await state(tall, () => { const s = __survivorTest.scene; s.announce('Bonus upgrade earned! Leave the circle before the next challenge.'); const party = s.expedition.party; s.expedition.party = () => ['cat', 'nofaceset']; s.draw(); s.expedition.party = party; });
+    await state(tall, () => { const s = __survivorTest.scene; s.headline('Bonus upgrade earned! Leave the circle before the next challenge.'); const party = s.expedition.party; s.expedition.party = () => ['cat', 'nofaceset']; s.draw(); s.expedition.party = party; });
     assert.deepEqual(await offscreenTexts(tall), [], 'No HUD text leaves the canvas (portrait)');
     // Dash is gesture/keyboard-only; the player slot remains a cooldown display.
     assert(!(await listControls(tall)).some(c=>c.label.startsWith('Dash')), 'No dash or dash-style buttons');
@@ -95,8 +95,8 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     await tall.close();
 
     const land = await open(browser, {width: 1100, height: 760});
-    assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 960, h: 640});
-    await state(land, () => { const s = __survivorTest.scene; s.start(); s.announce('Shrine challenge 1/3! Defeat the elite for an upgrade.'); s.draw(); });
+    assert.deepEqual(await state(land, () => ({w: __survivorTest.scene.scale.width, h: __survivorTest.scene.scale.height})), {w: 1440, h: 960});
+    await state(land, () => { const s = __survivorTest.scene; s.start(); s.headline('Shrine challenge 1/3! Defeat the elite for an upgrade.'); s.draw(); });
     assert.deepEqual(await offscreenTexts(land), [], 'No HUD text leaves the canvas (landscape)');
     await land.screenshot({path: 'output/ui-foundation/hud-landscape.png'});
     await land.close();
@@ -182,7 +182,7 @@ const woodInUse = page => page.evaluate(() => { const s = __survivorTest.scene, 
     const align = await open(browser, {width: 390, height: 844}, 'survivors.html?test', true);
     const ragged = await state(align, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999;
       s.creatures.release('mouse', s.player.x + 80, s.player.y, false); // a capture-ready creature shows a two-line label
-      s.announce('Bonus upgrade earned! Leave the circle before the next challenge.'); s.draw();
+      s.headline('Bonus upgrade earned! Leave the circle before the next challenge.'); s.draw();
       const out = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible && o.originX === 0.5 && o.style.fontFamily === 'NovelMix' && o.getWrappedText(o.text).length > 1 && o.style.align !== 'center') out.push(o.text); });
       return out; });
     assert.deepEqual(ragged, [], 'Centred multi-line labels are centre-aligned');
