@@ -11,7 +11,7 @@
       this.beastSprite=scene.add.sprite(0,0,'beast').setScale(3.5).setVisible(false);
       this.bossSprite=scene.add.sprite(0,0,'guardian').setScale(2.2).setVisible(false);
     }
-    denPosition(existing=this.nests||[]){const s=this.s,sh=s.expedition?.shrine||{x:s.worldSize/2,y:s.worldSize*.2625};
+    denPosition(existing=this.nests||[]){const s=this.s,sh=s.expedition?.shrine||{x:s.worldSize/2,y:s.worldSize*.2625};const planned=s.greens?.denSpot(existing);if(planned)return planned;
       const valid=p=>!s.blocked(p.x,p.y,100)&&dist(p,s.player)>300&&dist(p,sh)>180&&existing.every(n=>dist(n,p)>300)&&(s.expedition?.chests||[]).every(c=>dist(c,p)>100);
       for(let i=0;i<250;i++){const p={x:140+s.rand()*(s.worldSize-280),y:140+s.rand()*(s.worldSize-280)};if(valid(p))return p;}
       for(let y=140;y<s.worldSize-140;y+=120)for(let x=140;x<s.worldSize-140;x+=120)if(valid({x,y}))return {x,y};throw new Error('No clear den location');
@@ -104,9 +104,9 @@
       b.attack-=dt*s.attackRate();
       if(b.charge>0){
         this.trails.push({x:b.x,y:b.y,dx:b.dx,dy:b.dy,life:.22});const step=Math.min(dt,b.charge);b.charge-=dt;s.move(b,b.dx*430*step,b.dy*430*step,false);
-        for(const e of s.combatTargets())if(e.hp>0&&!b.hits.has(e)&&dist(e,b)<e.r+24){b.hits.add(e);s.hit(e,s.companionStats().beast.damage,'beast',b);this.pulses.push({x:e.x,y:e.y,r:30,life:.35});}
+        for(const e of s.hitTargets())if(e.hp>0&&!b.hits.has(e)&&dist(e,b)<e.r+24){b.hits.add(e);s.hit(e,s.companionStats().beast.damage,'beast',b);this.pulses.push({x:e.x,y:e.y,r:30,life:.35});}
         if(b.charge<=0){this.pulses.push({x:b.x,y:b.y,r:45,life:.35});s.burst('fxEarth',b.x,b.y,s.upgrades.slam?4:2.5,.5);}
-        if(b.charge<=0&&s.upgrades.slam){this.pulses.push({x:b.x,y:b.y,r:105,life:.35});for(const e of s.combatTargets())if(e.hp>0&&dist(e,b)<105+e.r)s.hit(e,s.companionStats().beast.shockwave,'beast',b);}
+        if(b.charge<=0&&s.upgrades.slam){this.pulses.push({x:b.x,y:b.y,r:105,life:.35});for(const e of s.hitTargets())if(e.hp>0&&dist(e,b)<105+e.r)s.hit(e,s.companionStats().beast.shockwave,'beast',b);}
       }else{
         const plan=b.attack<=0?this.planBeastCharge():null;
         if(plan){s.burst('fxDust',b.x,b.y,2,.4,0xffffff,Math.atan2(plan.dy,plan.dx));b.dx=plan.dx;b.dy=plan.dy;b.charge=plan.length/430;b.hits=new Set();b.attack=s.companionStats().beast.interval;s.logEvent('beast_charge',{expectedHits:plan.hits,expectedBlastHits:plan.blastHits,bossInPath:plan.bossHit,dx:b.dx,dy:b.dy});}
@@ -128,9 +128,9 @@
     draw(){
       const s=this.s,g=s.fx;
       for(const [i,n] of this.nests.entries()){
-        if(!this.nestSprites[i])this.nestSprites[i]={base:s.add.sprite(n.x,n.y,'nature',n.type==='bear'?'rock':'nestStump').setScale(3),token:s.add.sprite(n.x,n.y-12,n.type==='owl'?'feather':n.type==='beast'?'nestBone':n.type==='frog'?'frog':n.type).setScale(n.type==='owl'||n.type==='beast'?1.6:1.2)};
+        if(!this.nestSprites[i])this.nestSprites[i]={base:s.greens?s.add.sprite(n.x,n.y+32,'greensDen').setOrigin(.5,1).setScale(4):s.add.sprite(n.x,n.y,'nature',n.type==='bear'?'rock':'nestStump').setScale(3),token:s.add.sprite(n.x,n.y-12,n.type==='owl'?'feather':n.type==='beast'?'nestBone':n.type==='frog'?'frog':n.type).setScale(n.type==='owl'||n.type==='beast'?1.6:1.2)};
         const art=this.nestSprites[i],visible=this.nestsActive&&s.elapsed>=(n.activeAt||30);art.base.setVisible(visible).setDepth(n.y-1).setTint(n.destroyed?0x77716a:0xffffff);art.token.setVisible(visible&&!n.destroyed).setDepth(n.y+1);if(!visible)continue;if(['mouse','mole','bear'].includes(n.type))g.fillStyle(0x30251d,n.destroyed?.35:.85).fillEllipse(n.x,n.y+15,n.type==='bear'?35:25,14);
-        if(!n.destroyed){g.fillStyle(0x30221a).fillRect(n.x-35,n.y-49,70,6);g.fillStyle(0xffd36b).fillRect(n.x-35,n.y-49,70*Math.max(0,n.hp)/n.maxHp,6);}
+        if(!n.destroyed){const bar=s.greens?n.y-104:n.y-49;g.fillStyle(0x30221a).fillRect(n.x-35,bar,70,6);g.fillStyle(0xffd36b).fillRect(n.x-35,bar,70*Math.max(0,n.hp)/n.maxHp,6);}
       }
       for(const e of s.enemies)if(e.type==='owl'&&e.phase==='shoot')g.lineStyle(2,0xff8070,.8).lineBetween(e.x,e.y,e.x+Math.cos(e.aim)*200,e.y+Math.sin(e.aim)*200);
       for(const t of this.trails)g.lineStyle(14,0xffc464,t.life/.22*.65).lineBetween(t.x-t.dx*18,t.y-t.dy*18,t.x+t.dx*18,t.y+t.dy*18);
