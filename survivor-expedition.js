@@ -35,7 +35,7 @@
     capture(body,type,dt){
       if(!body||body.state!=='ready')return;
       const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?7:1;if(s.mode!=='playing')return;
-      if((!s.isExpedition&&this.party().length>=2)||(Number.isInteger(stage)&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
+      const partyFull=s.isExpedition&&this.party().length>=3;if((!s.isExpedition&&this.party().length>=2)||(Number.isInteger(stage)&&!partyFull&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
       body.progress=dist(body,s.player)<CAPTURE_R?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
       if(body.progress<2.5)return;
       if(s.creatures.evolution.offer(type,body))return;this.completeCapture(body,type,'recruit');
@@ -43,9 +43,9 @@
     completeCapture(body,type,outcome){
       const s=this.s,stage=body.captureStage;
       if(outcome==='recruit'){body.state='ally';s.creatures.elements.recruitDash(type);if(type==='cat'){s.catActive=true;this.catCapture=null;}}
-      if(Number.isInteger(stage)){
+      if(Number.isInteger(stage)&&!(s.isExpedition&&this.party().length>=3)){
         s.encounters.stageChoices[stage]=type;s.encounters.chosen=s.encounters.chosen||type;
-        // A completed capture commits only its own round; other rounds remain available.
+        // A completed capture commits only its own round until the party is full.
         for(const otherType of TYPES){const other=this.captureBody(otherType);if(other!==body&&other?.captureStage===stage)this.dismissCapture(otherType,other);}
         s.logEvent('recruitment_chosen',{creature:type,stage});
       }
@@ -56,7 +56,7 @@
       const f=this.frog;if(f?.state==='ally'){const d=dist(f,s.player)||1;if(d>50)s.move(f,(s.player.x-f.x)/d*Math.min(d,220*dt),(s.player.y-f.y)/d*Math.min(d,220*dt),false);f.pulseClock-=dt;if(f.pulseClock<=0){f.pulseClock=s.frogStats().shieldInterval;s.shield=true;this.supportPulses++;this.pulse=.65;s.burst('fxWater',s.player.x,s.player.y,4,.65);if(s.upgrades.chorus)s.chorusTime=Math.max(s.chorusTime,3);s.logEvent('frog_pulse',{haste:!!s.upgrades.chorus});}}
       this.updateChests(dt);if(!s.isExpedition)return;
       this.updateLaterDens();const phase=Math.min(19,Math.floor(s.elapsed/60));if(phase!==this.phase){this.phase=phase;s.logEvent('encounter_phase',{phase:this.phaseName()});if(phase>0)s.announce(this.phaseName());}
-      if(s.elapsed>=150&&!this.second){this.second=true;const reserved=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage||0]).map(n=>n.type)),options=[...new Set(['frog',...s.nestDeck])].filter(t=>!this.has(t)&&!reserved.has(t)).slice(0,2);for(const [i,type] of options.entries())s.encounters.nests.push({kind:'nest',type,stage:1,activeAt:150,...s.encounters.denPosition(),r:35,hp:70,maxHp:70,clock:2+i,spawnCount:0,destroyed:false});s.logEvent('second_nests_appeared',{options});s.headline('A den of monsters appears');}
+      if(s.elapsed>=150&&!this.second){this.second=true;const reserved=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage||0]).map(n=>n.type)),options=[...new Set(['frog',...s.nestDeck])].filter(t=>!this.has(t)&&!reserved.has(t)).slice(0,2);for(const [i,type] of options.entries())s.encounters.nests.push({kind:'nest',type,stage:1,activeAt:150,...s.encounters.denPosition(),r:35,hp:70,maxHp:70,clock:2+i,spawnCount:0,destroyed:false});s.logEvent('second_nests_appeared',{options});s.headline('A Den Appears');}
       if(s.elapsed>=180&&!this.lateStrength){this.lateStrength=true;for(const e of s.enemies)this.strengthen(e);s.logEvent('late_enemy_strength');}
       if(s.elapsed>=210&&!this.eliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.hp=e.maxHp=65;e.sprite.setScale(5);e.speed*=1.1;this.eliteSpawned=true;s.logEvent('elite_appeared');s.announce('Elite demon approaching!');}}
       if(s.elapsed>=120&&!this.extraEliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.packReward=true;e.hp=e.maxHp=45;e.sprite.setScale(4.5);e.speed*=1.15;this.extraEliteSpawned=true;s.logEvent('roaming_elite_appeared');s.announce('Roaming elite! Defeat it for an upgrade pack.');}}
@@ -72,7 +72,7 @@
         if(!ordered.length){this.laterRounds.add(stage);continue;}
         const options=[];for(let n=0;n<2&&ordered.length;n++){const limit=n===0&&compatible.length?compatible.length:ordered.length,index=Math.floor(s.rand()*limit);options.push(ordered.splice(index,1)[0]);}
         const placed=[];for(const type of options){if(s.encounters.nests.filter(n=>!n.destroyed).length>=4)break;const spot=s.encounters.denPosition(undefined,false);if(!spot)break;placed.push(type);const hp=90+stage*25;s.encounters.nests.push({kind:'nest',type,stage,activeAt:at,...spot,r:35,hp,maxHp:hp,clock:2,spawnCount:0,destroyed:false});}
-        if(!placed.length)return;this.laterRounds.add(stage);s.logEvent('fusion_dens_appeared',{stage,options:placed});s.headline('New dens: recruit or evolve');
+        if(!placed.length)return;this.laterRounds.add(stage);s.logEvent('fusion_dens_appeared',{stage,options:placed});s.headline('A Den Appears');
       }
     }
     updateChests(dt){const s=this.s;this.chestClock-=dt;
@@ -106,7 +106,7 @@
     phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian encounter','Deeper woodland','Evolved hordes','Recruit and evolve','Relic hunters','Ancient territory','Gather strength','Relentless hordes','Final preparations','The last approach','Ancient Guardian finale'][this.phase]||'Explore the woodland';}
     interval(){const t=this.s.elapsed;if(this.s.encounters.bossPressure())return 2.4;if(t<60)return .85-t*.004;if(t<120)return .55;if(t<150)return .7;if(t<180)return .4;if(t<200)return .85;if(t<240)return .4;return Math.max(.18,.34-Math.max(0,t-300)*.00055);}
     enemyType(){const s=this.s,special=SurvivorEnemies.waveType(s);if(special)return special;if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.encounters.bossPressure())return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
-    draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
+    draw(){const s=this.s,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);}
       
       const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setFrame(s.juice.frameName('ShrineStates',sh.completed)).setTint(sh.inCombat?0xffd8b0:0xffffff);
     }

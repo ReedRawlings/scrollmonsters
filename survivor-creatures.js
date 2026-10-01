@@ -43,10 +43,8 @@
         else if(e.phase!=='spin'&&d<e.r+p.r)s.encounters.damage(9,'gladiator_contact');return true;
       }
       if(e.type==='mole'){if(d>310)s.move(e,(p.x-e.x)/d*e.speed*dt,(p.y-e.y)/d*e.speed*dt);if(e.clock<=0&&d<550){if(this.elements.hostileCount()<4&&this.strikes.filter(a=>a.hostile&&a.source==='mole_eruption').length<3)this.strikes.push({x:p.x,y:p.y,r:58,time:1.25,total:1.25,hostile:true,source:'mole_eruption',damage:9});e.clock=s.elapsed>=570?6:4;s.logEvent('mole_targeted',{x:Math.round(p.x),y:Math.round(p.y)});}if(d<e.r+p.r)s.encounters.damage(6,'mole_contact');return true;}return false;}
-    draw(){this.elements.draw();this.evolution.draw();const s=this.s,g=s.fx;for(const [type,a] of Object.entries(this.allies)){a.sprite.setPosition(a.x,a.y).setFrame(Math.floor(s.elapsed*6)%4*4).setDepth(a.y+20);if(type==='bear'&&a.state==='ally'&&s.upgrades.bearGuard)g.lineStyle(2,0x99eac1,.5).strokeCircle(a.x,a.y,100);}
+    draw(){this.elements.draw();this.evolution.draw();const s=this.s,g=s.fx;for(const [type,a] of Object.entries(this.allies)){a.sprite.setPosition(a.x,a.y).setFrame(Math.floor(s.elapsed*6)%4*4).setDepth(a.y+20);}
       for(const h of this.helpers)h.sprite.setPosition(h.x,h.y).setFrame(Math.floor(s.elapsed*10)%4*4).setDepth(h.y+25);
-      for(const e of s.enemies){if(e.enemyShield&&e.hp>0)g.lineStyle(2,0xffad80,.9).strokeCircle(e.x,e.y,e.r+7);if(e.type==='cat'&&e.hp>0&&e.phase==='swipe')g.lineStyle(3,0xff7c52).strokeCircle(e.x,e.y,70);}
-      for(const e of s.enemies)if(e.type==='bear'&&e.hp>0&&e.phase==='slam')g.lineStyle(3,0xff7c52,.9).strokeCircle(e.x,e.y,85);
       for(const a of this.strikes){if(a.shape==='cross'){
         const reach=a.r*Math.min(1,1-a.time/a.total),half=a.width/2;
         g.fillStyle(0xbaffcb,.22).fillRect(a.x-reach,a.y-half,reach*2,a.width).fillRect(a.x-half,a.y-reach,a.width,reach*2);

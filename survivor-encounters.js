@@ -4,7 +4,7 @@
   class SurvivorEncounters {
     constructor(scene){
       if(!scene.textures.exists('hostileOrb')){const g=scene.make.graphics({x:0,y:0,add:false});g.fillStyle(0xff792f).fillCircle(8,8,6).lineStyle(2,0xffecc0).strokeCircle(8,8,6);g.generateTexture('hostileOrb',16,16);g.destroy();}
-      this.s=scene;this.chosen=null;this.stageChoices={};this.beast=null;this.beastDamage=0;this.boss=null;this.bossAppeared=false;this.finalAppeared=false;this.finalDefeated=false;this.bossRestUntil=0;this.bullets=[];this.bulletPool=[];this.pulses=[];this.shotsFired=0;this.nestsActive=false;this.trails=[];this.nestSprites=[];
+      this.s=scene;this.chosen=null;this.stageChoices={};this.beast=null;this.beastDamage=0;this.boss=null;this.bossAppeared=false;this.finalAppeared=false;this.finalDefeated=false;this.guardianSwarmStarted=false;this.bossRestUntil=0;this.bullets=[];this.bulletPool=[];this.pulses=[];this.shotsFired=0;this.nestsActive=false;this.trails=[];this.nestSprites=[];
       const choices=scene.nestDeck.filter(t=>t!==scene.starter),first=choices.slice(0,2),elemental=choices.find(t=>['salamander','spider','storm'].includes(t));
       if(!scene.nestDeckOverride&&elemental&&!first.some(t=>['salamander','spider','storm'].includes(t)))first[1]=elemental;
       const placed=[];this.nests=(scene.isExpedition?first:['owl','beast']).map((type,i)=>{const spot=this.denPosition(placed);placed.push(spot);return {kind:'nest',type,stage:0,activeAt:30,...spot,r:35,hp:50,maxHp:50,clock:1+i,spawnCount:0,destroyed:false};});
@@ -21,14 +21,17 @@
     hitSpecial(e){
       const s=this.s;
       if(e.kind==='nest'){if(!this.nestsActive||s.elapsed<(e.activeAt||30)){e.hp=e.maxHp;return true;}
-        if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);const stage=e.stage||0,eligible=!this.stageChoices[stage]&&!s.expedition.has(e.type)&&Object.keys(this.stageChoices).length<(s.isExpedition?7:1);s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
+        if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);const stage=e.stage||0,partyFull=s.isExpedition&&s.expedition.party().length>=3,eligible=!s.expedition.has(e.type)&&(partyFull||(!this.stageChoices[stage]&&Object.keys(this.stageChoices).length<(s.isExpedition?7:1)));s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
           if(eligible){s.expedition.release(e.type,e.x,e.y,false,stage);s.announce(e.type.toUpperCase()+' freed! Hold its ring to choose.');}
           else s.announce('Nest cleared. This recruitment choice is locked.');
           s.saveRun();
         }return true;
       }
-      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':'Guardian defeated. The expedition continues.');s.saveRun();}return true;}return false;
+      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':'Guardian defeated. The expedition continues.');if(!e.final&&s.isExpedition)this.guardianSwarm();s.saveRun();}return true;}return false;
     }
+    guardianSwarm(){const s=this.s,count=64;if(this.guardianSwarmStarted)return;this.guardianSwarmStarted=true;s.enemyCap+=count;const view=s.spawnView(),halfW=(view.right-view.left)/2+90,halfH=(view.bottom-view.top)/2+90,p=s.player;let spawned=0;
+      for(let i=0;i<count;i++){const a=Math.PI*2*i/count,dx=Math.cos(a),dy=Math.sin(a),edge=Math.min(halfW/Math.max(.001,Math.abs(dx)),halfH/Math.max(.001,Math.abs(dy))),d=edge+(i%4)*24,wrap=n=>((n%s.worldSize)+s.worldSize)%s.worldSize,x=wrap(p.x+dx*d),y=wrap(p.y+dy*d),e=s.spawn(s.expedition.enemyType(),x,y);if(e){e.guardianSwarm=true;spawned++;}}
+      s.spawnTimer=0;s.logEvent('guardian_swarm_appeared',{count:spawned});s.headline('A massive horde closes in from every direction!');}
     damage(amount,source){const s=this.s,p=s.player;if(p.inv>0||p.hp<=0)return;if(s.shield){s.expedition.shieldBlocked();s.shield=false;p.inv=.25;return;}amount=(amount+s.enemyDamageBonus())*s.creatures.protection();p.hp=Math.max(0,p.hp-amount);p.inv=.25;s.juice.hurt(amount);s.damageTaken+=amount;s.logEvent('damage_taken',{enemy:source,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});}
     shoot(from,angle,speed=150,source='mage_orb'){
       this.shotsFired++;const sprite=this.s.pooled(this.bulletPool,source==='hunter_arrow'?'hunterArrow':source==='mage_orb'?'mageOrb':source==='owl_feather'?'feather':'guardianFire',source==='mage_orb'?1.5:source==='owl_feather'?1.6:1.5).setTint(source==='owl_feather'?0xff8877:0xffc05c);
@@ -115,7 +118,7 @@
       }
     }
     update(dt){
-      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A den of monsters appears');}
+      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A Den Appears');}
       for(const n of this.nests)this.updateNest(n,dt);this.updateBeast(dt);if(this.s.mode!=='playing')return;this.updateBoss(dt);
       for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='hunter_arrow'?10:['owl_feather','mage_orb'].includes(b.source)?6:8,b.source);b.life=0;}this.s.relics.nearShot(b);}
       this.bullets=this.bullets.filter(b=>{if(b.life>0)return true;b.sprite.setVisible(false);return false;});

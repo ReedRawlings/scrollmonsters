@@ -60,7 +60,7 @@
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
-      try{this.musicEnabled=localStorage.getItem(MUSIC_KEY)!=='off';}catch{this.musicEnabled=true;}this.music=null;this.musicTrack=null;this.audioUnlocked=false;
+      try{this.musicEnabled=localStorage.getItem(MUSIC_KEY)!=='off';}catch{this.musicEnabled=true;}this.music=null;this.musicTrack=null;this.musicGroup=null;this.musicIndex=0;this.musicPlaylistEnded=false;this.audioUnlocked=false;
       document.getElementById('fallback').hidden=true;this.field=new URLSearchParams(location.search).get('field')==='desert'?'desert':'woods';this.isExpedition=DURATION===1200;this.unlocked=Expedition.readUnlocks();this.starter='cat';this.catActive=true;
       this.seed=this.runSeed();this.rng=this.seed;this.mode='title';this.accumulator=0;this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.obstacles=[];
       this.enemyPool=[];this.shotPool=[];this.effectPool=[];this.pickupPool=[];
@@ -135,6 +135,7 @@
 
     }
     resetState(){
+      this.enemyCap=150;
       this.rng=this.seed;if(this.field!=='desert'){this.greens?.destroy();this.obstacles=[];this.greens=new SurvivorGreens(this);}this.shrineLocation=this.greens?{...this.greens.map.shrine}:null;
       if(!this.shrineLocation){for(let i=0;i<200;i++){const p={x:200+this.rand()*(WORLD-400),y:200+this.rand()*(WORLD-400)};if(!this.blocked(p.x,p.y,160)&&distance(p,{x:WORLD/2,y:WORLD/2})>400){this.shrineLocation=p;break;}}}
       this.expansion=new SurvivorExpansion(this);this.totalXp=0;this.xpRemainder=0;
@@ -156,8 +157,9 @@
     // Title presentation state (starterFrom/starterAt/lockedTap) only drives the menu's flip and hints.
     chooseStarter(id){if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
     unlockAudio(){if(!this.audioUnlocked){this.audioUnlocked=true;this.sound.unlock();}this.syncMusic();}
-    toggleMusic(){this.musicEnabled=!this.musicEnabled;try{localStorage.setItem(MUSIC_KEY,this.musicEnabled?'on':'off');}catch{}this.syncMusic();this.draw();}
-    syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=window.GAME_MUSIC||{},combat=list.combat||[],menu=list.menu||[],inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',track=inRun?(combat.length?combat[this.run?.seed%combat.length]:null):(menu[0]||null);if(!this.musicEnabled||!track){this.music?.stop();return;}if(track!==this.musicTrack){this.music?.destroy();this.musicTrack=track;const i=musicTracks.indexOf(track);if(i<0)return;this.music=this.sound.add(`music:${i}`,{loop:true,volume:.3});}if(!this.music.isPlaying)this.music.play();}
+    toggleMusic(){this.musicEnabled=!this.musicEnabled;try{localStorage.setItem(MUSIC_KEY,this.musicEnabled?'on':'off');}catch{}if(this.musicEnabled&&this.musicPlaylistEnded){this.music?.destroy();this.music=null;this.musicPlaylistEnded=false;}this.syncMusic();this.draw();}
+    playMusicTrack(){const tracks=(window.GAME_MUSIC||{})[this.musicGroup]||[],track=tracks[this.musicIndex];if(!track)return;this.music?.destroy();this.musicTrack=track;const assetIndex=musicTracks.indexOf(track);if(assetIndex<0)return;const sound=this.music=this.sound.add(`music:${assetIndex}`,{loop:false,volume:.3});sound.once('complete',()=>{if(this.music!==sound)return;const inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost';if(this.musicGroup==='menu'&&inRun){this.musicGroup='combat';const combat=(window.GAME_MUSIC||{}).combat||[];if(!combat.length){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.run?.seed||0)%combat.length;this.playMusicTrack();return;}if(this.musicGroup==='menu'&&this.musicIndex>=tracks.length-1){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.musicIndex+1)%tracks.length;this.playMusicTrack();});sound.play();}
+    syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=window.GAME_MUSIC||{},inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',wanted=inRun?'combat':'menu';if(!this.musicEnabled){this.music?.pause();return;}if(this.musicPlaylistEnded){if(this.musicGroup==='menu'&&wanted==='combat'){const tracks=list.combat||[];if(!tracks.length)return;this.musicGroup='combat';this.musicIndex=(this.run?.seed||0)%tracks.length;this.musicPlaylistEnded=false;this.playMusicTrack();}return;}if(!this.music){const tracks=list[wanted]||[];if(!tracks.length)return;this.musicGroup=wanted;this.musicIndex=wanted==='combat'?(this.run?.seed||0)%tracks.length:0;this.playMusicTrack();return;}if(this.music.isPaused)this.music.resume();}
     start(){this.unlockAudio();this.lockedTap=null;this.bestiaryOpen=false;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'evolution-prototype-v43',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
@@ -368,7 +370,7 @@
       for(let i=0;i<50;i++){const a=this.rand()*Math.PI*2,r=260+this.rand()*220,x=this.player.x+Math.cos(a)*r,y=this.player.y+Math.sin(a)*r;if(this.blocked(x,y,35)||this.encounters.nests.some(n=>distance(n,{x,y})<90))continue;const type=['magnet','haste','cleanse'][this.supplyIndex++%3];this.drop(type,x,y);this.pickups[this.pickups.length-1].life=90;this.logEvent('supply_spawned',{pickup:type,x,y});break;}}
     earlySpawnRate(){return .75+.25*Math.max(0,Math.min(1,(this.elapsed-120)/120));}
     enemyDamageBonus(){return Math.max(0,Math.floor((this.elapsed-120)/120));}
-    spawnInterval(){if(this.isExpedition)return this.expedition.interval()/this.earlySpawnRate();return this.elapsed<60?.8-this.elapsed*.005:Math.max(.25,.5-(this.elapsed-60)/240);}
+    spawnInterval(){if(this.isExpedition){const fill=this.enemies.filter(e=>e.hp>0).length/this.enemyCap;return Math.max(.08,this.expedition.interval()/this.earlySpawnRate()*(.6+.4*fill));}return this.elapsed<60?.8-this.elapsed*.005:Math.max(.25,.5-(this.elapsed-60)/240);}
     tick(dt){
       if(this.mode!=='playing')return;
       SurvivorWorld.sync(this);
@@ -416,7 +418,7 @@
         if(item.type==='shield'&&!this.shield){this.shield=true;item.life=0;this.announce('Shield ready: blocks the next hit.');}
       }}
       const retain=(items,condition)=>items.filter(e=>{if(condition(e))return true;e.sprite.setVisible(false).setActive(false);return false;});
-      this.enemies=retain(this.enemies,e=>e.hp>0);this.shots=retain(this.shots,e=>e.life>0);this.effects=retain(this.effects,e=>e.life>0);this.pickups=retain(this.pickups,e=>e.life>0);
+      this.enemies=retain(this.enemies,e=>e.hp>0);if(this.enemyCap>150&&!this.enemies.some(e=>e.guardianSwarm))this.enemyCap=150;this.shots=retain(this.shots,e=>e.life>0);this.effects=retain(this.effects,e=>e.life>0);this.pickups=retain(this.pickups,e=>e.life>0);
       if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if((this.isExpedition?this.encounters.finalDefeated:this.elapsed>=DURATION&&this.encounters.boss?.hp<=0)){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
       if(!this.run?.finished)this.sampleRun();
     }
@@ -434,15 +436,13 @@
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
       this.playerShadow.setPosition(p.x,p.y+15).setDepth(p.y-1);this.catShadow.setVisible(this.catActive).setPosition(c.x,c.y+13).setDepth(c.y-1);
-      this.fx.clear();if(this.shield)this.fx.lineStyle(3,0x83d9ff,.85).strokeCircle(p.x,p.y,29);
+      this.fx.clear();
       for(const e of this.enemies){e.sprite.setPosition(e.x,e.y).setFrame(['cat','frog','lion'].includes(e.type)?frame%2:frame*4+direction(p.x-e.x,p.y-e.y)).setDepth(e.y+20).setTint(e.flash>0?0xffffff:e.phase==='windup'?0xffbf70:0xffffff);
-        if(e.elite)this.fx.lineStyle(3,0xffd36b,1).strokeCircle(e.x,e.y,e.r+12);
-        if(e.phase==='windup'){this.fx.lineStyle(3,0xffbe70,.9).lineBetween(e.x,e.y,e.x+e.dx*180,e.y+e.dy*180);this.fx.strokeCircle(e.x,e.y,e.r+7);}
+        if(e.phase==='windup')this.fx.lineStyle(3,0xffbe70,.9).lineBetween(e.x,e.y,e.x+e.dx*180,e.y+e.dy*180);
         if(e.hp<e.maxHp){this.fx.fillStyle(0x382921,.8).fillRect(e.x-15,e.y-28,30,4);this.fx.fillStyle(0xf0c16e).fillRect(e.x-15,e.y-28,30*e.hp/e.maxHp,4);}}
       SurvivorEnemies.draw(this);
       const o=this.owl;this.owlSprite.setVisible(!!o);
       if(o){this.owlSprite.setPosition(o.x,o.y).setFrame(frame*4+direction(p.x-o.x,p.y-o.y)).setDepth(o.y+20);
-        if(o.state==='wild')this.fx.lineStyle(3,0xffd36b,.9).strokeCircle(o.x,o.y,24);
         
         if(o.state==='wild'){this.fx.fillStyle(0x30221a).fillRect(o.x-20,o.y-33,40,5);this.fx.fillStyle(0xffd36b).fillRect(o.x-20,o.y-33,40*o.hp/o.maxHp,5);}
       }

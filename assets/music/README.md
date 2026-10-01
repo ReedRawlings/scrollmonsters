@@ -12,6 +12,6 @@ Keep menu-only music in `menu/`. The first audio filename alphabetically is used
 - **Local:** start with `npm run dev` or `python3 scripts/serve.py 5173`, then reload the page after adding files. This server rescans the folder each time the playlist is requested.
 - **Other static servers:** run `npm run build` after changing music, then reload.
 
-`playlist.js` is generated; do not edit it. The current Survivors game plays menu music outside a run and selects one combat track per run. Legacy gameplay keeps its existing round rotation. Music is enabled by default in Survivors and can be changed from the title screen or pause menu. An empty combat folder plays no combat music. Sound effects and jingles still use their original asset-pack paths.
+`playlist.js` is generated; do not edit it. Survivors starts with menu music and keeps the current track playing across screen changes. Once a run is active, the combat playlist follows in order as tracks end. Music is enabled by default and can be changed from the title screen or pause menu. Legacy gameplay keeps its existing round rotation. An empty combat folder plays no combat music. Sound effects and jingles still use their original asset-pack paths.
 
 Music from the Ninja Adventure asset pack remains covered by its original license.
