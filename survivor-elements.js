@@ -6,7 +6,7 @@
     }
     has(t){return this.owner.allies[t]?.state==='ally';}
     stats(t){const u=this.s.upgrades;if(t==='salamander')return {damage:3+u.firePower,interval:2.6/(1+.2*u.fireSpeed),radius:Math.min(60,36+6*u.fireArea),life:Math.min(6,3+.5*u.fireLife)};
-      if(t==='spider')return {damage:4+u.webPower,vulnerability:.2+.05*u.webWeaken,interval:3.4/(1+.2*u.webSpeed),radius:Math.min(65,42+5*u.webArea),count:Math.min(4,2+u.webCount)};
+      if(t==='spider')return {damage:4+u.webPower,tickDamage:1,tickInterval:1,vulnerability:.2+.05*u.webWeaken,interval:3.4/(1+.2*u.webSpeed),radius:Math.min(65,42+5*u.webArea),count:Math.min(4,2+u.webCount)};
       return {damage:4+u.stormPower,interval:2/(1+.2*u.stormSpeed),jumps:Math.min(8,3+u.stormJumps),range:Math.min(240,130+20*u.stormRange)};
     }
     upgrades(){const u=this.s.upgrades,result=[];const add=(id,name,detail,once=false)=>{if(!once||!u[id])result.push({id,name,detail});};
@@ -48,7 +48,7 @@
       const b=s.encounters.beast;if(s.upgrades.comboFire&&this.has('salamander')&&b?.charge>0&&this.trailClock<=0){this.trailClock=.13;this.zone('fire',b.x,b.y);}
       const due=[];this.casts=this.casts.filter(c=>{c.time-=dt;if(c.time<=0){due.push(c);return false;}return true;});
       for(const c of due){if(c.type==='strike'){s.burst('elementThunder',c.x,c.y,3,.4,c.hostile?0xffb066:0x9beaff);if(c.hostile){if(dist(c,s.player)<c.r+s.player.r)s.encounters.damage(8,'storm_strike');}else for(const e of s.hitTargets())if(e.hp>0&&dist(c,e)<c.r+e.r)s.hit(e,this.stats('storm').damage*2,'storm',c);}else this.zone(c.type,c.x,c.y,c.hostile);}
-      for(const z of [...this.zones]){z.life-=dt;if(z.life<=0){this.removeZone(z);continue;}if(z.hostile){if(dist(z,s.player)<z.r+s.player.r){if(z.type==='web')this.slow=.15;else s.encounters.damage(5,'salamander_fire');}}else {const targets=s.hitTargets().filter(e=>e.hp>0&&dist(e,z)<z.r+e.r);if(z.type==='web'){for(const e of targets){e.webUntil=s.elapsed+.2;if(!s.unstoppable(e))e.slowUntil=s.elapsed+.2;}if(s.upgrades.webBurst&&targets.length>=3)this.burstWeb(z);}else{z.tick-=dt;if(z.tick<=0){z.tick=.6;for(const e of targets){e.burningUntil=s.elapsed+.7;e.spreadBurn=z.spread;s.hit(e,this.stats('salamander').damage,'salamander',z);}}}}
+      for(const z of [...this.zones]){z.life-=dt;if(z.life<=0){this.removeZone(z);continue;}if(z.hostile){if(dist(z,s.player)<z.r+s.player.r){if(z.type==='web')this.slow=.15;else s.encounters.damage(5,'salamander_fire');}}else {const targets=s.hitTargets().filter(e=>e.hp>0&&dist(e,z)<z.r+e.r);if(z.type==='web'){for(const e of targets){e.webUntil=s.elapsed+.2;if(!s.unstoppable(e))e.slowUntil=s.elapsed+.2;}z.tick-=dt;if(z.tick<=0){z.tick=this.stats('spider').tickInterval;for(const e of targets)s.hit(e,this.stats('spider').tickDamage,'spider',z);}if(s.upgrades.webBurst&&targets.length>=3)this.burstWeb(z);}else{z.tick-=dt;if(z.tick<=0){z.tick=.6;for(const e of targets){e.burningUntil=s.elapsed+.7;e.spreadBurn=z.spread;s.hit(e,this.stats('salamander').damage,'salamander',z);}}}}
         if(z.sprite)z.sprite.setFrame(Math.floor(s.elapsed*10)%8).setAlpha(Math.min(1,z.life/.4));
       }
       this.links=this.links.filter(l=>(l.life-=dt)>0);

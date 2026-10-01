@@ -90,7 +90,7 @@ const { gameURL, launchOptions } = require('./survivor-test-utils.cjs');
         afterStrikes, afterEcho, afterKillingHit, resetHits: s.creatures.elements.stormHits };
     });
     const near = (actual, expected) => assert(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
-    near(result.original, 10 * 1.4 * 1.15 * 1.4 * 1.09 * 1.2 * 1.25 * 1.3);
+    near(result.original, (10 * 1.4 * 1.15 * 1.4 * 1.09 + 1) * 1.25 * 1.3);
     near(result.echo, result.original * .4);
     assert.deepEqual(result.echoState, { pending: 1, remaining: 0, hunterHits: 3, afterHunterHits: 3 });
     assert.equal(result.shieldEchoes, 0);

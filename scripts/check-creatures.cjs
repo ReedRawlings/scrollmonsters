@@ -11,7 +11,7 @@ run('Mouse/Mole/Bear recruitment, abilities, warnings, protection and persistenc
       if(!s.expedition.party().includes(type)||!s.unlocked.includes(type))throw Error('Capture failed: '+type);
       setup(type);
       const pool=s.upgradePool().map(u=>u.id);
-      if(!pool.includes('partyDamage')||!pool.includes('partySpeed')||pool.includes(type+'Power'))throw Error('Shared progression offers incorrect');
+      if(!pool.includes('partyDamage')||!pool.includes('partySpeed')||(type!=='bear'&&pool.includes(type+'Power')))throw Error('Shared progression offers incorrect');
       if(s.catActive||s.expedition.party().join()!==type)throw Error('Starter must replace Cat');
       const a=s.creatures.allies[type];a.x=s.player.x;a.y=s.player.y;a.attack=0;
       const targets=[50,65].map(dx=>{const e=s.spawn('beast',s.player.x+dx,s.player.y);Object.assign(e,{hp:200,maxHp:200,speed:0,clock:999});return e;});

@@ -1247,3 +1247,11 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Added minute-boundary browser regression covering contact from an existing enemy, in-flight projectile, Guardian eruption, fire hazard, reduction, shields, invulnerability and reset; passed. Registered it in the maintained suite.
 - Required web-game harness completed; known black canvas capture persists. Inspected the separate Metal gameplay screenshot successfully. Next: human playtest late-run damage with the 0.25-second protection window.
 - Existing player aim/invulnerability browser regression also passed; syntax and whitespace checks passed.
+
+## September 30 — Bear, Frog and Spider ability rework
+- Bear now emits a narrow expanding cross: 180 reach, 28 width, 10-to-5 radial damage falloff, 0.45s travel, one hit per target. Reaching Tremor adds reach; Heavy Paws returns as a creature-specific damage upgrade. Existing stagger/guard and dash remain.
+- Frog now grants +1 flat hit damage to player and companions. Removed Bolstering Croak offers; old frogPower state is inert. Echo damage inherits the bonus exactly once.
+- Spider webs now tick for 1 base damage each second while retaining slow, vulnerability, burst and combo behavior. Updated bestiary text and asset cache versions.
+- Added browser regression for cross geometry/falloff/upgrades, Frog flat damage and Spider cadence/pause; passed. Inspected full-page Metal screenshot of cross and web effects. Full regression suite and required skill smoke test pending below.
+- Validation complete: survivor suite passed 35/35, including ability geometry, all dash styles, shared progression, relic contracts, input, pause and UI feedback. Required skill gameplay harness passed movement/dash state with no errors; its known black canvas-only capture persists, so the full-page Metal screenshot was used for visual verification. Syntax and whitespace checks passed.
+- Next: human playtest Bear center-vs-tip damage and Spider/Frog synergy; current damage and reach values are initial tuning.
