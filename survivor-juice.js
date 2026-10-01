@@ -1,12 +1,12 @@
 (() => {
   'use strict';
-  const MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
+  const GEM_PICKUP = 38, MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
   // Each creature's element colour, matching the hit bursts the sim already uses for it.
   const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff};
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
-  // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
-  // Math.random() (the sim uses it for dens and chests), scene.burst() or camera.shake() (uses Math.random).
+  // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(), Math.random(),
+  // scene.burst() or camera.shake() (Math.random) from here; cosmetic randomness uses this.rand().
   class SurvivorJuice {
     constructor(s){
       this.s=s;this.enabled=true;this.reduced=s.ui.reducedMotion;this.seed=(Date.now()>>>0)||1;
@@ -25,7 +25,7 @@
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
-      for(const c of this.titleCritters||[])c.sprite.destroy();this.titleCritters=[];this.fireflyG?.clear();
+      for(const c of this.titleCritters||[])c.sprite.destroy();this.titleCritters=[];this.fireflyG?.clear();this.irisAt=null;
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
       this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
@@ -118,13 +118,14 @@
       const p=this.s.player,dx=p.x-item.x,dy=p.y-item.y,d=Math.hypot(dx,dy)||1;
       if(!this.enabled||!(item.magnetized||d<100))return {x:0,y:0,scale:1};
       let g=this.gems.get(item);if(!g){g={d0:Math.max(d,1),side:this.rand()<.5?-1:1};this.gems.set(item,g);}
-      const t=clamp(1-d/g.d0,0,1),a=Math.sin(t*Math.PI),amp=Math.min(22,g.d0*.3)*g.side;
+      // Progress runs to the pickup radius (38px), where the sim collects the gem, so the arc lands on the player.
+      const t=g.d0<=GEM_PICKUP?1:clamp((g.d0-d)/(g.d0-GEM_PICKUP),0,1),a=Math.sin(t*Math.PI),amp=Math.min(22,g.d0*.3)*g.side;
       return {x:-dy/d*amp*a,y:dx/d*amp*a-14*a,scale:1-.4*t};
     }
     onGem(e){const now=this.now();this.xpFlashAt=now;
       if(now-this.lastSpark>60){this.lastSpark=now;const p=this.s.player;this.play('Reward_Trail',p.x+(this.rand()*2-1)*6,p.y-12,{scale:2,depth:p.y+40});}}
     // 0..1 brightness for the XP bar: a short flash per gem, a long one on level-up.
-    xpFlash(){const now=this.now();if(!this.enabled)return 0;return Math.max(clamp(1-(now-this.xpFlashAt)/140,0,1)*.6,clamp(1-(now-this.levelFlashAt)/420,0,1));}
+    xpFlash(){const now=this.now();if(!this.enabled||this.reduced)return 0;return Math.max(clamp(1-(now-this.xpFlashAt)/140,0,1)*.6,clamp(1-(now-this.levelFlashAt)/420,0,1));}
     onLevelUp(e){
       this.levelFlashAt=this.now();this.flashCopy(this.s.playerSprite,90);this.jitter(2,160);this.freeze(60);
       // A level-up chained straight after a pick never passes through a draw, so re-arm the deal-in clock here.
@@ -146,8 +147,8 @@
       const types=PARTY_WIDE.includes(id)?this.s.hud.layout.slots.filter(v=>v.type).map(v=>v.type):[this.ownerOf(id)];
       for(const t of types)this.flyTo('upgrade_'+id,from,this.slotPoint(t),{onLand:land((this.s.hud.layout.slots.find(v=>v.type===t)||this.s.hud.layout.slots[0])?.type)});
     }
-    slotFlash(type){return clamp(1-(this.now()-(this.slotFlashAt[type]??-1e9))/250,0,1);}
-    hpFlash(){return clamp(1-(this.now()-this.hpFlashAt)/250,0,1);}
+    slotFlash(type){if(this.reduced)return 0;return clamp(1-(this.now()-(this.slotFlashAt[type]??-1e9))/250,0,1);}
+    hpFlash(){if(this.reduced)return 0;return clamp(1-(this.now()-this.hpFlashAt)/250,0,1);}
     // Pickup: the pack bursts open in the world and jumps to the centre of the screen as the reveal starts.
     onPack(e){const key='Pack_Drop_'+SurvivorPacks.rarity(e.size);this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});
       const {w,h}=this.s.uiSize();this.flyTo(key,this.s.toUI(e.x,e.y),{x:w/2,y:this.s.screens.packCardY(w,h)},{size:48});}
@@ -163,7 +164,7 @@
         others:e.ids.map((id,i)=>i===e.index||!e.cards[i]?null:{card:e.cards[i],label:label(i,id),id,icon:'relic_'+id}).filter(Boolean)};
       this.s.draw();const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
       this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>{this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1});this.relicBumpAt[e.id]=this.now();}});}
-    relicBump(id){return clamp(1-(this.now()-(this.relicBumpAt[id]??-1e9))/220,0,1);}
+    relicBump(id){if(this.reduced)return 0;return clamp(1-(this.now()-(this.relicBumpAt[id]??-1e9))/220,0,1);}
     // Ground packs tumble out of the defeated enemy and land exactly on their sim position.
     packOffset(item){if(!this.enabled||this.reduced)return {x:0,y:0,rot:0};let t0=this.packSeen.get(item);if(t0==null){t0=this.now();this.packSeen.set(item,t0);}
       const t=clamp((this.now()-t0)/600,0,1),e=1-Math.pow(1-t,2);return t>=1?{x:0,y:0,rot:0}:{x:24*(1-e),y:-28*(1-e)-50*Math.sin(Math.PI*t),rot:-2*Math.PI*(1-e)};}
@@ -214,8 +215,8 @@
         const x=cx-vw+((f*7919)%1)*vw*2+Math.sin(k*6+i)*8,y=cy+vh-((f*104729)%1)*vh*2-k*60;g.fillStyle(0xffe680,Math.sin(k*Math.PI)).fillRect(Math.round(x),Math.round(y),3,3);}
     }
     // BEGIN closes an iris on the field and opens it on the run (0..1 = radius fraction; 1 = no iris).
-    iris(){if(this.reduced||!this.enabled)return;this.irisAt=this.now();this.freeze(500);}
-    irisRadius(){const t=this.now()-(this.irisAt??-1e9);return t>=500?1:t<250?1-t/250:(t-250)/250;}
+    iris(){if(this.reduced||!this.enabled)return;this.irisAt=this.now();this.freeze(400);}
+    irisRadius(){const t=this.now()-(this.irisAt??-1e9);return t>=400?1:1-Math.pow(1-t/400,2);}
     drawIris(){const r=this.irisRadius(),g=this.irisG??=this.s.add.graphics();if(g.parentContainer!==this.front)this.front.add(g);g.clear();if(r>=1)return;
       const {w,h}=this.s.uiSize(),R=Math.hypot(w,h)/2,rr=Math.max(0,r*R),thick=R*2;g.lineStyle(thick,0x000000,1).strokeCircle(w/2,h/2,rr+thick/2);}
     elementTint(type){return ELEMENT_TINT[type]??0xffffff;}
@@ -223,6 +224,7 @@
     slotFill(type){const t0=this.slotFillAt[type];return t0==null?1:clamp((this.now()-t0)/300,0,1);}
     onCapture(e){
       this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);this.flashCopy(this.captureSprite(e.type,this.s.expedition.captureBody(e.type)),120);this.jitter(2,200);
+      this.slotFillAt[e.type]=this.now()+960; // the bar stays empty through the 500ms hold and 460ms flight, then fills
       if(this.fx.length+this.faces.length>=MAX_FX)return;
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
       if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}

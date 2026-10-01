@@ -23,15 +23,15 @@
       const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
       this.dim(w,h);this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
       // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
-      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2)+28;/* +28: the frame's content spans y 10..246, so this centres it */if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
+      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2)+32;/* +32: the frame's content spans y 10..246, so this centres it */if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
         ?{banner:[w/2,26],hero:[87,72],name:[w/2,186],desc:[w/2,204,240],grid:[24,228],begin:[55,340,160,44],field:[55,398,76,26],hist:[139,398,76,26]}
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
       const ease=k=>1+2.2*Math.pow(k-1,3)+1.2*Math.pow(k-1,2),bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
         for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+bw+4,y-4,-1,1],[x-4,y+bh+4,1,-1],[x+bw+4,y+bh+4,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);};
       // Logo: slams in at 350ms (1.6x to 1x over 200ms), then bobs 2px.
-      const lk=red?1:tt<350?0:Math.min(1,(tt-350)/200);fx.logo=red?1:tt<350?0:1.6-.6*(1-Math.pow(1-lk,3));fx.bob=red||tt<550?0:Math.round(2*Math.sin((tt-550)/600*Math.PI));
-      if(fx.logo>0){const [bx0,by0]=L.banner;ui.beginGroup('titlelogo',{x:bx0*(1-fx.logo),y:(by0+16)*(1-fx.logo)+fx.bob,scale:fx.logo});ui.banner('SCROLL MONSTERS',bx0,by0);ui.endGroup();}
+      const lk=tt<350?0:Math.min(1,(tt-350)/200);fx.logo=red?(tt<350?0:1):tt<350?0:1.6-.6*(1-Math.pow(1-lk,3));fx.logoAlpha=red?lk:1;fx.bob=red||tt<550?0:Math.round(2*Math.sin((tt-550)/600*Math.PI));
+      if(fx.logo>0){const [bx0,by0]=L.banner;ui.beginGroup('titlelogo',{x:bx0*(1-fx.logo),y:(by0+16)*(1-fx.logo)+fx.bob,scale:fx.logo}).setAlpha(fx.logoAlpha);ui.banner('SCROLL MONSTERS',bx0,by0);ui.endGroup();}
       // Hero flip (prototype menu): squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
       const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
       const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
@@ -201,7 +201,7 @@
     unlock(w,h){
       const s=this.s,ui=s.ui,j=s.juice,type=s.unlockType,t=j.since('unlock'),cx=w/2,cy=h/2-10,red=j.reduced,STAMP=1050,CONT=1750;
       this.dim(w,h);
-      const k=red?1:Math.min(1,t/200),sc=.6+.4*(1-Math.pow(1-k,3)),st=t-STAMP,shake=!red&&st>=0&&st<150?Math.round(3*Math.sin(st/150*Math.PI*4)*(1-st/150))||1:0;
+      const k=Math.min(1,t/200),sc=red?1:.6+.4*(1-Math.pow(1-k,3)),st=t-STAMP,shake=!red&&st>=0&&st<150?Math.round(3*Math.sin(st/150*Math.PI*4)*(1-st/150))||1:0;
       ui.beginGroup('unlockpanel',{x:cx*(1-sc)+shake,y:cy*(1-sc),scale:sc}).setAlpha(k);
       ui.image('Unlock_Rays',cx-96,cy-96,192,192,{frame:j.frameRect('Unlock_Rays',j.frameAt('Unlock_Rays',t,true))});
       const fillAt=400,fillEnd=fillAt+j.meta('Unlock_Fill').n/j.meta('Unlock_Fill').fps*1000;
@@ -210,7 +210,7 @@
       if(!red&&t>=fillEnd&&t<fillEnd+150)ui.rect(cx-38,cy-38,76,76,'#ffffff'+Math.round((1-(t-fillEnd)/150)*230).toString(16).padStart(2,'0'));
       if(t>=fillEnd&&this.unlockSparks!==j.modeAt){this.unlockSparks=j.modeAt;if(!red)for(let n=0;n<8;n++){const a=n*Math.PI/4+j.rand()*.4,r=34+j.rand()*20;j.play('Reward_Trail',cx+Math.cos(a)*r,cy+Math.sin(a)*r,{ui:true,scale:2,tint:j.elementTint(type)});}}
       let stamp=0;if(t>=STAMP){stamp=red?1:st<120?2-st/120:1;ui.beginGroup('unlockstamp',{x:cx*(1-stamp),y:(cy-114)*(1-stamp),scale:stamp});ui.banner('NEW STARTER',cx,cy-130);ui.endGroup();}
-      const nk=red?1:Math.max(0,Math.min(1,(t-STAMP)/200)),name=type==='storm'?'STORM LIZARD':String(type).toUpperCase();
+      const nk=Math.max(0,Math.min(1,(t-STAMP)/200)),name=type==='storm'?'STORM LIZARD':String(type).toUpperCase();
       if(t<STAMP)ui.darkText('???',cx,cy+64,{size:18,align:'center'});
       else{ui.darkText(name,cx,cy+64,{size:18,align:'center'}).setAlpha(nk);ui.darkText('Now available as a starter',cx,cy+86,{align:'center',color:ScrollUI.DARK.muted}).setAlpha(nk);}
       if(t>=CONT)this.button('Continue',cx-60,cy+106,120,26,()=>s.closeUnlock(),'continue');

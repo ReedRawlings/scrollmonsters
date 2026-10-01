@@ -193,12 +193,17 @@
     }
     pause(){if(this.mode==='playing')this.mode='paused';else if(this.mode==='paused')this.mode='playing';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.logEvent(this.mode==='paused'?'paused':'resumed');this.saveRun();this.draw();}
     pooled(pool,key,scale=3){let sprite=pool.find(s=>!s.visible);if(!sprite){sprite=this.add.sprite(0,0,key);pool.push(sprite);}return sprite.setTexture(key).setVisible(true).setActive(true).setAlpha(1).setTint(0xffffff).setScale(scale).setFlipX(false).setRotation(0);}
+    // The camera's scroll without the cosmetic follow offset (juice shake, title pan). The sim reads this, never cam.scrollX,
+    // so presentation can't change what is 'on screen' to the game logic. It is snapshotted at the start of each real frame,
+    // right after a render has applied the current offset; scripted ticks between renders keep the last snapshot.
+    viewScroll(){if(!this.simScroll){const cam=this.cameras.main;this.simScroll={x:cam.scrollX+cam.followOffset.x,y:cam.scrollY+cam.followOffset.y};}return this.simScroll;}
+    snapshotView(){const cam=this.cameras.main;this.simScroll={x:cam.scrollX+cam.followOffset.x,y:cam.scrollY+cam.followOffset.y};}
     spawnView(){
-      const cam=this.cameras.main;
+      const cam=this.cameras.main,v=this.viewScroll();
       // Include both the rendered camera and its next follow position.
       const x=this.player.x-cam.width/2;
       const y=this.player.y-cam.height/2;
-      const cx=Math.abs(x-cam.scrollX)>cam.width?x:cam.scrollX,cy=Math.abs(y-cam.scrollY)>cam.height?y:cam.scrollY;
+      const cx=Math.abs(x-v.x)>cam.width?x:v.x,cy=Math.abs(y-v.y)>cam.height?y:v.y;
       return {left:Math.min(x,cx),top:Math.min(y,cy),right:Math.max(x,cx)+cam.width,bottom:Math.max(y,cy)+cam.height};
     }
     enemySpawnPoint(radius=20){
@@ -295,7 +300,7 @@
       while(this.choices.length<3)this.choices.push(pool.splice(Math.floor(this.rand()*pool.length),1)[0]);
       this.logEvent('level_up',{level:this.level,offered:this.choices.map(c=>c.id)});this.reward('levelup',{level:this.level});this.saveRun();this.mode='upgrade';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;
     }
-    grantUpgrade(id){this.upgrades[id]++;if(id==='hide'){this.maxHp+=8;this.player.hp=Math.min(this.maxHp,this.player.hp+8);}}
+    grantUpgrade(id){this.upgrades[id]++;if(id==='hide'){this.maxHp+=8;const hp=this.player.hp;this.player.hp=Math.min(this.maxHp,hp+8);this.juice.heal(this.player.hp-hp);}}
     chooseUpgrade(index){
       if(this.mode!=='upgrade'||!this.choices[index])return;
       const id=this.choices[index].id;this.grantUpgrade(id);this.logEvent('upgrade_chosen',{upgrade:id,rank:this.upgrades[id]});
@@ -397,6 +402,7 @@
       if(!this.run?.finished)this.sampleRun();
     }
     update(time,delta){
+      this.snapshotView();
       if(!this.manual&&!window.__vt_pending){
         this.juice.realtime();this.packs.realtime();
         // Hit-stop holds the real-time loop only; STEP and elapsed never stretch and advanceTime is never frozen.

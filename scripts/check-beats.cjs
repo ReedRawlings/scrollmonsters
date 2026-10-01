@@ -28,7 +28,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const gp = await open(browser);
     const g = await state(gp, () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
       const xp = s.totalXp; s.drop('xp', s.player.x + 90, s.player.y); const gem = s.pickups.at(-1); out.key = gem.sprite.texture.key;
-      s.tick(1 / 60); s.draw(); const start = j.gemOffset(gem); for (let i = 0; i < 9; i++) s.tick(1 / 60); s.draw(); const mid = j.gemOffset(gem);
+      s.tick(1 / 60); s.draw(); const start = j.gemOffset(gem); for (let i = 0; i < 4; i++) s.tick(1 / 60); s.draw(); const mid = j.gemOffset(gem); // halfway to the 38px pickup
       out.start = Math.hypot(start.x, start.y); out.mid = Math.hypot(mid.x, mid.y); out.drawn = Math.round(Math.hypot(gem.sprite.x - gem.x, gem.sprite.y - gem.y));
       for (let i = 0; i < 60 && gem.life > 0; i++) s.tick(1 / 60); s.draw();
       out.collected = s.totalXp > xp; out.flash = s.hud.layout.xpFlash > 0; return out; });
@@ -187,6 +187,34 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert(Math.abs(mid(ctr.title) - ctr.h / 2) <= 24, 'The title sits centred: ' + JSON.stringify(ctr));
     assert(Math.abs(ctr.pack - ctr.h / 2) <= 24, 'The pack card sits centred: ' + JSON.stringify(ctr));
     await cv.close();
+
+    // --- review fixes ---
+    const rf = await open(browser);
+    const cam = await state(rf, () => { const s = __survivorTest.scene, c = s.cameras.main; s.start(); s.spawnTimer = 999; c.setFollowOffset(0, 0); c.preRender(); const a = s.viewScroll(), sx = c.scrollX;
+      const e = {x: a.x + 25, y: s.player.y}, before = SurvivorEnemies.visible(s, e); c.setFollowOffset(3, -3); c.preRender(); const b = s.viewScroll();
+      return {moved: Math.round(c.scrollX - sx), same: Math.abs(a.x - b.x) < .01 && Math.abs(a.y - b.y) < .01, visible: [before, SurvivorEnemies.visible(s, e)]}; });
+    assert.equal(cam.moved, -3, 'test setup: the shake offset moves the rendered camera');
+    assert.equal(cam.same, true, 'The sim view ignores camera shake'); assert.deepEqual(cam.visible, [true, true], 'so enemy visibility never flips during a shake');
+    await rf.close();
+
+    const calm = await open(browser, {width: 1100, height: 760}, {reducedMotion: 'reduce'});
+    const rm = await state(calm, () => { const s = __survivorTest.scene, j = s.juice, now = j.now(); s.start();
+      j.xpFlashAt = j.hpFlashAt = now; j.slotFlashAt.walker = now; j.relicBumpAt.veil = now; return [j.xpFlash(), j.hpFlash(), j.slotFlash('walker'), j.relicBump('veil')]; });
+    assert.deepEqual(rm, [0, 0, 0, 0], 'Reduced motion: no XP/HP/slot flashes, no relic bump');
+    await calm.close();
+    const rf2 = await open(browser);
+    const gemEnd = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice, p = s.player; s.start(); s.spawnTimer = 999;
+      const g = {x: p.x + 90, y: p.y, type: 'xp'}; j.gemOffset(g); g.x = p.x + 39; const o = j.gemOffset(g); return Math.round(Math.hypot(o.x, o.y) * 10) / 10; });
+    assert(gemEnd < 3, 'A gem lands on the player at the pickup radius, not mid-arc (1px out: ' + gemEnd + ')');
+    const slot = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice; s.start(); s.spawnTimer = 999;
+      s.expedition.release('mouse', s.player.x + 60, s.player.y, true); s.reward('capture', {type: 'mouse', x: s.player.x + 60, y: s.player.y}); s.draw();
+      return s.hud.layout.slots.find(v => v.type === 'mouse')?.charge; });
+    assert.equal(slot, 0, 'A just-captured creature\'s bar stays empty until its face lands');
+    const iris = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice; s.mode = 'title'; s.draw(); s.start(); return [s.mode, j.irisRadius()]; });
+    assert.deepEqual(iris, ['playing', 0], 'BEGIN starts the run behind a closed iris, which then opens');
+    const hideHeal = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice; s.start(); s.spawnTimer = 999; s.player.hp = 10; j.numbers.reset(); s.grantUpgrade('hide'); return j.numbers.list().filter(n => n.heal).map(n => n.value); });
+    assert.deepEqual(hideHeal, [8], 'Tough Hide shows its +8 heal');
+    await rf2.close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
