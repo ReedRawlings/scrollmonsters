@@ -16,7 +16,7 @@ run('150 enemies, automatic creature dash and keyboard/swipe input',async(page,b
   s.start();s.obstacles=[];s.spawnTimer=999;s.expansion.facing={x:1,y:0};s.draw();
   return {styles,before,after,latest,cap,blocked,replacement,manualRemoved:typeof s.creatures.elements.cycleDash==='undefined'};
  });
- assert.deepEqual(results.styles,['salamander','spider','storm','normal','normal']);assert.equal(results.before,'normal');assert.equal(results.after,'spider');assert.equal(results.latest,'storm');assert.equal(results.cap,150);assert(results.blocked&&results.replacement&&results.manualRemoved);
+ assert.deepEqual(results.styles,['salamander','spider','storm','bear','cat']);assert.equal(results.before,'cat');assert.equal(results.after,'spider');assert.equal(results.latest,'storm');assert.equal(results.cap,150);assert(results.blocked&&results.replacement&&results.manualRemoved);
  assert(!(await listControls(page)).some(c=>c.label.startsWith('Dash')));
  await page.keyboard.press('Shift');assert.equal(await page.evaluate(()=>__survivorTest.scene.expansion.cooldown),0);
  await page.keyboard.press('Space');assert.equal(await page.evaluate(()=>__survivorTest.scene.expansion.cooldown),3);

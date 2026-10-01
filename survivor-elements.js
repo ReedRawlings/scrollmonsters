@@ -1,5 +1,5 @@
 (() => {
-  const TYPES=['salamander','spider','storm'],dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const TYPES=['salamander','spider','storm'],DASH_TYPES=['cat','owl','beast','frog','mouse','mole','bear',...TYPES],dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   class SurvivorElements {
     constructor(s,owner){this.s=s;this.owner=owner;this.zones=[];this.casts=[];this.links=[];this.slow=0;this.comboClock=0;this.trailClock=0;this.dashStyle='normal';this.dashOrigin=null;this.proc=false;this.stormHits=0;
       for(const id of ['firePower','fireSpeed','fireLife','fireArea','fireSpread','webWeaken','webPower','webSpeed','webCount','webArea','webBurst','stormPower','stormSpeed','stormJumps','stormRange','stormStrike','comboFire','comboWeb','comboStorm','comboShield'])s.upgrades[id]=0;
@@ -53,9 +53,19 @@
       }
       this.links=this.links.filter(l=>(l.life-=dt)>0);
     }
-    recruitDash(type){this.dashStyle=TYPES.includes(type)?type:'normal';this.s.logEvent('dash_style',{style:this.dashStyle,creature:type});}
+    recruitDash(type){this.dashStyle=DASH_TYPES.includes(type)?type:'normal';this.s.logEvent('dash_style',{style:this.dashStyle,creature:type});}
     dashStart(){this.dashOrigin={x:this.s.player.x,y:this.s.player.y,style:this.dashStyle};if(this.dashStyle==='spider')this.zone('web',this.s.player.x,this.s.player.y);}
-    dashEnd(){const a=this.dashOrigin;if(!a)return;this.dashOrigin=null;const p=this.s.player;if(a.style==='salamander')for(let i=0;i<3;i++)this.zone('fire',a.x+(p.x-a.x)*i/2,a.y+(p.y-a.y)*i/2);if(a.style==='storm'){const t=this.s.target(p,150);if(t)this.lightning(p,t);}}
+    dashEnd(){const a=this.dashOrigin;if(!a)return;this.dashOrigin=null;const s=this.s,p=s.player,targets=s.hitTargets().filter(e=>e.hp>0),near=(r)=>targets.filter(e=>dist(e,p)<r+e.r);
+      if(a.style==='salamander')for(let i=0;i<3;i++)this.zone('fire',a.x+(p.x-a.x)*i/2,a.y+(p.y-a.y)*i/2);
+      if(a.style==='storm'){const t=s.target(p,150);if(t)this.lightning(p,t);}
+      if(a.style==='cat'){const angle=Math.atan2(p.y-a.y,p.x-a.x);for(const e of near(85)){const delta=Math.atan2(Math.sin(Math.atan2(e.y-p.y,e.x-p.x)-angle),Math.cos(Math.atan2(e.y-p.y,e.x-p.x)-angle));if(Math.abs(delta)<1.1)s.hit(e,3+s.upgrades.claws,'cat',p);}s.burst('fxWhirl',p.x,p.y,2.3,.3,0xb5fff0);}
+      if(a.style==='owl'){const t=s.target(p,175);if(t){s.hit(t,3,'owl',p);t.markUntil=s.elapsed+2;s.burst('fxHit',t.x,t.y,2,.35,0xa9f5ff);}}
+      if(a.style==='beast'){const dx=p.x-a.x,dy=p.y-a.y,length=Math.hypot(dx,dy)||1;for(const e of targets){const projection=Math.max(0,Math.min(1,((e.x-a.x)*dx+(e.y-a.y)*dy)/(length*length))),x=a.x+dx*projection,y=a.y+dy*projection;if(Math.hypot(e.x-x,e.y-y)<e.r+20)s.hit(e,4,'beast',p);}s.burst('fxWhirl',p.x,p.y,2.5,.3,0xffc49c);}
+      if(a.style==='frog'&&!s.shield){s.shield=true;s.burst('fxWater',p.x,p.y,3,.45,0x8ce7ae);s.logEvent('frog_dash_shield');}
+      if(a.style==='mouse'){const stats=this.owner.stats('mouse'),pool=this.owner.helperPool;for(const t of near(190).sort((x,y)=>dist(x,p)-dist(y,p)).slice(0,2)){if(this.owner.helpers.length>=24)break;const sprite=s.pooled(pool,'mouse',1.7).setTint(0xb0ffff);this.owner.helpers.push({x:p.x,y:p.y,r:8,target:t,life:2.5,damage:stats.damage,hits:new Set(),sprite});}s.burst('fxDust',p.x,p.y,2,.3,0xb0ffff);}
+      if(a.style==='mole'){this.owner.strikes.push({x:p.x,y:p.y,r:65,time:.45,total:.45,source:'mole',damage:5,echo:false});s.burst('fxEarth',p.x,p.y,2,.3,0xc9b9a3);}
+      if(a.style==='bear'){for(const e of near(70)){s.hit(e,2,'bear',p);if(e.hp>0&&!e.kind&&!s.unstoppable(e))e.stun=Math.max(e.stun||0,.5);}s.burst('fxEarth',p.x,p.y,3,.4,0xbaffcb);}
+    }
     draw(){const s=this.s,g=s.fx;for(const z of this.zones){const color=z.hostile?0xff8455:0x9beaff;g.lineStyle(2,color,Math.min(.85,z.life/.5)).strokeCircle(z.x,z.y,z.r);if(z.type==='web'){for(let i=0;i<8;i++){const a=i*Math.PI/4;g.lineBetween(z.x,z.y,z.x+Math.cos(a)*z.r,z.y+Math.sin(a)*z.r);}g.strokeCircle(z.x,z.y,z.r*.4).strokeCircle(z.x,z.y,z.r*.7);}}
       for(const c of this.casts){g.lineStyle(3,c.hostile?0xff8455:0x9beaff).strokeCircle(c.x,c.y,c.r);g.lineStyle(3,0xffe8a0).beginPath().arc(c.x,c.y,c.r,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-c.time/c.total)).strokePath();if(c.type!=='strike'){const t=1-c.time/c.total,x=c.from.x+(c.x-c.from.x)*t,y=c.from.y+(c.y-c.from.y)*t;g.fillStyle(c.type==='fire'?0xff8d32:0xd4eaff).fillCircle(x,y,5);}}
       for(const l of this.links){const alpha=Math.min(1,l.life/.16),color=l.combo?0xffd369:0x65dfff;

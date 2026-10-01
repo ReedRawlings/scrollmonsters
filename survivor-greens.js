@@ -15,7 +15,7 @@
     mushroomFlat: [[64, 368, 16, 16]], twig: [[80, 368, 16, 16]], tulipOrange: [[96, 368, 16, 16]], blossomPink: [[112, 368, 16, 16]],
     twigCurl: [[128, 368, 16, 16]], flowerOrange: [[128, 336, 16, 16]], vineShort: [[240, 336, 16, 16]]
   };
-  const DROPS = ['haste', 'shield', 'cleanse', 'magnet', 'heal', 'xp'], DROP_CHANCE = .15, PROP_HP = 6, OPEN_RANGE = 290;
+  const DROPS = ['haste', 'shield', 'cleanse', 'magnet', 'heal', 'xp'], DROP_CHANCE = .15, PROP_HP = 6;
   // Landmarks drawn at double the ground scale.
   const BIG = new Set(['wheelbarrow', 'wheel', 'slab', 'bigChest']);
 
@@ -68,10 +68,11 @@
         return e;
       });
       const t = this.treasure;
-      this.slabSprite = this.sprite('slab', t.x, t.y, t.y + 116, [.5, .5]).setVisible(false);
-      this.chestSprite = this.sprite('bigChest', t.x, t.y - 16, t.y + 117, [.5, .5]).setVisible(false);
-      // Six overlapping circles approximate the slab's footprint once it is revealed.
-      this.slabColliders = [-1, 0, 1].flatMap(k => [-28, 44].map(dy => ({x: t.x + k * 104, y: t.y + dy, r: 80})));
+      this.slabSprite = this.sprite('slab', t.x, t.y, -999999998, [.5, .5]).setVisible(false);
+      this.chestSprite = this.sprite('bigChest', t.x, t.y - 16, t.y + 48, [.5, .5]).setVisible(false);
+      // Side rubble and the back remain solid; the center front steps are walkable.
+      this.slabColliders = [-1, 1].flatMap(k => [-44, 44].map(dy => ({x: t.x + k * 132, y: t.y + dy, r: 60})))
+        .concat([{x:t.x,y:t.y-76,r:68},{x:t.x,y:t.y-16,r:50}]);
     }
     destroy() { for (const sp of this.sprites) sp.destroy(); this.tilemap.destroy(); }
 
@@ -116,11 +117,12 @@
         t.revealed = true; s.obstacles.push(...this.slabColliders);
         s.logEvent('treasure_revealed', {x: Math.round(t.x), y: Math.round(t.y)}); s.announce('Hidden treasure revealed!');
       }
-      if (t.revealed && !t.opened && dist(t, s.player) < OPEN_RANGE) this.openTreasure();
+      const dx=SurvivorWorld.delta(s.player.x,t.x,s.worldSize),dy=SurvivorWorld.delta(s.player.y,t.y,s.worldSize);
+      if (t.revealed && !t.opened && Math.abs(dx)<=40 && dy>=44 && dy<=76) this.openTreasure();
       if (t.opened) t.openTime += dt;
     }
     openTreasure() {
-      const s = this.s, t = this.treasure; t.opened = true; t.openTime = 0;
+      const s = this.s, t = this.treasure; if(!t.revealed||t.opened)return; t.opened = true; t.openTime = 0;
       s.burst('fxHit', t.x, t.y - 8, 3, .6, 0xffd36b);
       if (t.reward === 'xp') { const earned = s.gainXP(s.xpNeeded(), false); t.earned = earned; s.announce('Hidden treasure! +' + earned + ' XP'); }
       else { s.relics.reward('hidden_treasure'); s.announce('Hidden treasure! Choose a relic.'); }

@@ -29,7 +29,7 @@
       }
       if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];s.logEvent('boss_defeated');s.announce('Guardian defeated!');s.saveRun();}return true;}return false;
     }
-    damage(amount,source){const s=this.s,p=s.player;if(p.inv>0||p.hp<=0)return;if(s.shield){s.expedition.shieldBlocked();s.shield=false;p.inv=.25;return;}amount*=s.creatures.protection();p.hp=Math.max(0,p.hp-amount);p.inv=.25;s.juice.hurt(amount);s.damageTaken+=amount;s.logEvent('damage_taken',{enemy:source,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});}
+    damage(amount,source){const s=this.s,p=s.player;if(p.inv>0||p.hp<=0)return;if(s.shield){s.expedition.shieldBlocked();s.shield=false;p.inv=.25;return;}amount=(amount+s.enemyDamageBonus())*s.creatures.protection();p.hp=Math.max(0,p.hp-amount);p.inv=.25;s.juice.hurt(amount);s.damageTaken+=amount;s.logEvent('damage_taken',{enemy:source,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});}
     shoot(from,angle,speed=150,source='mage_orb'){
       this.shotsFired++;const sprite=this.s.pooled(this.bulletPool,source==='hunter_arrow'?'hunterArrow':source==='mage_orb'?'mageOrb':source==='owl_feather'?'feather':'guardianFire',source==='mage_orb'?1.5:source==='owl_feather'?1.6:1.5).setTint(source==='owl_feather'?0xff8877:0xffc05c);
       this.bullets.push({x:from.x,y:from.y,dx:Math.cos(angle),dy:Math.sin(angle),speed,life:5,source,sprite});

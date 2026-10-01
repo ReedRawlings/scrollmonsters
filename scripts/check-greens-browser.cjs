@@ -56,11 +56,17 @@ run('procedural Greens field: tilemap, dens, breakables and hidden treasure', as
       const g = s.greens, t = g.treasure, logged = s.run.events.length; t.reward = reward;
       s.elapsed = t.revealAt - 1; g.update(0); const early = t.revealed;
       s.elapsed = t.revealAt; g.update(0); const colliders = g.slabColliders.every(c => s.obstacles.includes(c));
-      const xp = s.totalXp; Object.assign(s.player, {x: t.x, y: t.y + 220}); g.update(0); s.draw();
-      return {early, revealed: t.revealed, colliders, opened: t.opened, xp: s.totalXp - xp, queue: [...s.relics.queue],
+      const xp = s.totalXp; Object.assign(s.player, {x:t.x+220,y:t.y});g.update(0);const sideClosed=!t.opened;
+      Object.assign(s.player, {x:t.x,y:t.y-180});g.update(0);const backClosed=!t.opened;
+      Object.assign(s.player, {x:t.x,y:t.y+220});g.update(0);const approachClosed=!t.opened;
+      // Walk up the steps using collision-aware movement, not a teleport onto the trigger.
+      for(let i=0;i<60&&!t.opened;i++){s.move(s.player,0,-3);g.update(1/60);}
+      const reachedSteps=s.player.y<t.y+100;s.draw();g.update(0);g.openTreasure();
+      return {sideClosed,backClosed,approachClosed,reachedSteps,early, revealed: t.revealed, colliders, opened: t.opened, xp: s.totalXp - xp, queue: [...s.relics.queue],
         visible: g.chestSprite.visible, events: s.run.events.slice(logged).filter(e => e.type.startsWith('treasure_')).map(e => e.type)};
     }, reward);
     assert(!t.early && t.revealed && t.colliders, reward + ': reveals on time with a solid slab');
+    assert(t.sideClosed&&t.backClosed&&t.approachClosed&&t.reachedSteps, reward+': only front-step approach opens treasure');
     assert(t.opened && t.visible, reward + ': opens when the player reaches it');
     assert.deepEqual(t.events, ['treasure_revealed', 'treasure_opened']);
     if (reward === 'xp') assert(t.xp > 0 && t.queue.length === 0); else assert.deepEqual(t.queue, ['hidden_treasure']);

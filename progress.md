@@ -1229,3 +1229,21 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 - Combined both test lists and retained the high world/UI draw depths with the incoming UI-size setting. Preserved the enlarged shrine while accepting the incoming enlarged creature-capture rings; updated the incoming shrine assertion accordingly.
 - Set repository-local pull.rebase=false so later pulls default to merging. Existing branches and worktrees were left intact.
 - Validation: all31 combined survivor checks passed, including enemy variants/summoners and incoming feedback coverage. Syntax/whitespace checks passed; merged-game screenshots visually reviewed. Required skill smoke harness ran; known black canvas capture persists, with full-page test screenshots used for visual verification.
+
+## September 30 — giant treasure front-step interaction
+- Replaced the slab's fully solid footprint with side/back rubble and chest collision, leaving the central front staircase walkable.
+- Removed the 290-unit all-direction auto-open radius. Treasure opens only at the top of the front steps (within 40 units horizontally and 44–76 units in front), using wrapping-world offsets. Added an idempotency guard to prevent duplicate rewards.
+- Platform now renders beneath actors; chest depth allows the player to remain visible on the steps.
+- Updated the existing Greens browser check to walk through collision from the front for both XP/relic rewards, verify side/back/distant approaches stay closed, and verify one reveal/open event. Passed without browser errors. Inspected Metal screenshots before and after opening; required skill harness ran. Syntax and whitespace checks passed. Greens cache version bumped to39.
+
+## September 30 — companion dash abilities
+- Added automatic dash styles for Cat, Owl, Beast, Frog, Mouse, Mole and Bear, completing the ten-companion roster. Cat swipes ahead; Owl strikes and marks; Beast damages along the route; Frog grants a missing shield; Mouse sends up to two helpers; Mole places a delayed eruption; Bear slams and staggers. Existing Salamander, Spider and Storm Lizard effects remain.
+- Cat starter now selects its dash when a run starts. The most recently recruited creature still determines dash style. Dash movement, cooldown and Phase Veil invulnerability rules are unchanged.
+- Added focused ten-style browser coverage and kept it in the maintained suite. Full survivor suite passed 32/32, including input, capture, relic and expedition checks. The develop-web-game harness confirmed Cat dash state/cooldown with no errors. Its canvas-only screenshot remains black on this host; full-page Metal gameplay capture was inspected instead.
+- Next: human playtest damage, radius and Frog shield frequency; these new dash effect values are provisional.
+
+## September 30 — time-based enemy damage
+- All incoming enemy damage gains max(0, floor(elapsed / 60) - 2): first +1 at 3:00, then another +1 every minute. Applied at impact to existing enemies, projectiles, special attacks, hazards, elites and bosses, before defensive reduction. Added current bonus to text-state output.
+- Added minute-boundary browser regression covering contact from an existing enemy, in-flight projectile, Guardian eruption, fire hazard, reduction, shields, invulnerability and reset; passed. Registered it in the maintained suite.
+- Required web-game harness completed; known black canvas capture persists. Inspected the separate Metal gameplay screenshot successfully. Next: human playtest late-run damage with the 0.25-second protection window.
+- Existing player aim/invulnerability browser regression also passed; syntax and whitespace checks passed.

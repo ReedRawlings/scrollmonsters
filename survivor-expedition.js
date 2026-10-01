@@ -31,7 +31,7 @@
       if(ally)s.creatures.elements.recruitDash(type);
       const body=this.captureBody(type);if(body&&!ally)body.captureStage=captureStage;return true;
     }
-    initStarter(){const s=this.s;s.catActive=s.starter==='cat';if(!s.catActive)this.release(s.starter,s.player.x-40,s.player.y+20,true);}
+    initStarter(){const s=this.s;s.catActive=s.starter==='cat';if(s.catActive)s.creatures.elements.recruitDash('cat');else this.release(s.starter,s.player.x-40,s.player.y+20,true);}
     capture(body,type,dt){
       if(!body||body.state!=='ready')return;
       const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?2:1;
