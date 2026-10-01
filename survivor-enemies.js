@@ -8,7 +8,7 @@
     textureFor(type){return type==='shaman'?'shamanYellow':type;},
     reset(s){s.nextShamanAt=90;s.nextHunterAt=120;s.summonerId=0;},
     waveType(s){
-      if(s.elapsed<90||s.elapsed>=570)return null;
+      if(s.elapsed<90||s.elapsed>=1140||s.encounters?.bossPressure())return null;
       const alive=s.enemies.filter(e=>e.hp>0),roll=s.rand();
       if(roll<.005&&s.elapsed>=s.nextHunterAt&&!alive.some(e=>e.type==='hunter'))return 'hunter';
       if(roll>=.005&&roll<.035&&s.elapsed>=s.nextShamanAt&&alive.filter(e=>e.type==='shaman').length<2)return 'shaman';

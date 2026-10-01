@@ -1,0 +1,20 @@
+{
+  "image": "Fire_Pool_End.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 4,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.267,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 18,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "friendly burning ground (filled flames; hostile warnings are orange outlines).",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 40,
+  "visible_note": "scale = 2r / 40"
+}

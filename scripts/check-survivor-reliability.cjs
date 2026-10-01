@@ -30,7 +30,7 @@ const historyKey = 'scrollmonsters-survivor-runs-v1';
         s.draw();
       });
       const buttons = await controls();
-      assert.deepEqual(buttons.map(button => button.label), mobile ? ['Resume', 'Damage numbers: On'] : ['Resume', 'Damage numbers: On', 'UI size: Normal']);
+      assert.deepEqual(buttons.map(button => button.label), mobile ? ['Resume', 'Damage numbers: On', 'Music: On'] : ['Resume', 'Damage numbers: On', 'UI size: Normal', 'Music: On']);
       const url = page.url();
       await click(historyBefore.x, historyBefore.y); // where the history button was before the relic screen covered it
       await page.waitForTimeout(100);

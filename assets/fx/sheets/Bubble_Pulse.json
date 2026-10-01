@@ -1,0 +1,20 @@
+{
+  "image": "Bubble_Pulse.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 7,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.35,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Axolotl shield pulse around the player; white, tint 0xa1dbef.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 42,
+  "visible_note": "scale = 2r / 42 (r = shield ring, 29)"
+}

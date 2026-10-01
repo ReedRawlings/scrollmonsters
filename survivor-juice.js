@@ -2,7 +2,7 @@
   'use strict';
   const GEM_PICKUP = 38, MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
   // Each creature's element colour, matching the hit bursts the sim already uses for it.
-  const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff};
+  const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff,mollusc:0xc8a6ff,octopus:0xccafff,reptile:0xffb066,tengu:0x9ce9ff,axolotl:0xa1dbef};
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(), Math.random(),
@@ -14,7 +14,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);this.handlers.mergeoffer=e=>this.onMergeOffer(e);this.handlers.merge=e=>this.onMerge(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;this.uiLarge=saved.uiLarge===true;
@@ -22,17 +22,18 @@
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
     reset(){
+      this.s.evoFx?.reset();
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
-      for(const c of this.titleCritters||[])c.sprite.destroy();this.titleCritters=[];this.fireflyG?.clear();this.irisAt=null;
+      for(const c of this.titleCritters||[])c.sprite.destroy();this.endMergeGhosts();if(this.merging)this.restoreResult(this.merging);this.titleCritters=[];this.fireflyG?.clear();this.irisAt=null;
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFaceAt={};this.merging=null;this.mergeOffer=null;this.evolvedPending=null;this.offerSnapped=null;this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
     now(){return this.s.time.now;}
-    observe(){if(this.s.mode!==this.mode){this.mode=this.s.mode;this.modeAt=this.now();}}
+    observe(){if(this.s.mode!==this.mode){if(this.mode==='merge')this.offerSnapped=null;this.mode=this.s.mode;this.modeAt=this.now();}}
     since(mode){return this.mode===mode?this.now()-this.modeAt:Infinity;}
     meta(key){const m=FX_SHEETS[key];if(m)return m;if(/^face_/.test(key))return {fw:38,fh:38,n:1,fps:1,loop:true,ax:19,ay:19};const t=this.s.textures.get(key).getSourceImage();return {fw:16,fh:16,n:Math.max(1,Math.floor(t.width/16)),fps:12,loop:true,ax:8,ay:8};}
     // Sheets load as plain images; frames are cut on demand so sprites and NativeView.image share them.
@@ -100,12 +101,14 @@
       this.updateTitle(now);this.drawIris();
       this.updateAura(now);
       this.updateWorld?.(now);
+      this.updateMerge(now);
     }
     // Called from scene.update() only while the real-time sim runs (never from advanceTime).
     realtime(){
       if(this.s.mode==='playing'&&this.unlocks.length&&this.now()>=this.unlockAt&&!this.frozen())this.s.openUnlock(this.unlocks.shift());
+      if(this.s.mode==='playing'&&this.evolvedPending&&!this.merging&&!this.frozen()){const type=this.evolvedPending;this.evolvedPending=null;this.s.openEvolved(type);}
     }
-    ownerOf(id){
+    ownerOf(id){const evolutionOwner=this.s.creatures?.evolution.ownerOf(id);if(evolutionOwner)return evolutionOwner;
       if(/^mouse/.test(id))return 'mouse';if(/^mole/.test(id))return 'mole';if(/^bear/.test(id))return 'bear';
       if(/^fire|^comboFire/.test(id))return 'salamander';if(/^web|^comboWeb|^comboShield/.test(id))return 'spider';if(/^storm|^comboStorm/.test(id))return 'storm';
       if(['sweep','pull','claws'].includes(id))return 'cat';if(['marks','feather','split','owlPower','owlSpeed'].includes(id))return 'owl';
@@ -189,7 +192,7 @@
     }
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
-      if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm']){
+      if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc']){
         const b=this.s.expedition.captureBody(type);if(b?.state!=='ready')continue;this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});
         // The creature trembles harder each quarter of the charge (drawn offset only; the sim position is untouched).
         const sp=this.captureSprite(type,b),q=Math.floor(clamp(b.progress/2.5,0,.999)*4);if(sp&&q&&!this.reduced){const a=q*.75;sp.setPosition(sp.x+(this.rand()*2-1)*a,sp.y+(this.rand()*2-1)*a);}}
@@ -222,8 +225,10 @@
     elementTint(type){return ELEMENT_TINT[type]??0xffffff;}
     captureSprite(type,b){const s=this.s;return b?.sprite||{cat:s.catSprite,owl:s.owlSprite,beast:s.encounters.beastSprite,frog:s.expedition.frogSprite}[type];}
     slotFill(type){const t0=this.slotFillAt[type];return t0==null?1:clamp((this.now()-t0)/300,0,1);}
+    // A merged result's party face stays hidden until its portrait lands (reduced motion fades it in over 250ms).
+    slotFace(type){const t0=this.slotFaceAt[type];return t0==null?1:clamp((this.now()-t0)/250,0,1);}
     onCapture(e){
-      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);this.flashCopy(this.captureSprite(e.type,this.s.expedition.captureBody(e.type)),120);this.jitter(2,200);
+      if(this.offerSnapped!==e.type){this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);this.flashCopy(this.captureSprite(e.type,this.s.expedition.captureBody(e.type)),120);this.jitter(2,200);}this.offerSnapped=null;
       this.slotFillAt[e.type]=this.now()+960; // the bar stays empty through the 500ms hold and 460ms flight, then fills
       if(this.fx.length+this.faces.length>=MAX_FX)return;
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
@@ -252,6 +257,57 @@
       if(e.final){this.freeze(110);this.jitter(3,200);this.play('Spark_Light',cx,cy,{scale:1,depth:sp.depth+2});}
       for(let i=0;i<(e.final?14:4);i++)this.chunk('P_Shard',cx+(this.rand()*16-8),cy+(this.rand()*16-10),e.final?{sizes:i<4?[2,3]:[3,6]}:{dist:[24,56],lift:[20,40],sizes:[3,6]});
       if(e.final)for(let i=0;i<6;i++)this.chunk('P_Rock',cx+(this.rand()*24-12),sp.y-6,{dist:[30,80],lift:[16,40],sizes:[3,6]});
+    }
+    // ---- Evolution merge. The transaction is already committed when 'merge' arrives; this only shows it.
+    // Timeline (ms): 0-150 the chosen card presses (screens.dismiss) · 150-450 both parents spiral together, trailing their colours ·
+    // 450-650 cocoon core · 650 result reveal, burst and ground ring · 1000 result face flies to its party slot, which glows ·
+    // 1500 done; a first discovery then opens the NEW EVOLUTION panel. Tap, Enter or Space skips to the end (the result is unchanged).
+    partySprite(type){const s=this.s;return {cat:s.catSprite,owl:s.owlSprite,beast:s.encounters.beastSprite,frog:s.expedition.frogSprite}[type]||s.creatures.allies[type]?.sprite;}
+    onMergeOffer(e){
+      this.mode='merge';this.modeAt=this.now(); // arms the deal-in clock even if no draw happens between capture and offer
+      // The capture still snaps (burst and white flash) before the choice; a Recruit from this panel then skips the second burst.
+      const body=this.s.expedition.captureBody(e.captured);if(body){this.play('Capture_Burst',body.x,body.y+20,{depth:body.y+30});this.flashCopy(this.captureSprite(e.captured,body),120);this.jitter(2,200);}this.offerSnapped=e.captured;
+      const ev=this.s.creatures.evolution,snap=sp=>sp?.active?{key:sp.texture.key,frame:sp.frame.name,x:sp.x,y:sp.y,sx:sp.scaleX,sy:sp.scaleY,flip:sp.flipX}:null;
+      this.mergeOffer={captured:e.captured,known:new Set(ev.discovered),captureSnap:snap(this.captureSprite(e.captured,this.s.expedition.captureBody(e.captured))),
+        partners:Object.fromEntries((e.options||[]).map(o=>[o.partner,snap(this.partySprite(o.partner))]))};
+    }
+    onMerge(e){
+      const now=this.now(),offer=this.mergeOffer||{partners:{},slots:[],known:new Set()},captured=offer.captured??e.parents[1],partner=e.parents.find(t=>t!==captured)??e.parents[0];
+      const L=this.s.screens.layout.merge,card=L?.options.find(o=>o.id===e.result);
+      if(card){this.picked={card:{x:card.x,y:card.y,w:card.w,h:card.h},label:card.label,detail:'',id:e.result,icon:card.icon,iconFrame:[0,0,38,38],at:now,
+        others:[...L.options.filter(o=>o!==card),...(L.recruit?[L.recruit]:[])].map(o=>({card:{x:o.x,y:o.y,w:o.w,h:o.h},label:o.label,id:o.id,icon:o.icon,iconFrame:[0,0,38,38]}))};}
+      const m=this.merging={at:now,result:e.result,partner,captured,x:e.x,y:e.y,first:!offer.known.has(e.result),stage:0,ghosts:[],lastTrail:0,red:this.reduced};
+      this.slotFillAt[e.result]=Infinity;this.slotFaceAt[e.result]=Infinity;this.mergeOffer=null;
+      if(m.red){this.slotFillAt[e.result]=now;this.slotFaceAt[e.result]=now;return;}
+      this.freeze(1500);
+      for(const [type,sn] of [[partner,offer.partners[partner]],[captured,offer.captureSnap]]){if(!sn)continue;
+        const g=this.s.add.sprite(sn.x,sn.y,sn.key,sn.frame).setScale(sn.sx,sn.sy).setFlipX(sn.flip).setDepth(sn.y+20);m.ghosts.push({g,type,x0:sn.x,y0:sn.y});}
+    }
+    endMergeGhosts(){for(const g of this.merging?.ghosts||[])g.g.destroy();if(this.merging)this.merging.ghosts=[];}
+    restoreResult(m){const sp=this.s.creatures?.allies[m.result]?.sprite;if(sp?.active){sp.setAlpha(1);if(m.base)sp.setScale(m.base);}}
+    skipMerge(){const m=this.merging;if(!m||m.red)return false;m.at=this.now()-1500;m.stage=3;this.frozenUntil=0;
+      for(const f of [...this.flights])if(f.key==='face_'+m.result||f.key==='face_'+m.partner){f.im.destroy();this.flights=this.flights.filter(v=>v!==f);}
+      this.endMergeGhosts();this.updateMerge(this.now());return true;}
+    updateMerge(now){
+      const m=this.merging;if(!m)return;const t=now-m.at,a=this.s.creatures.allies[m.result],sp=a?.sprite;
+      if(sp?.active&&m.base==null)m.base=sp.scaleX;
+      const done=()=>{this.restoreResult(m);this.slotFillAt[m.result]=Math.min(this.slotFillAt[m.result],now);this.slotFaceAt[m.result]=Math.min(this.slotFaceAt[m.result],now-250);
+        if(m.first)this.evolvedPending=m.result;this.merging=null;};
+      if(m.red){if(sp?.active)sp.setAlpha(clamp(t/250,0,1));if(t>=300)done();return;}
+      const tint=this.elementTint(m.result);
+      // Convergence: both parents spiral half a turn into the merge point.
+      if(t<450&&m.ghosts.length){const k=clamp((t-150)/300,0,1),e=k*k*(3-2*k),ang=e*Math.PI;
+        for(const g of m.ghosts){const dx=g.x0-m.x,dy=g.y0-m.y,x=m.x+(dx*Math.cos(ang)-dy*Math.sin(ang))*(1-e),y=m.y+(dx*Math.sin(ang)+dy*Math.cos(ang))*(1-e);g.g.setPosition(x,y).setDepth(y+20);
+          if(k>0&&now-m.lastTrail>30)this.play('Merge_Trail',x,y,{scale:3,depth:y+21,tint:this.elementTint(g.type)});}
+        if(k>0&&now-m.lastTrail>30)m.lastTrail=now;}
+      if(m.stage<1&&t>=450){m.stage=1;this.endMergeGhosts();this.play('Merge_Core',m.x,m.y,{scale:3,depth:m.y+40,tint});}
+      if(m.stage<2&&t>=650){m.stage=2;this.play('Merge_Reveal',m.x,m.y,{scale:3,depth:m.y+41,tint});this.play('Merge_Ring',m.x,m.y+14,{scale:3,depth:m.y-3,tint});
+        if(sp?.active){sp.setAlpha(1);this.flashCopy(sp,140);}this.jitter(2,150);}
+      if(sp?.active&&m.base!=null){if(t<650)sp.setAlpha(0);else{const k=clamp((t-650)/150,0,1);sp.setScale(m.base*(1.3-.3*k),m.base*(.7+.3*k));}}
+      if(m.stage<3&&t>=1000){m.stage=3;const from=sp?.active?this.s.toUI(sp.x,sp.y-10):this.s.toUI(m.x,m.y);
+        this.flyTo('face_'+m.result,from,this.slotPoint(m.result),{size:32,onLand:()=>{const slot=this.s.hud.layout.slots.find(v=>v.type===m.result);
+          if(slot)this.play('Evolved_Slot_Glow',slot.x+slot.w/2,slot.y+slot.h/2,{ui:true,scale:2});this.slotFlashAt[m.result]=this.now();this.slotFillAt[m.result]=this.now();this.slotFaceAt[m.result]=this.now()-250;}});}
+      if(t>=1500)done();
     }
   }
   window.SurvivorJuice = SurvivorJuice;

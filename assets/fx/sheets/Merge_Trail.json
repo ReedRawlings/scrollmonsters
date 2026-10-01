@@ -1,0 +1,18 @@
+{
+  "image": "Merge_Trail.png",
+  "frame_width": 8,
+  "frame_height": 8,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 24,
+  "duration_s": 0.25,
+  "loop": false,
+  "anchor": {
+    "x": 4,
+    "y": 4,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "PLACEHOLDER art. white diamond mote that shrinks and fades; tinted per parent in code.",
+  "smoothing": "none (nearest neighbor)"
+}

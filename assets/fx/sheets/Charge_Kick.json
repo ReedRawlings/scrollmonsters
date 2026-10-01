@@ -1,0 +1,19 @@
+{
+  "image": "Charge_Kick.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.3,
+  "loop": false,
+  "anchor": {
+    "x": 34,
+    "y": 20,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "authored for a charge to the RIGHT; flipX (or rotate) for other directions. Double Charge plays it at 0.7x.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 34
+}

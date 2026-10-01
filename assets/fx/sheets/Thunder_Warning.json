@@ -1,0 +1,20 @@
+{
+  "image": "Thunder_Warning.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 0.5,
+  "loop": true,
+  "anchor": {
+    "x": 24,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "friendly 0.65s thunder warning; white, tint 0x9beaff. Closed ring + inward sparks so it never reads as a hostile orange outline.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 44,
+  "visible_note": "scale = 2r / 44 (r = 60)"
+}

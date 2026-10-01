@@ -1,0 +1,18 @@
+{
+  "image": "Merge_Reveal.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 24,
+  "duration_s": 0.333,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "single burst as the result appears; white, tinted with the result element in code.",
+  "smoothing": "none (nearest neighbor)"
+}

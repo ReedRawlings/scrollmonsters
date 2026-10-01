@@ -1,0 +1,20 @@
+{
+  "image": "Bite_Impact.png",
+  "frame_width": 64,
+  "frame_height": 48,
+  "frame_count": 12,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.6,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Reptile heavy bite at the charge endpoint: fangs snap, hold, then fade. No ring.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 28,
+  "visible_note": "fang span; draw at a fixed 3x world scale, NOT scaled to the 70 bite radius"
+}

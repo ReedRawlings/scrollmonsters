@@ -1,0 +1,19 @@
+{
+  "image": "Rally_Motes.png",
+  "frame_width": 24,
+  "frame_height": 32,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 0.667,
+  "loop": true,
+  "anchor": {
+    "x": 12,
+    "y": 28,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "Bubble Rally (+30% attack speed for 3s): gold motes rising from the player's feet. Drawn gold; no tint.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 18
+}

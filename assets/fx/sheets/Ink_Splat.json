@@ -1,0 +1,20 @@
+{
+  "image": "Ink_Splat.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.3,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 16,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "ink lands and spatters; ends at the pool's size so Ink_Pool_Start/Loop can follow.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 40,
+  "visible_note": "pool width at the end; scale = 2r / 40"
+}

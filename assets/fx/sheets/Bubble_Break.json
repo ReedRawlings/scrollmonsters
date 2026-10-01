@@ -1,0 +1,20 @@
+{
+  "image": "Bubble_Break.png",
+  "frame_width": 64,
+  "frame_height": 44,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 22,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "blocked hit: bubble pops, ring expands; ink pool follows (separate sheets). White, tint 0xa1dbef.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 62,
+  "visible_note": "scale = 2r / 62 (r = ring radius, base 100)"
+}

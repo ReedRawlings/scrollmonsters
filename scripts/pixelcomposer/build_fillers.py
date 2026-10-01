@@ -167,6 +167,106 @@ def trail():
          "smoothing": "none (nearest neighbor)"}
     json.dump(m, open(SHEETS + "Reward_Trail.json", "w"), indent=2)
 
+# ---------------------------------------------------------------- evolution merge (placeholders for the .pxc builds)
+# White unless noted, so code tints each one with the parents' / result's element colour. Shared by all four evolutions.
+GOLD, RARE = c("#f7b750"), c("#8973ab")
+
+def ellipse_ring(d, cx, cy, rx, ry, col, width=1):
+    if rx < 1 or ry < 1: d.point((cx, cy), fill=col); return
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=col, width=width)
+
+def merge():
+    # Merge_Trail: 8x8 mote, 6 frames @ 24fps; a soft diamond that shrinks (each parent leaves one in its colour).
+    frames = []
+    for f in range(6):
+        im = Image.new("RGBA", (8, 8), (0, 0, 0, 0)); d = ImageDraw.Draw(im); r = 3 - f // 2; a = 255 - f * 30
+        d.polygon([(4, 4 - r), (4 + r, 4), (4, 4 + r), (4 - r, 4)], fill=(255, 255, 255, a // 2), outline=(255, 255, 255, a)); frames.append(im)
+    save(strip(frames), "Merge_Trail")
+    meta("Merge_Trail", 8, 8, 6, 24, False, (4, 4), "white diamond mote that shrinks and fades; tinted per parent in code.")
+    # Merge_Core: 32x32, 6 frames @ 24fps (250ms); a cocoon that swells, pinches and flares to hide the swap.
+    frames = []
+    for f, (r, a) in enumerate([(3, 180), (6, 230), (9, 255), (7, 255), (10, 220), (13, 120)]):
+        im = Image.new("RGBA", (32, 32), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+        d.ellipse([16 - r, 16 - r, 16 + r, 16 + r], fill=(255, 255, 255, a // 2), outline=(255, 255, 255, a))
+        if f >= 2: d.ellipse([16 - r // 2, 16 - r // 2, 16 + r // 2, 16 + r // 2], fill=(255, 255, 255, a))
+        frames.append(im)
+    save(strip(frames), "Merge_Core")
+    meta("Merge_Core", 32, 32, 6, 24, False, (16, 16), "white cocoon pulse that hides the swap; local, never full-screen. Tinted with the result element.")
+    # Merge_Reveal: 48x48, 8 frames @ 24fps; eight rays burst out once.
+    frames = []
+    for f in range(8):
+        im = Image.new("RGBA", (48, 48), (0, 0, 0, 0)); d = ImageDraw.Draw(im); a = 255 if f < 4 else 255 - (f - 3) * 50
+        r0, r1 = 4 + f * 2, 8 + f * 3
+        for k in range(8):
+            an = k * math.pi / 4; L = r1 if k % 2 == 0 else r1 - 4
+            d.line([(24 + math.cos(an) * r0, 24 + math.sin(an) * r0), (24 + math.cos(an) * L, 24 + math.sin(an) * L)], fill=(255, 255, 255, a))
+        if f < 2: d.ellipse([24 - 4 + f, 24 - 4 + f, 24 + 4 - f, 24 + 4 - f], fill=(255, 255, 255, 255))
+        frames.append(im)
+    save(strip(frames), "Merge_Reveal")
+    meta("Merge_Reveal", 48, 48, 8, 24, False, (24, 24), "single eight-ray burst as the result appears; white, tinted in code.")
+    # Merge_Ring: 64x44 ground ring (3:2), 8 frames @ 24fps; expands and thins out.
+    frames = []
+    for f in range(8):
+        im = Image.new("RGBA", (64, 44), (0, 0, 0, 0)); d = ImageDraw.Draw(im); rx = 6 + f * 3.6
+        ellipse_ring(d, 32, 22, int(rx), int(rx * 2 / 3), (255, 255, 255, 255 - f * 28), 2 if f < 4 else 1); frames.append(im)
+    save(strip(frames), "Merge_Ring")
+    meta("Merge_Ring", 64, 44, 8, 24, False, (32, 22), "3:2 ground shockwave ring under the result; white, tinted in code.")
+    # Evolved_Slot_Glow: 32x24 (drawn at 2x over the 62x48 party slot), 6 frames @ 15fps; gold frame glow pulses once.
+    frames = []
+    for f, a in enumerate([120, 255, 220, 160, 90, 40]):
+        im = Image.new("RGBA", (32, 24), (0, 0, 0, 0)); d = ImageDraw.Draw(im); g = GOLD[:3] + (a,)
+        d.rectangle([0, 0, 31, 23], outline=g); d.rectangle([1, 1, 30, 22], outline=GOLD[:3] + (a // 2,))
+        for x, y in [(0, 0), (31, 0), (0, 23), (31, 23)]: d.point((x, y), fill=(255, 255, 255, a))
+        frames.append(im)
+    save(strip(frames), "Evolved_Slot_Glow")
+    meta("Evolved_Slot_Glow", 32, 24, 6, 15, False, (16, 12), "gold glow around the party slot the evolution lands in (2x over 62x48).")
+    # Recipe_Discovered: 64x64, 8 frames @ 8fps loop; slow rotating sparkle ring behind the result portrait.
+    frames = []
+    for f in range(8):
+        im = Image.new("RGBA", (64, 64), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+        ellipse_ring(d, 32, 32, 27, 27, RARE[:3] + (110,))
+        for k in range(6):
+            an = (k / 6 + f / 48) * 2 * math.pi; x, y = 32 + math.cos(an) * 27, 32 + math.sin(an) * 27
+            d.line([(x - 1, y), (x + 1, y)], fill=WHITE); d.line([(x, y - 1), (x, y + 1)], fill=WHITE)
+        frames.append(im)
+    save(strip(frames), "Recipe_Discovered")
+    meta("Recipe_Discovered", 64, 64, 8, 8, True, (32, 32), "rotating sparkle ring behind the result portrait on the NEW EVOLUTION panel.")
+
+# ---------------------------------------------------------------- Tengu (final hand-placed art: single-pixel detail)
+def final_meta(name, w, h, frames, fps, loop, anchor, notes, visible_w):
+    m = {"image": name + ".png", "frame_width": w, "frame_height": h, "frame_count": frames, "layout": "horizontal strip, no spacing",
+         "fps": fps, "duration_s": round(frames / fps, 3), "loop": loop, "anchor": {"x": anchor[0], "y": anchor[1], "from": "top-left of each frame"},
+         "palette": "Toasted40 + white", "notes": notes, "smoothing": "none (nearest neighbor)", "visible_w": visible_w}
+    json.dump(m, open(SHEETS + name + ".json", "w"), indent=2)
+
+def tengu():
+    # Tengu_Feather: 16x8, 4f @15 loop, pointing right. White quill and vane; the crackle along the vane edge walks each frame.
+    frames = []
+    for f in range(4):
+        im = Image.new("RGBA", (16, 8), (0, 0, 0, 0)); px = im.load()
+        for x in range(2, 15): px[x, 4] = (255, 255, 255, 255)                      # quill
+        for x in range(4, 13):                                                       # vane, widest in the middle
+            half = 2 if 6 <= x <= 10 else 1
+            for y in range(4 - half, 4 + half + 1): px[x, y] = (255, 255, 255, 230 if y != 4 else 255)
+        px[14, 4] = px[15, 4] = (255, 255, 255, 255)                                 # tip
+        for k in range(3):                                                           # crackle: bright pixels just off the vane edge
+            x = 4 + (f * 3 + k * 4) % 9; y = 1 if k % 2 == 0 else 6; px[x, y] = (255, 255, 255, 255)
+        for x in (0, 1): px[x, 4] = (255, 255, 255, 120 - 50 * x if f % 2 else 80)   # trailing wisp
+        frames.append(im)
+    save(strip(frames), "Tengu_Feather")
+    final_meta("Tengu_Feather", 16, 8, 4, 15, True, (8, 4), "charged feather pointing right; rotate to the flight angle. White, tint 0x9ce9ff. Hand-placed pixels.", 16)
+    # Lightning_Link: 32x12, 4f @20 loop. A jagged bolt from x=0 to x=31 on the centre line, a new path each frame, with a soft halo.
+    frames = []; paths = [[0, -3, 2, -1, 3, -2, 1, 0], [0, 2, -2, 3, -1, 2, -3, 0], [0, -2, -4, 1, 3, -1, 2, 0], [0, 3, 1, -3, -1, 3, -2, 0]]
+    for f in range(4):
+        im = Image.new("RGBA", (32, 12), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+        pts = [(round(i * 31 / 7), 6 + paths[f][i]) for i in range(8)]
+        d.line(pts, fill=(255, 255, 255, 70), width=3)                                # halo
+        d.line(pts, fill=(255, 255, 255, 255), width=1)                               # core
+        fork = pts[3 + f % 3]; d.line([fork, (fork[0] + 3, fork[1] + (3 if f % 2 else -3))], fill=(255, 255, 255, 200))
+        frames.append(im)
+    save(strip(frames), "Lightning_Link")
+    final_meta("Lightning_Link", 32, 12, 4, 20, True, (0, 6), "bolt strip from the left edge; origin (0, 0.5), rotate to the target, scaleX = distance / 32. White, tint 0x9beaff.", 32)
+
 if __name__ == "__main__":
-    for w in (sys.argv[1:] or ["packs", "cardback", "icons", "trail"]):
-        {"packs": packs, "cardback": cardback, "icons": icons, "trail": trail}[w]()
+    for w in (sys.argv[1:] or ["packs", "cardback", "icons", "trail", "merge", "tengu"]):
+        {"packs": packs, "cardback": cardback, "icons": icons, "trail": trail, "merge": merge, "tengu": tengu}[w]()

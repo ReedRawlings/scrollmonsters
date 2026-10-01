@@ -1,0 +1,19 @@
+{
+  "image": "Tengu_Feather.png",
+  "frame_width": 16,
+  "frame_height": 8,
+  "frame_count": 4,
+  "layout": "horizontal strip, no spacing",
+  "fps": 15,
+  "duration_s": 0.267,
+  "loop": true,
+  "anchor": {
+    "x": 8,
+    "y": 4,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "charged feather pointing right; rotate to the flight angle. White, tint 0x9ce9ff. Hand-placed pixels.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 16
+}

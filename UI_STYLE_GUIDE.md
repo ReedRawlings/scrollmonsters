@@ -280,3 +280,10 @@ Use a black page background with `nine_path_bg.png` inset inside the orange Wood
 
 ### Party slot selection
 Collection Add enters placement mode. Display “Choose a party slot”, Wood focus outlines around the three slots, a Cancel button on the selected creature, and its name in the footer prompt. Clicking a slot assigns that creature and saves; clicking Add alone never alters the party. Leaving collection clears selection.
+
+### Evolution merge and bestiary (2026-10-01)
+- **Capture choice** (`EVOLVE?`, or `PARTY FULL` with no recipe): one card per recipe shows partner + captured = result as 28px faces, then "Replaces X · consumes Y", "+N party HP · bonus", the ability line and the carried-over upgrades. An undiscovered result is a silhouette named `???` with no ability line; HP and bonus still show. Recruit (if a slot is free) and Leave creature follow. Keys 1–3 and taps pick after the 370ms lock; Escape does nothing.
+- **Merge sequence** (~1.5s, combat frozen, the result is already granted): card press → parents spiral together with trails in their colours → core → reveal burst and ground ring with a local flash → the result's face flies to its party slot, which glows gold. Tap, Enter or Space skips to the end. Reduced motion: no freeze, the result and its face fade in.
+- **NEW EVOLUTION panel**: first discovery only, after any NEW STARTER panel. Repeat merges show no panel and no stat text (no toasts).
+- **Bestiary** (title → Bestiary): base creatures (silhouette until captured) and evolutions (`? + ? = ?` until merged once); NEW marks discoveries not yet viewed (`scrollmonsters-seen-evolutions-v1`), on the row and on the title button.
+

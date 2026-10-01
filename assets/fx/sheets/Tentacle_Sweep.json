@@ -1,0 +1,20 @@
+{
+  "image": "Tentacle_Sweep.png",
+  "frame_width": 96,
+  "frame_height": 96,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.3,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 48,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "authored pointing right; rotate by the sweep angle, rear sweep = angle + PI. White, tint 0xccafff.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 44,
+  "visible_note": "arc RADIUS in px; scale = r / 44"
+}

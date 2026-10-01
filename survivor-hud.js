@@ -36,7 +36,7 @@
       ui.darkText(String(s.kills),188,51);
     }
     timer(ui,w){
-      const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${s.isExpedition?'10:00':'2:00'}`;
+      const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${s.isExpedition?'20:00':'2:00'}`;
       // The drawn pill stays small; a thumb-sized zone behind it catches near misses.
       if(s.mode==='playing'){ui.hitArea(w-40,0,40,34,()=>s.pause(),'pause-target');ui.pill('II',w-26,8,20,16,()=>s.pause(),{id:'pause'});}
       ui.darkText(t,w-32,17,{align:'right',color:D().gold});
@@ -55,7 +55,8 @@
       const s=this.s,members=['walker',...s.expedition.party()].slice(0,4),total=4*SLOT_W+3*SLOT_GAP,x0=Math.round((w-total)/2),y=h-SLOT_H-4;
       for(let i=0;i<4;i++){const x=x0+i*(SLOT_W+SLOT_GAP),type=members[i]||null;this.layout.slots.push({type,x,y,w:SLOT_W,h:SLOT_H});
         ui.image('dk_zslot',x,y,SLOT_W,SLOT_H);
-        if(type){if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32]});
+        // A merged result's face appears when its portrait lands (juice.slotFace).
+        if(type){const fa=s.juice.slotFace(type);this.layout.slots[i].face=fa;if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32],alpha:fa});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
           const charge=this.chargeOf(type)*s.juice.slotFill(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
@@ -77,7 +78,7 @@
     guardian(ui,w,y){
       const b=this.s.encounters.boss,width=w-40;ui.darkPanel(20,y,width,22);
       ui.rect(26,y+14,Math.max(0,(width-12)*b.hp/b.maxHp),3,'#ef5266');
-      ui.darkText('GUARDIAN '+Math.ceil(b.hp)+' / '+b.maxHp,w/2,y+9,{align:'center',color:D().gold});
+      ui.darkText((b.final?'ANCIENT GUARDIAN ':'GUARDIAN ')+Math.ceil(b.hp)+' / '+b.maxHp,w/2,y+9,{align:'center',color:D().gold});
       return y+22;
     }
   }

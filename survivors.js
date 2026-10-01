@@ -1,19 +1,23 @@
 (() => {
   'use strict';
   // Survivor history uses its own storage key; campaign saves are untouched.
-  const WORLD = 4500, DURATION = new URLSearchParams(location.search).has('trial')?120:600, STEP = 1 / 60, MAX_HP = 40;
+  const WORLD = 4500, DURATION = new URLSearchParams(location.search).has('trial')?120:1200, STEP = 1 / 60, MAX_HP = 40;
   const RUN_HISTORY_KEY = 'scrollmonsters-survivor-runs-v1', RUN_HISTORY_BYTES = 2 * 1024 * 1024;
   const A = 'assets/Ninja Adventure - Asset Pack/';
+  const MUSIC_KEY = 'scrollmonsters-survivor-music-v1';
+  const musicTracks = [...(window.GAME_MUSIC?.combat || []), ...(window.GAME_MUSIC?.menu || [])];
   // Survivors UI is laid out in logical space and drawn at uiScale(): 2x (portrait, desktop Normal) or 3x (desktop Large).
   const FACESETS = {walker:'Characters/EggBoy',cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
-  const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil'];
+  const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil','afterimage','stormglass'];
+  const RELIC_FILES = {afterimage:'afterimage.svg',stormglass:'stormglass.svg'};
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
   const direction = (x,y) => Math.abs(x)>Math.abs(y) ? (x<0?2:3) : (y<0?1:0);
   class WoodlandTrial extends Phaser.Scene {
     constructor(){super('WoodlandTrial');}
     preload(){
-      SurvivorEnemies.preload(this);
+      musicTracks.forEach((track,i)=>this.load.audio(`music:${i}`,`assets/music/${track.split('/').map(encodeURIComponent).join('/')}`));
+      SurvivorEnemies.preload(this);SurvivorEvolution.preload(this);
       for(const [key,pack,file] of [['fxHit','Combat','impact_hit_1'],['fxWhirl','Combat','slash_whirlwind'],['fxEarth','Earth','impact_earth_3'],['fxWater','Water','impact_water'],['fxDust','Combat','impact_dust_dash']])this.load.spritesheet(key,`assets/SoggySocks ${pack} FX/PNG/${file}_sheet.png`,{frameWidth:100,frameHeight:100});
       this.load.spritesheet('xpChest',A+'Items/Treasure/LittleTreasureChest.png',{frameWidth:16,frameHeight:16});
       this.load.image('dungeonProps',A+'Backgrounds/Tilesets/TilesetDungeon.png');
@@ -30,6 +34,7 @@
       this.load.spritesheet('elementThunder',A+'FX/Elemental/Thunder/SpriteSheet.png',{frameWidth:16,frameHeight:28});
       this.load.spritesheet('elementFire',A+'FX/Particle/Fire.png',{frameWidth:12,frameHeight:12});
       this.load.spritesheet('frog',A+'Actor/Animals/Frog/SpriteSheet.png',{frameWidth:16,frameHeight:16});
+      this.load.spritesheet('ancientGuardian',A+'Actor/Boss/DemonCyclop2/Walk.png',{frameWidth:50,frameHeight:50});
       this.load.spritesheet('guardian',A+'Actor/Boss/DemonCyclop/Walk.png',{frameWidth:50,frameHeight:50});
       this.load.spritesheet('walker',A+'Actor/Characters/EggBoy/SeparateAnim/Walk.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('cat',A+'Actor/Animals/CatCyclop/SpriteSheet.png',{frameWidth:16,frameHeight:16});
@@ -48,14 +53,15 @@
       this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
       this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
       for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
-      for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+id+'.png');
+      for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+(RELIC_FILES[id]||id+'.png'));
       for(const [key,m] of Object.entries(FX_SHEETS))this.load.image(key,m.src);
       for(const id of UPGRADE_ICON_IDS)this.load.image('upgrade_'+id,'assets/icons/upgrades/'+id+'.png');
       this.load.image('upgrade_bearPower','assets/icons/upgrades/bearStun.png');
       this.load.on('loaderror',file=>{document.getElementById('fallback').textContent='Could not load '+file.key+'. Reload to retry.';});
     }
     create(){
-      document.getElementById('fallback').hidden=true;this.field=new URLSearchParams(location.search).get('field')==='desert'?'desert':'woods';this.isExpedition=DURATION===600;this.unlocked=Expedition.readUnlocks();this.starter='cat';this.catActive=true;
+      try{this.musicEnabled=localStorage.getItem(MUSIC_KEY)!=='off';}catch{this.musicEnabled=true;}this.music=null;this.musicTrack=null;this.audioUnlocked=false;
+      document.getElementById('fallback').hidden=true;this.field=new URLSearchParams(location.search).get('field')==='desert'?'desert':'woods';this.isExpedition=DURATION===1200;this.unlocked=Expedition.readUnlocks();this.starter='cat';this.catActive=true;
       this.seed=this.runSeed();this.rng=this.seed;this.mode='title';this.accumulator=0;this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.obstacles=[];
       this.enemyPool=[];this.shotPool=[];this.effectPool=[];this.pickupPool=[];
       this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
@@ -73,23 +79,26 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(900000000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(1000000000);this.juice=new SurvivorJuice(this);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(1000000000);this.juice=new SurvivorJuice(this);this.evoFx=new SurvivorEvolutionFx(this);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(1000000001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
-      this.input.on('pointerdown',(p,over)=>{if(this.mode==='pack'){this.packs.act();return;}if(this.mode==='playing'&&!over.length&&!this.joy){this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0,touch:p.wasTouch,started:performance.now()};if(p.wasTouch)this.mouseAim=null;else this.mouseAim={x:p.x,y:p.y};}});
+      this.input.on('pointerdown',(p,over)=>{if(this.mode==='pack'){this.packs.act();return;}if(this.mode==='playing'&&this.juice.skipMerge())return;if(this.mode==='playing'&&!over.length&&!this.joy){this.joy={id:p.id,x:p.x,y:p.y,dx:0,dy:0,touch:p.wasTouch,started:performance.now()};if(p.wasTouch)this.mouseAim=null;else this.mouseAim={x:p.x,y:p.y};}});
+      this.input.on('pointerdown',()=>this.unlockAudio());
       this.input.on('pointermove',p=>{if(this.mode==='playing'&&!p.wasTouch)this.mouseAim={x:p.x,y:p.y};if(this.joy?.id===p.id){this.joy.dx=p.x-this.joy.x;this.joy.dy=p.y-this.joy.y;}});
       const release=p=>{if(this.joy?.id!==p.id)return;const joy=this.joy;this.joy=null;
         const dx=p.x-joy.x,dy=p.y-joy.y,d=Math.hypot(dx,dy);
         if(joy.touch&&performance.now()-joy.started<=300&&d>=48){this.expansion.dash({x:dx/d,y:dy/d});}
       };
       this.input.on('pointerup',release);this.input.on('pointerupoutside',release);
-      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='pack')this.packs.act();});
-      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='relic'?(this.juice.since('relic')>=SurvivorScreens.LOCK_MS&&this.relics.choose(i-1)):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
-      this.input.keyboard.on('keydown-ESC',()=>this.pause());
+      // Phaser can deliver one keypress twice in a frame; an Enter that closed the bestiary must not also start a run.
+      this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'&&this.bestiaryOpen)this.closeBestiary();else if(this.mode==='title'&&this.bestiaryClosedFrame===this.game.loop.frame)return;else if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='evolved')this.closeEvolved();else if(this.mode==='pack')this.packs.act();else if(this.mode==='playing')this.juice.skipMerge();});
+      this.input.keyboard.on('keydown',()=>this.unlockAudio());
+      for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='merge'?this.chooseMergeIndex(i-1):this.mode==='relic'?(this.juice.since('relic')>=SurvivorScreens.LOCK_MS&&this.relics.choose(i-1)):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
+      this.input.keyboard.on('keydown-ESC',()=>{if(this.mode==='title'&&this.bestiaryOpen)this.closeBestiary();else this.pause();});
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
-      this.input.keyboard.on('keydown-SPACE',()=>{if(this.mode==='pack')this.packs.act();else this.expansion.dash();});
+      this.input.keyboard.on('keydown-SPACE',()=>{if(this.mode==='pack')this.packs.act();else if(!this.juice.skipMerge())this.expansion.dash();});
       this.input.keyboard.on('keydown-F',()=>{if(this.scale.isFullscreen)this.scale.stopFullscreen();else this.scale.startFullscreen();});
       this.game.events.on('blur',()=>{this.joy=null;this.input.keyboard.resetKeys();if(this.mode==='pack')this.packs.blurred=true;if(this.mode==='playing'){this.mode='paused';this.draw();}});
       this.scale.on('resize',()=>this.draw());
@@ -134,14 +143,22 @@
       this.aim={x:0,y:1};this.mouseAim=null;
       Object.assign(this.player,{x:WORLD/2,y:WORLD/2,hp:MAX_HP,inv:0,fire:.1,dir:0});Object.assign(this.cat,{x:WORLD/2-42,y:WORLD/2+30,attack:0});
       this.owl=null;this.owlAppeared=false;this.owlDamage=0;this.haste=0;this.chorusTime=0;this.shield=false;this.notice='';this.noticeTime=0;this.nextHealAt=30;this.supplyAt=35;this.supplyIndex=0;this.level=1;this.xp=0;this.choices=[];this.upgrades={partyDamage:0,partySpeed:0,mousePower:0,mouseCount:0,mouseSpeed:0,mouseJump:0,molePower:0,moleArea:0,moleSpeed:0,moleEcho:0,moleSlow:0,bearPower:0,bearArea:0,bearSpeed:0,bearStun:0,bearGuard:0,claws:0,sweep:0,cast:0,feather:0,hide:0,feet:0,pull:0,split:0,slam:0,owlPower:0,owlSpeed:0,beastPower:0,beastSpeed:0,bubble:0,frogPower:0,chorus:0,marks:0};this.maxHp=40;this.stronger=false;
-      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm'].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.packs?.destroy();this.packs=new SurvivorPacks(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
+      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm',...(this.isExpedition?['mollusc']:[])].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.packs?.destroy();this.packs=new SurvivorPacks(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
+    chooseMergeIndex(index){const ev=this.creatures.evolution,p=ev.preview();if(!p||this.juice.now()-ev.pending.openedAt<370)return;const ids=[...p.options.map(o=>o.id),...(p.canRecruit?['recruit']:[])];if(ids[index])ev.choose(ids[index]);}
     openUnlock(type){this.unlockType=type;this.mode='unlock';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
     closeUnlock(){if(this.mode!=='unlock')return;this.unlockType=null;this.mode='playing';this.accumulator=0;this.draw();}
+    openEvolved(type){this.evolvedType=type;this.mode='evolved';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
+    closeEvolved(){if(this.mode!=='evolved')return;this.evolvedType=null;this.mode='playing';this.accumulator=0;this.draw();}
+    openBestiary(){if(this.mode!=='title')return;this.bestiaryOpen=true;this.draw();}
+    closeBestiary(){this.bestiaryOpen=false;this.bestiaryClosedFrame=this.game.loop.frame;this.draw();}
     // Title presentation state (starterFrom/starterAt/lockedTap) only drives the menu's flip and hints.
     chooseStarter(id){if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
-    start(){this.lockedTap=null;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'reliability-v26',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
+    unlockAudio(){if(!this.audioUnlocked){this.audioUnlocked=true;this.sound.unlock();}this.syncMusic();}
+    toggleMusic(){this.musicEnabled=!this.musicEnabled;try{localStorage.setItem(MUSIC_KEY,this.musicEnabled?'on':'off');}catch{}this.syncMusic();this.draw();}
+    syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=window.GAME_MUSIC||{},combat=list.combat||[],menu=list.menu||[],inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',track=inRun?(combat.length?combat[this.run?.seed%combat.length]:null):(menu[0]||null);if(!this.musicEnabled||!track){this.music?.stop();return;}if(track!==this.musicTrack){this.music?.destroy();this.musicTrack=track;const i=musicTracks.indexOf(track);if(i<0)return;this.music=this.sound.add(`music:${i}`,{loop:true,volume:.3});}if(!this.music.isPlaying)this.music.play();}
+    start(){this.unlockAudio();this.lockedTap=null;this.bestiaryOpen=false;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'evolution-prototype-v43',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,greens:this.greens?.summary()||null,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
@@ -192,7 +209,7 @@
       this.nextSample=this.elapsed+5;
       this.saveRun();
     }
-    pause(){if(this.mode==='playing')this.mode='paused';else if(this.mode==='paused')this.mode='playing';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.logEvent(this.mode==='paused'?'paused':'resumed');this.saveRun();this.draw();}
+    pause(){if(!['playing','paused'].includes(this.mode))return;if(this.mode==='playing')this.mode='paused';else if(this.mode==='paused')this.mode='playing';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.logEvent(this.mode==='paused'?'paused':'resumed');this.saveRun();this.draw();}
     pooled(pool,key,scale=3){let sprite=pool.find(s=>!s.visible);if(!sprite){sprite=this.add.sprite(0,0,key);pool.push(sprite);}return sprite.setTexture(key).setVisible(true).setActive(true).setAlpha(1).setTint(0xffffff).setScale(scale).setFlipX(false).setRotation(0);}
     // The camera's scroll without the cosmetic follow offset (juice shake, title pan). The sim reads this, never cam.scrollX,
     // so presentation can't change what is 'on screen' to the game logic. It is snapshotted at the start of each real frame,
@@ -242,7 +259,7 @@
       if(this.enemies.filter(e=>e.hp>0).length>=this.enemyCap)return;
       const placedSpawn=x!==undefined;
       if(!placedSpawn){const point=this.enemySpawnPoint();if(!point)return;x=point.x;y=point.y;}
-      const beast=type==='beast',def=SurvivorEnemies.stats[type]||{cat:{hp:7,speed:72,r:11,scale:3},frog:{hp:6,speed:42,r:10,scale:3},mouse:{hp:2,speed:95,r:8,scale:2},salamander:{hp:12,speed:42,r:12,scale:3},spider:{hp:10,speed:45,r:12,scale:3},storm:{hp:12,speed:42,r:12,scale:3},bear:{hp:28,speed:32,r:20,scale:4},mole:{hp:12,speed:40,r:12,scale:3}}[type];const e={type,x,y,placedSpawn,r:beast?16:11,hp:beast?9:type==='owl'?6:4,maxHp:beast?9:type==='owl'?6:4,speed:beast?47:68,phase:'seek',clock:1.5+this.rand(),dx:0,dy:0,flash:0,sprite:this.pooled(this.enemyPool,SurvivorEnemies.textureFor(type),beast?3.5:2.5)};if(def){e.hp=e.maxHp=def.hp;e.speed=def.speed;e.r=def.r;e.sprite.setScale(def.scale);if(type==='mouse')e.contactDamage=4;}SurvivorEnemies.decorate(this,e);if(this.stronger)this.strengthen(e);if(this.expedition.lateStrength)this.expedition.strengthen(e);if(this.isExpedition&&this.elapsed>=300){const tier=1+Math.floor((this.elapsed-300)/60);e.hp*=1+.3*tier;e.maxHp=e.hp;e.speed*=1+.035*tier;}this.enemies.push(e);if(type in this.creatures.waveCounts)this.creatures.waveCounts[type]++;this.spawned++;this.peakEnemies=Math.max(this.peakEnemies,this.enemies.length);return e;
+      const beast=type==='beast',def=SurvivorEnemies.stats[type]||{cat:{hp:7,speed:72,r:11,scale:3},frog:{hp:6,speed:42,r:10,scale:3},mouse:{hp:2,speed:95,r:8,scale:2},mollusc:{hp:12,speed:38,r:12,scale:3},salamander:{hp:12,speed:42,r:12,scale:3},spider:{hp:10,speed:45,r:12,scale:3},storm:{hp:12,speed:42,r:12,scale:3},bear:{hp:28,speed:32,r:20,scale:4},mole:{hp:12,speed:40,r:12,scale:3}}[type];const e={type,x,y,placedSpawn,r:beast?16:11,hp:beast?9:type==='owl'?6:4,maxHp:beast?9:type==='owl'?6:4,speed:beast?47:68,phase:'seek',clock:1.5+this.rand(),dx:0,dy:0,flash:0,sprite:this.pooled(this.enemyPool,SurvivorEnemies.textureFor(type),beast?3.5:2.5)};if(def){e.hp=e.maxHp=def.hp;e.speed=def.speed;e.r=def.r;e.sprite.setScale(def.scale);if(type==='mouse')e.contactDamage=4;}SurvivorEnemies.decorate(this,e);if(this.stronger)this.strengthen(e);if(this.expedition.lateStrength)this.expedition.strengthen(e);if(this.isExpedition&&this.elapsed>=300){const tier=1+Math.floor((this.elapsed-300)/60);e.hp*=1+.3*tier;e.maxHp=e.hp;e.speed*=1+.035*tier;}this.enemies.push(e);if(type in this.creatures.waveCounts)this.creatures.waveCounts[type]++;this.spawned++;this.peakEnemies=Math.max(this.peakEnemies,this.enemies.length);return e;
     }
     burst(key,x,y,scale=1,life=.4,tint=0xffffff,a=0){
       // Cosmetic only: pooled, bounded, and advanced by the combat clock so pauses freeze FX.
@@ -257,9 +274,9 @@
     // Impact loops use this so attacks that land on breakables smash them; aiming still uses combatTargets().
     hitTargets(){return this.greens?[...this.combatTargets(),...this.greens.targets()]:this.combatTargets();}
     target(from,range,anchor=from){let result=null,best=range;for(const e of this.combatTargets()){const d=distance(e,from);if(e.hp>0&&d<best&&distance(e,anchor)<range+50){best=d;result=e;}}return result;}
-    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}let boost=1;if(!relicEffect){amount*=1+.08*this.upgrades.partyDamage;const before=amount;amount=this.relics.modifyHit(e,amount,source);if(before>0)boost=amount/before;}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm'].includes(source))amount+=this.frogStats().damageBonus;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl'){amount*=1.25;boost*=1.25;}if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed){const web=1+this.creatures.elements.stats('spider').vulnerability;amount*=web;boost*=web;}if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;this.juice.damage(e,amount,boost);if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
+    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}let boost=1;if(!relicEffect){amount*=(1+.08*this.upgrades.partyDamage)*this.creatures.evolution.partyDamage(e);const before=amount;amount=this.relics.modifyHit(e,amount,source);if(before>0)boost=amount/before;}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(source))amount+=this.frogStats().damageBonus;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl'){amount*=1.25;boost*=1.25;}if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed){const web=1+this.creatures.elements.stats('spider').vulnerability;amount*=web;boost*=web;}if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;this.juice.damage(e,amount,boost);if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
       if(source==='cat')this.catDamage+=applied;else if(source==='owl')this.owlDamage+=applied;else if(source==='beast')this.encounters.beastDamage+=applied;else if(source in this.creatures.damage)this.creatures.damage[source]+=applied;else this.playerDamage+=applied;
-      if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);}}if(this.encounters.hitSpecial(e))return;
+      if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);this.creatures.evolution.killed(e,source);}}if(this.encounters.hitSpecial(e))return;
       if(e===this.owl&&e.hp<=0){e.state='ready';e.progress=0;this.logEvent('owl_weakened');this.announce('Owl weakened! Stay inside its ring to capture.');return;}
       const dx=e.x-from.x,dy=e.y-from.y,d=Math.hypot(dx,dy)||1;if(!this.unstoppable(e)){if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.move(e,dx/d*12,dy/d*12);}
       if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
@@ -277,8 +294,8 @@
     xpGainMultiplier(){return 1.5+.05*Math.min(10,Math.floor(this.elapsed/60));}
     gainXP(amount,scale=true){const earned=amount*(scale?this.xpGainMultiplier():1)+this.xpRemainder,whole=Math.floor(earned+1e-9);this.xpRemainder=Math.max(0,earned-whole);this.xp+=whole;this.totalXp+=whole;return whole;}
     xpNeeded(){return 10+(this.level-1)*6;}
-    frogStats(){const active=this.expedition?.frog?.state==='ally',u=this.upgrades;return {active,damageBonus:active?1:0,shieldInterval:10/(1+.2*u.bubble),chorusBonus:u.chorus?.5+.15*(u.chorus-1):0};}
-    attackRate(){return 1+.06*this.upgrades.partySpeed+(this.relics?.drum>0?.3:0)+(this.haste>0?.5:0)+(this.chorusTime>0&&this.frogStats().active?this.frogStats().chorusBonus:0);}
+    frogStats(){const inherited=this.creatures.evolution.frogSupport(),active=this.expedition?.frog?.state==='ally'||!!inherited,u=inherited||this.upgrades;return {active,damageBonus:active?1:0,shieldInterval:10/(1+.2*u.bubble),chorusBonus:u.chorus?.5+.15*(u.chorus-1):0};}
+    attackRate(){return 1+this.creatures.evolution.tempo()+.06*this.upgrades.partySpeed+(this.relics?.drum>0?.3:0)+(this.haste>0?.5:0)+(this.chorusTime>0&&this.frogStats().active?this.frogStats().chorusBonus:0);}
     companionStats(){const u=this.upgrades;return {owl:{damage:3.2+u.owlPower,interval:1.1/(1+.2*u.owlSpeed)},beast:{damage:4.8+2*u.beastPower,shockwave:3.2+u.beastPower,interval:2/(1+.2*u.beastSpeed)}};}
     upgradePool(){const stats=this.companionStats(),u=this.upgrades;return [
       ...this.creatures.upgrades(),
@@ -294,7 +311,7 @@
       ,...(this.expedition.frog?.state==='ally'?[{id:'bubble',name:'Bubble Rhythm',detail:'Frog shields 20% faster per rank'},{id:'chorus',name:'Rallying Chorus',detail:`Shield pulse: 3s attack speed +${u.chorus?50+15*(u.chorus-1):0}% → +${50+15*u.chorus}%`}]:[])
     ].filter(choice=>!['claws','cast','owlPower','owlSpeed','beastPower','beastSpeed','mousePower','mouseSpeed','molePower','moleSpeed','bearSpeed','firePower','fireSpeed','webPower','webSpeed','stormPower','stormSpeed'].includes(choice.id));}
     checkLevel(){
-      if(this.mode==='relic'||this.mode==='pack')return;if(this.relics.open())return;
+      if(this.mode!=='playing')return;if(this.relics.open())return;
       if(this.xp<this.xpNeeded())return;
       this.xp-=this.xpNeeded();this.level++;
       const pool=this.upgradePool();this.choices=[];
@@ -318,7 +335,7 @@
         const d=distance(o,p)||1;if(d>125)this.move(o,(p.x-o.x)/d*50*dt,(p.y-o.y)/d*50*dt,false);
       }else if(o.state==='ready'){
         this.expedition.capture(o,'owl',dt);
-      }else{
+      }else if(o.state==='ally'){
         const d=distance(o,p)||1;if(d>65)this.move(o,(p.x-o.x)/d*Math.min(d,240*dt),(p.y-o.y)/d*Math.min(d,240*dt),false);
         o.attack-=dt*this.attackRate();
         const target=this.target(o,420,p);
@@ -350,13 +367,13 @@
     updateSupplies(){if(this.elapsed<this.supplyAt)return;this.supplyAt=this.elapsed+45;if(this.pickups.filter(p=>['magnet','haste','cleanse'].includes(p.type)&&p.life>0).length>=3)return;
       for(let i=0;i<50;i++){const a=this.rand()*Math.PI*2,r=260+this.rand()*220,x=this.player.x+Math.cos(a)*r,y=this.player.y+Math.sin(a)*r;if(this.blocked(x,y,35)||this.encounters.nests.some(n=>distance(n,{x,y})<90))continue;const type=['magnet','haste','cleanse'][this.supplyIndex++%3];this.drop(type,x,y);this.pickups[this.pickups.length-1].life=90;this.logEvent('supply_spawned',{pickup:type,x,y});break;}}
     earlySpawnRate(){return .75+.25*Math.max(0,Math.min(1,(this.elapsed-120)/120));}
-    enemyDamageBonus(){return Math.max(0,Math.floor(this.elapsed/60)-2);}
+    enemyDamageBonus(){return Math.max(0,Math.floor((this.elapsed-120)/120));}
     spawnInterval(){if(this.isExpedition)return this.expedition.interval()/this.earlySpawnRate();return this.elapsed<60?.8-this.elapsed*.005:Math.max(.25,.5-(this.elapsed-60)/240);}
     tick(dt){
       if(this.mode!=='playing')return;
       SurvivorWorld.sync(this);
       this.elapsed+=dt;const p=this.player,c=this.cat;p.inv=Math.max(0,p.inv-dt);
-      this.haste=Math.max(0,this.haste-dt);this.chorusTime=Math.max(0,this.chorusTime-dt);this.noticeTime=Math.max(0,this.noticeTime-dt);this.updateOwl(dt);this.updateDifficulty();this.expedition.update(dt);this.greens?.update(dt);this.creatures.update(dt);this.encounters.update(dt);
+      this.haste=Math.max(0,this.haste-dt);this.chorusTime=Math.max(0,this.chorusTime-dt);this.noticeTime=Math.max(0,this.noticeTime-dt);this.updateOwl(dt);if(this.mode!=='playing')return;this.updateDifficulty();this.expedition.update(dt);if(this.mode!=='playing')return;this.greens?.update(dt);this.creatures.update(dt);if(this.mode!=='playing')return;this.encounters.update(dt);if(this.mode!=='playing')return;
       let dx=Number(this.keys.D.isDown||this.keys.RIGHT.isDown)-Number(this.keys.A.isDown||this.keys.LEFT.isDown),dy=Number(this.keys.S.isDown||this.keys.DOWN.isDown)-Number(this.keys.W.isDown||this.keys.UP.isDown);
       if(this.joy){dx=this.joy.dx/48;dy=this.joy.dy/48;if(Math.hypot(dx,dy)<.12)dx=dy=0;}
       const mag=Math.hypot(dx,dy);if(mag>1){dx/=mag;dy/=mag;}this.moving=mag>.01;const priorX=p.x,priorY=p.y;
@@ -400,7 +417,7 @@
       }}
       const retain=(items,condition)=>items.filter(e=>{if(condition(e))return true;e.sprite.setVisible(false).setActive(false);return false;});
       this.enemies=retain(this.enemies,e=>e.hp>0);this.shots=retain(this.shots,e=>e.life>0);this.effects=retain(this.effects,e=>e.life>0);this.pickups=retain(this.pickups,e=>e.life>0);
-      if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if(this.elapsed>=DURATION&&this.encounters.boss?.hp<=0){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
+      if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if((this.isExpedition?this.encounters.finalDefeated:this.elapsed>=DURATION&&this.encounters.boss?.hp<=0)){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
       if(!this.run?.finished)this.sampleRun();
     }
     update(time,delta){
@@ -413,11 +430,11 @@
       }
       this.draw();
     }
-    draw(){if(!this.ui)return;SurvivorWorld.sync(this);this.juice.observe();this.packs?.drawWorld();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
+    draw(){if(!this.ui)return;this.syncMusic();SurvivorWorld.sync(this);this.juice.observe();this.packs?.drawWorld();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
       this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
       this.playerShadow.setPosition(p.x,p.y+15).setDepth(p.y-1);this.catShadow.setVisible(this.catActive).setPosition(c.x,c.y+13).setDepth(c.y-1);
-      this.fx.clear();if(this.shield)this.fx.lineStyle(3,0x83d9ff,.85).strokeCircle(p.x,p.y,29);this.fx.lineStyle(2,0xffefb0,.85).strokeEllipse(p.x,p.y+15,31,15);if(this.catActive)this.fx.lineStyle(2,0x77dede,.9).strokeEllipse(c.x,c.y+13,30,14);
+      this.fx.clear();if(this.shield)this.fx.lineStyle(3,0x83d9ff,.85).strokeCircle(p.x,p.y,29);
       for(const e of this.enemies){e.sprite.setPosition(e.x,e.y).setFrame(['cat','frog','lion'].includes(e.type)?frame%2:frame*4+direction(p.x-e.x,p.y-e.y)).setDepth(e.y+20).setTint(e.flash>0?0xffffff:e.phase==='windup'?0xffbf70:0xffffff);
         if(e.elite)this.fx.lineStyle(3,0xffd36b,1).strokeCircle(e.x,e.y,e.r+12);
         if(e.phase==='windup'){this.fx.lineStyle(3,0xffbe70,.9).lineBetween(e.x,e.y,e.x+e.dx*180,e.y+e.dy*180);this.fx.strokeCircle(e.x,e.y,e.r+7);}
@@ -425,11 +442,11 @@
       SurvivorEnemies.draw(this);
       const o=this.owl;this.owlSprite.setVisible(!!o);
       if(o){this.owlSprite.setPosition(o.x,o.y).setFrame(frame*4+direction(p.x-o.x,p.y-o.y)).setDepth(o.y+20);
-        if(o.state!=='ready')this.fx.lineStyle(3,o.state==='ally'?0x8ee0df:0xffd36b,.9).strokeCircle(o.x,o.y,24);
+        if(o.state==='wild')this.fx.lineStyle(3,0xffd36b,.9).strokeCircle(o.x,o.y,24);
         
         if(o.state==='wild'){this.fx.fillStyle(0x30221a).fillRect(o.x-20,o.y-33,40,5);this.fx.fillStyle(0xffd36b).fillRect(o.x-20,o.y-33,40*o.hp/o.maxHp,5);}
       }
-      this.greens?.draw();this.encounters.draw();this.expedition.draw();this.creatures.draw();this.relics.draw();
+      this.greens?.draw();this.encounters.draw();this.expedition.draw();this.creatures.draw();this.evoFx.draw();this.relics.draw();
       for(const s of this.shots){s.sprite.setPosition(s.x,s.y).setRotation(s.source==='owl'?Math.atan2(s.dy,s.dx):this.elapsed*8).setDepth(800000000);if(s.source==='owl'){s.sprite.setScale(s.split?1.5:2).setTint(0xd8faff);this.fx.lineStyle(s.split?1:2,0xadebff,.7).lineBetween(s.x,s.y,s.x-s.dx*18,s.y-s.dy*18);}if(s.charged)s.sprite.setTint(0xffd36b).setScale(.7);}
       for(const e of this.effects)e.sprite.setPosition(e.x,e.y).setRotation(e.a).setFrame(Math.min((e.frames||4)-1,Math.floor((1-e.life/(e.maxLife||.26))*(e.frames||4)))).setDepth(800000001);
       for(const e of this.pickups){const o=e.type==='xp'?this.juice.gemOffset(e):null;if(o)e.sprite.setScale(2*o.scale);e.sprite.setPosition(e.x+(o?.x||0),e.y+(o?.y||0)).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
@@ -437,7 +454,7 @@
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:this.uiScale()});
       if(this.mode!=='title')this.hud.draw(logical.w,logical.h);
-      if(['title','paused','won','lost','upgrade','relic','pack','unlock'].includes(this.mode))this.screens.draw(logical.w,logical.h);
+      if(['title','paused','won','lost','upgrade','relic','pack','unlock','merge','evolved'].includes(this.mode))this.screens.draw(logical.w,logical.h);
       this.screens.dismiss(logical.w,logical.h);
       this.ui.endGroup();
       this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}

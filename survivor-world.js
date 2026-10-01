@@ -27,7 +27,7 @@
         for(const [k,v] of Object.entries(o))if(!['sprite','obstacle'].includes(k))visit(v);
       };
       const c=s.creatures,e=s.encounters,g=s.greens,x=s.expedition;
-      [s.obstacles,s.cat,s.owl,s.enemies,s.shots,s.effects,s.pickups,s.trail,c?.allies,c?.helpers,c?.strikes,c?.zones,c?.elements.zones,c?.elements.casts,c?.elements.links,c?.elements.dashOrigin,e?.nests,e?.beast,e?.boss,e?.bullets,e?.trails,e?.pulses,x?.shrine,x?.frog,x?.catCapture,x?.chests,s.relics?.cache,s.packs?.items,g?.props,g?.treasure,g?.slabColliders].forEach(visit);
+      [s.obstacles,s.cat,s.owl,s.enemies,s.shots,s.effects,s.pickups,s.trail,c?.allies,c?.helpers,c?.strikes,c?.zones,c?.elements.zones,c?.elements.casts,c?.elements.links,c?.elements.dashOrigin,c?.evolution.zones,c?.evolution.projectiles,c?.evolution.links,c?.evolution.casts,c?.evolution.fx,e?.nests,e?.beast,e?.boss,e?.bullets,e?.trails,e?.pulses,x?.shrine,x?.frog,x?.catCapture,x?.chests,s.relics?.cache,s.packs?.items,g?.props,g?.treasure,g?.slabColliders].forEach(visit);
       // Static art and transient sprites use the same nearest image as collision bodies.
       for(const sp of s.children.list){if(sp.parentContainer||sp.scrollFactorX!==1||!['Sprite','Image','Ellipse','TileSprite'].includes(sp.type)||sp===s.loopFloor)continue;
         const p=this.near(s,sp),dy=p.y-sp.y;sp.setPosition(p.x,p.y);if(sp.depth>-1000000&&Math.abs(sp.depth-sp.y)<500)sp.setDepth(sp.depth+dy);

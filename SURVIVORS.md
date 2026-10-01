@@ -77,7 +77,7 @@ The map is a repeating 4,500 × 4,500 world-unit field, with centered player spa
 
 ## Player relics
 
-Expedition relic rewards come from a purple guarded cache appearing at60s (approach and defeat its three Beast guards), the120s roaming elite, and shrine challenge3 alongside its XP reward. These are separate from level-up choices. Choose one of three unequipped relics while combat pauses. Two slots per run; later rewards allow replacement, returning to choices, or leaving the reward. Equipped relics, reward sources and selections are logged. Keys1–3 also select relic offers; replacement uses1–2.
+Expedition relic rewards come from a purple guarded cache appearing at60s (approach and defeat its three Beast guards), the120s roaming elite, and shrine challenge3 alongside its XP reward. These are separate from level-up choices. Choose one of three roster-beneficial relics while combat pauses. Relics have no slot limit; duplicates stack during the run. Later rewards allow returning to choices or leaving the reward. Equipped relics, reward sources and selections are logged. Keys1–3 also select relic offers.
 
 - Wayfarer's Boots: moving for2s charges the next player shot for3 base damage and up to3 enemy hits. Gold ring indicates charge readiness.
 - Standing Stone: standing for2s ramps player firing rate to+50%; moving resets it. Violet ring shows buildup.
@@ -85,8 +85,10 @@ Expedition relic rewards come from a purple guarded cache appearing at60s (appro
 - Repulsion Charm: player shots push regular enemies60px away, but player firing rate is multiplied by0.7. Bosses/nests remain fixed.
 - Slipstream Cloak: passing within42px of a hostile projectile and then clearing it without contact grants+25% movement for2s. Refreshes rather than stacks.
 - Bloodroot Pendant: health pickups release6 base damage within80px, plus8px per point of unused healing. Full-health pickups can be consumed for the pulse.
+- Afterimage Thread: the most recently recruited creature's dash effect repeats after0.28s at35% strength. Copies add15 percentage points, up to80%.
+- Stormglass: lightning chains gain70 range per copy after hitting an enemy standing in friendly fire, ink, or webs. Requires a lightning source and a friendly field source in the party.
 
-Effects apply to the player, not companion attacks. Relics reset on restart; regular XP chests remain unchanged. `scripts/check-relics.cjs` verifies effect behavior, reward sources, pause, replacement, queued XP, reset and portrait UI. Current build: `woodland-relics-v11`.
+Player-shot relics affect only the player; party and creature relics follow their descriptions. The offer filter uses the current roster to hide relics with no active trigger: combination relics require enough distinct attackers, shield-trigger relics require Frog or Axolotl, Afterimage Thread requires a creature dash, and Stormglass requires both lightning and field-making creatures. `SurvivorRelics.isBeneficial(id)` exposes the same eligibility check; the active eligible list is included in run summaries. Relics reset on restart; regular XP chests remain unchanged. `scripts/check-relics.cjs` covers existing relic behavior and reward flow. Current build: `woodland-relics-v12`.
 
 
 ## Mouse, Mole and Bear
@@ -177,10 +179,20 @@ Hostile appearances are now separate from capturable creature roles. Companions,
 
 Giant hidden treasure opens when the player walks up the central front steps and reaches the chest. The side rubble, rear and chest body remain solid; approaching from the side, back or a distance does not claim its reward.
 
-Enemy damage gains a flat +1 per completed minute after 2:00: +0 through 2:59, +1 at 3:00, +2 at 4:00, etc. All enemy contact, special attacks, projectiles, hazards and bosses use the current run time at impact, before player damage reduction. Existing enemies and active hazards receive the increase too.
+Enemy damage gains a flat +1 per completed two-minute interval after 2:00: +0 through 3:59, +1 at 4:00, +2 at 6:00, +3 at 8:00, etc. All enemy contact, special attacks, projectiles, hazards and bosses use the current run time at impact, before player damage reduction. Existing enemies and active hazards receive the increase too.
 
 ### Companion ability rework (v41)
 - Bear sends a plus-shaped tremor outward over 0.45s every 2.1s. Four 28-unit-wide arms reach 180 units from the origin (twice the former slam radius); diagonals remain clear. Each enemy can be hit once per cross, with damage falling linearly from 10 at the origin to 5 at the tips. Stagger and Safe Ground remain. Reaching Tremor adds 30 reach per rank without widening the arms; Heavy Paws adds 2 center damage / 1 tip damage per rank and is available alongside shared Party Power. Bear's dash retains its smaller endpoint slam.
 - Frog adds a flat +1 to each player/creature hit instead of its former percentage damage bonus. Added after Party Power and relic damage modifiers, before target marks/web vulnerability; derived relic echoes inherit it without adding it again. Bolstering Croak is removed from offers and its old counter no longer affects damage. Shield rhythm and Chorus remain upgradeable.
 - Spider's friendly webs now tick for 1 base damage immediately and every second while occupied, in addition to slow and +20% creature vulnerability. Their own ticks benefit from vulnerability (1.2 damage before other bonuses). Overlapping webs tick independently. Web upgrades, bursts and pair combos remain; hostile webs retain their existing slow-only behavior.
 - `scripts/check-companion-rework.cjs` covers four-arm reach, diagonal exclusion, center falloff, one hit per wave, upgrade offers/stats, flat Frog damage across all attack sources, removed Frog scaling, Spider tick cadence and pause.
+
+### Capture evolution prototype (October 1)
+
+Normal expeditions now target 20 minutes. The 9:30 Guardian is a miniboss; its defeat grants a pack and allows the run to continue. Boss pressure slows ambient spawns to one attempt per 2.4 seconds and den defenders to 15% speed, suppressing extra swarm/specialist/elite arrivals. A stronger Ancient Guardian appears at 19:00; defeating it wins. If the miniboss is still alive at 19:00, it retreats without its defeat reward. The final fight may continue after 20:00; ordinary ambient spawning stops at that time. The short trial retains its two-minute rules.
+
+Mollusc is the eleventh capturable base creature. The first four capture-time recipes are Cat + Mollusc → Octopus, Salamander + Beast → Reptile, Owl + Storm Lizard → Tengu, and Frog + Mollusc → Axolotl. Capturing either parent while owning the other offers a paused merge choice. A full party can merge directly into the existing teammate's slot. Recruitment is available if there is room; Leave resolves the round without changing the team. Evolutions cannot merge again or duplicate an owned evolution. Ordinary captures with no eligible recipe and free space remain immediate.
+
+Each evolution inherits consumed parents' upgrade ranks, has three new upgrades and a dedicated dash, and grants run-only HP/role bonuses. Base HP contributions remain unchanged. Discovery persists separately from starter unlocks. Additional dens become eligible at 5:30, 8:00, 11:30, 14:00 and 16:30, favor compatible ingredients and wait for placement space or boss completion. At most four dens remain unbroken before another round is placed.
+
+The UI and effects are temporary; see [the VFX and UI handoff](docs/superpowers/specs/2026-10-01-evolution-vfx-ui.md) for exact attacks, provisional stats, upgrade conversions, future roster decisions and integration APIs. `node scripts/check-evolution.cjs` verifies both capture orders, full-party and alternative choices, combat, dashes, inheritance, persistence, reset, mouse/touch/keyboard controls and boss milestones.

@@ -1,0 +1,19 @@
+{
+  "image": "Zap_Spark.png",
+  "frame_width": 16,
+  "frame_height": 16,
+  "frame_count": 5,
+  "layout": "horizontal strip, no spacing",
+  "fps": 24,
+  "duration_s": 0.208,
+  "loop": false,
+  "anchor": {
+    "x": 8,
+    "y": 8,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "feather/lightning contact spark; white, tint 0x9beaff. Coalesce: one per enemy per 100ms, at most 12 alive.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 14
+}

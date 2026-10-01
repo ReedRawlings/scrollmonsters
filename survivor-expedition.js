@@ -1,5 +1,5 @@
 (() => {
-  const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm'],KEY='scrollmonsters-starters-v1';
+  const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc'],KEY='scrollmonsters-starters-v1';
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   const CAPTURE_R = 140; // capture zone radius in world px (2x since the 2026-09-29 playtest)
   class Expedition {
@@ -8,10 +8,10 @@
         const runs=JSON.parse(localStorage.getItem('scrollmonsters-survivor-runs-v1')||'[]');if(Array.isArray(runs))for(const run of runs){if(run.summary?.owl==='ally')unlocked.push('owl');if(run.summary?.encounters?.beast==='ally')unlocked.push('beast');for(const e of run.events||[])for(const t of TYPES)if(e.type===t+'_captured')unlocked.push(t);}
       }catch{}const result=[...new Set(unlocked)];try{localStorage.setItem(KEY,JSON.stringify(result));}catch{}return result;
     }
-    constructor(s){this.s=s;this.chests=[];this.chestClock=40+s.rand()*20;this.chestsOpened=0;this.chestXp=0;this.frog=null;this.catCapture=null;this.second=false;this.phase=-1;this.eliteSpawned=false;this.extraEliteSpawned=false;this.lateStrength=false;this.supportPulses=0;this.shieldBlocks=0;this.pulse=0;this.shrine={...s.shrineLocation,active:false,triggered:false,done:false,progress:0,completed:0,inCombat:false,needsExit:false};this.shrineSprite=s.add.sprite(this.shrine.x,this.shrine.y+60,'ShrineStates',s.juice.frameName('ShrineStates',0)).setOrigin(.5,31/32).setScale(6).setDepth(this.shrine.y).setVisible(false);this.frogSprite=s.add.sprite(0,0,'frog').setScale(3).setVisible(false);}
+    constructor(s){this.s=s;this.chests=[];this.chestClock=40+s.rand()*20;this.chestsOpened=0;this.chestXp=0;this.frog=null;this.catCapture=null;this.second=false;this.laterRounds=new Set();this.phase=-1;this.eliteSpawned=false;this.extraEliteSpawned=false;this.lateStrength=false;this.supportPulses=0;this.shieldBlocks=0;this.pulse=0;this.shrine={...s.shrineLocation,active:false,triggered:false,done:false,progress:0,completed:0,inCombat:false,needsExit:false};this.shrineSprite=s.add.sprite(this.shrine.x,this.shrine.y+60,'ShrineStates',s.juice.frameName('ShrineStates',0)).setOrigin(.5,31/32).setScale(6).setDepth(this.shrine.y).setVisible(false);this.frogSprite=s.add.sprite(0,0,'frog').setScale(3).setVisible(false);}
     destroy(){for(const c of this.chests)c.sprite.destroy();this.frogSprite.destroy();this.shrineSprite.destroy();}
-    has(type){if(['mouse','mole','bear','salamander','spider','storm'].includes(type))return !!this.s.creatures.allies[type];return type==='cat'?this.s.catActive||!!this.catCapture:type==='owl'?!!this.s.owl:type==='beast'?!!this.s.encounters.beast:!!this.frog;}
-    party(){return TYPES.filter(t=>['mouse','mole','bear','salamander','spider','storm'].includes(t)?this.s.creatures.allies[t]?.state==='ally':t==='cat'?this.s.catActive:t==='owl'?this.s.owl?.state==='ally':t==='beast'?this.s.encounters.beast?.state==='ally':this.frog?.state==='ally');}
+    has(type){if(['mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(type))return !!this.s.creatures.allies[type];return type==='cat'?this.s.catActive||!!this.catCapture:type==='owl'?!!this.s.owl:type==='beast'?!!this.s.encounters.beast:!!this.frog;}
+    party(){return [...TYPES,...SurvivorEvolution.evolved].filter(t=>['mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(t)?this.s.creatures.allies[t]?.state==='ally':t==='cat'?this.s.catActive:t==='owl'?this.s.owl?.state==='ally':t==='beast'?this.s.encounters.beast?.state==='ally':this.frog?.state==='ally');}
     unlock(type){const s=this.s;if(s.unlocked.includes(type))return false;s.unlocked.push(type);try{localStorage.setItem(KEY,JSON.stringify(s.unlocked));s.unlockError=false;}catch{s.unlockError=true;}s.logEvent('starter_unlocked',{creature:type});s.reward('unlock',{type});return true;}
     captureBody(type){const s=this.s;return type==='cat'?this.catCapture:type==='owl'?s.owl:type==='beast'?s.encounters.beast:type==='frog'?this.frog:s.creatures.allies[type];}
     dismissCapture(type,body){
@@ -26,7 +26,7 @@
       if(type==='cat'){if(ally)s.catActive=true;else this.catCapture=base;Object.assign(s.cat,{x,y});}
       if(type==='owl'){s.owl={...base,hp:0,maxHp:18};s.owlAppeared=true;}
       if(type==='beast')s.encounters.beast={...base,r:14,charge:0,hits:new Set()};
-      if(['mouse','mole','bear','salamander','spider','storm'].includes(type))s.creatures.release(type,x,y,ally);
+      if(['mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(type))s.creatures.release(type,x,y,ally);
       if(type==='frog')this.frog={...base,pulseClock:1};
       if(ally)s.creatures.elements.recruitDash(type);
       const body=this.captureBody(type);if(body&&!ally)body.captureStage=captureStage;return true;
@@ -34,29 +34,46 @@
     initStarter(){const s=this.s;s.catActive=s.starter==='cat';if(s.catActive)s.creatures.elements.recruitDash('cat');else this.release(s.starter,s.player.x-40,s.player.y+20,true);}
     capture(body,type,dt){
       if(!body||body.state!=='ready')return;
-      const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?2:1;
-      if(this.party().length>=roundLimit+1||(Number.isInteger(stage)&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
+      const s=this.s,stage=body.captureStage,roundLimit=s.isExpedition?7:1;if(s.mode!=='playing')return;
+      if((!s.isExpedition&&this.party().length>=2)||(Number.isInteger(stage)&&(stage>=roundLimit||s.encounters.stageChoices[stage]))){this.dismissCapture(type,body);return;}
       body.progress=dist(body,s.player)<CAPTURE_R?Math.min(2.5,body.progress+dt):Math.max(0,body.progress-2*dt);
       if(body.progress<2.5)return;
-      body.state='ally';s.creatures.elements.recruitDash(type);if(type==='cat'){s.catActive=true;this.catCapture=null;}
+      if(s.creatures.evolution.offer(type,body))return;this.completeCapture(body,type,'recruit');
+    }
+    completeCapture(body,type,outcome){
+      const s=this.s,stage=body.captureStage;
+      if(outcome==='recruit'){body.state='ally';s.creatures.elements.recruitDash(type);if(type==='cat'){s.catActive=true;this.catCapture=null;}}
       if(Number.isInteger(stage)){
         s.encounters.stageChoices[stage]=type;s.encounters.chosen=s.encounters.chosen||type;
         // A completed capture commits only its own round; other rounds remain available.
         for(const otherType of TYPES){const other=this.captureBody(otherType);if(other!==body&&other?.captureStage===stage)this.dismissCapture(otherType,other);}
         s.logEvent('recruitment_chosen',{creature:type,stage});
       }
-      this.unlock(type);s.logEvent(type+'_captured');s.announce((type==='storm'?'STORM LIZARD':type.toUpperCase())+' recruited and unlocked as a starter!');s.saveRun();s.reward('capture',{type,x:body.x,y:body.y});
+      this.unlock(type);s.logEvent(type+'_captured');s.announce((type==='storm'?'STORM LIZARD':type.toUpperCase())+' recruited and unlocked as a starter!');s.saveRun();if(outcome==='recruit')s.reward('capture',{type,x:body.x,y:body.y});s.logEvent('capture_resolved',{creature:type,outcome});
     }
-    shieldBlocked(){this.s.burst('fxWater',this.s.player.x,this.s.player.y,3,.45);this.shieldBlocks++;this.s.relics.shieldBlocked();this.s.creatures.elements.shieldBlock();this.s.logEvent('shield_blocked');}
-    update(dt){const s=this.s;this.capture(this.catCapture,'cat',dt);this.capture(this.frog,'frog',dt);this.pulse=Math.max(0,this.pulse-dt);
+    shieldBlocked(){this.s.creatures.evolution.shieldBlock();this.s.burst('fxWater',this.s.player.x,this.s.player.y,3,.45);this.shieldBlocks++;this.s.relics.shieldBlocked();this.s.creatures.elements.shieldBlock();this.s.logEvent('shield_blocked');}
+    update(dt){const s=this.s;this.capture(this.catCapture,'cat',dt);this.capture(this.frog,'frog',dt);if(s.mode!=='playing')return;this.pulse=Math.max(0,this.pulse-dt);
       const f=this.frog;if(f?.state==='ally'){const d=dist(f,s.player)||1;if(d>50)s.move(f,(s.player.x-f.x)/d*Math.min(d,220*dt),(s.player.y-f.y)/d*Math.min(d,220*dt),false);f.pulseClock-=dt;if(f.pulseClock<=0){f.pulseClock=s.frogStats().shieldInterval;s.shield=true;this.supportPulses++;this.pulse=.65;s.burst('fxWater',s.player.x,s.player.y,4,.65);if(s.upgrades.chorus)s.chorusTime=Math.max(s.chorusTime,3);s.logEvent('frog_pulse',{haste:!!s.upgrades.chorus});}}
       this.updateChests(dt);if(!s.isExpedition)return;
-      const phase=Math.min(9,Math.floor(s.elapsed/60));if(phase!==this.phase){this.phase=phase;s.logEvent('encounter_phase',{phase:this.phaseName()});if(phase>0)s.announce(this.phaseName());}
+      this.updateLaterDens();const phase=Math.min(19,Math.floor(s.elapsed/60));if(phase!==this.phase){this.phase=phase;s.logEvent('encounter_phase',{phase:this.phaseName()});if(phase>0)s.announce(this.phaseName());}
       if(s.elapsed>=150&&!this.second){this.second=true;const reserved=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage||0]).map(n=>n.type)),options=[...new Set(['frog',...s.nestDeck])].filter(t=>!this.has(t)&&!reserved.has(t)).slice(0,2);for(const [i,type] of options.entries())s.encounters.nests.push({kind:'nest',type,stage:1,activeAt:150,...s.encounters.denPosition(),r:35,hp:70,maxHp:70,clock:2+i,spawnCount:0,destroyed:false});s.logEvent('second_nests_appeared',{options});s.headline('A den of monsters appears');}
       if(s.elapsed>=180&&!this.lateStrength){this.lateStrength=true;for(const e of s.enemies)this.strengthen(e);s.logEvent('late_enemy_strength');}
       if(s.elapsed>=210&&!this.eliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.hp=e.maxHp=65;e.sprite.setScale(5);e.speed*=1.1;this.eliteSpawned=true;s.logEvent('elite_appeared');s.announce('Elite demon approaching!');}}
       if(s.elapsed>=120&&!this.extraEliteSpawned){const e=s.spawn('beast');if(e){e.elite=true;e.packReward=true;e.hp=e.maxHp=45;e.sprite.setScale(4.5);e.speed*=1.15;this.extraEliteSpawned=true;s.logEvent('roaming_elite_appeared');s.announce('Roaming elite! Defeat it for an upgrade pack.');}}
       this.updateShrine(dt);
+    }
+    updateLaterDens(){const s=this.s;if(s.encounters.bossPressure()||s.elapsed<(this.denRetryAt||0))return;this.denRetryAt=s.elapsed+15;
+      if(s.encounters.nests.filter(n=>!n.destroyed).length>=4)return;
+      for(const [i,at] of [330,480,690,840,990].entries()){const stage=i+2;if(s.elapsed<at||this.laterRounds.has(stage))continue;
+        const pending=new Set(s.encounters.nests.filter(n=>!n.destroyed&&!s.encounters.stageChoices[n.stage]).map(n=>n.type));
+        const candidates=TYPES.filter(t=>!this.has(t)&&!pending.has(t));
+        const compatible=candidates.filter(t=>s.creatures.evolution.options(t).length);
+        const ordered=[...compatible,...candidates.filter(t=>!compatible.includes(t))];
+        if(!ordered.length){this.laterRounds.add(stage);continue;}
+        const options=[];for(let n=0;n<2&&ordered.length;n++){const limit=n===0&&compatible.length?compatible.length:ordered.length,index=Math.floor(s.rand()*limit);options.push(ordered.splice(index,1)[0]);}
+        const placed=[];for(const type of options){if(s.encounters.nests.filter(n=>!n.destroyed).length>=4)break;const spot=s.encounters.denPosition(undefined,false);if(!spot)break;placed.push(type);const hp=90+stage*25;s.encounters.nests.push({kind:'nest',type,stage,activeAt:at,...spot,r:35,hp,maxHp:hp,clock:2,spawnCount:0,destroyed:false});}
+        if(!placed.length)return;this.laterRounds.add(stage);s.logEvent('fusion_dens_appeared',{stage,options:placed});s.headline('New dens: recruit or evolve');
+      }
     }
     updateChests(dt){const s=this.s;this.chestClock-=dt;
       if(this.chestClock<=0){this.chestClock=40+s.rand()*20;if(this.chests.filter(c=>!c.opened).length<3){
@@ -86,15 +103,15 @@
     }
 
     strengthen(e){if(e.lateStrong)return;e.lateStrong=true;e.hp*=1.2;e.maxHp*=1.2;}
-    phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian finale'][this.phase]||'Explore the woodland';}
-    interval(){const t=this.s.elapsed;if(t<60)return .85-t*.004;if(t<120)return .55;if(t<150)return .7;if(t<180)return .4;if(t<200)return .85;if(t<240)return .4;return Math.max(.18,.34-Math.max(0,t-300)*.00055);}
-    enemyType(){const s=this.s,special=SurvivorEnemies.waveType(s);if(special)return special;if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.elapsed>=570)return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
-    draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);if(f.state!=='ready')g.lineStyle(2,0x8ce7ae).strokeCircle(f.x,f.y,23);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
+    phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian encounter','Deeper woodland','Evolved hordes','Recruit and evolve','Relic hunters','Ancient territory','Gather strength','Relentless hordes','Final preparations','The last approach','Ancient Guardian finale'][this.phase]||'Explore the woodland';}
+    interval(){const t=this.s.elapsed;if(this.s.encounters.bossPressure())return 2.4;if(t<60)return .85-t*.004;if(t<120)return .55;if(t<150)return .7;if(t<180)return .4;if(t<200)return .85;if(t<240)return .4;return Math.max(.18,.34-Math.max(0,t-300)*.00055);}
+    enemyType(){const s=this.s,special=SurvivorEnemies.waveType(s);if(special)return special;if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.encounters.bossPressure())return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
+    draw(){const s=this.s,g=s.fx,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);if(this.pulse>0)g.lineStyle(4,0x8ce7ae,this.pulse/.65).strokeCircle(s.player.x,s.player.y,35+85*(1-this.pulse/.65));}
       
       const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setFrame(s.juice.frameName('ShrineStates',sh.completed)).setTint(sh.inCombat?0xffd8b0:0xffffff);
     }
     drawUI(w,h){}
-    summary(){return {chestsOpened:this.chestsOpened,chestXp:this.chestXp,chests:this.chests.map(({x,y,xp,opened})=>({x,y,xp,opened})),starter:this.s.starter,party:this.party(),phase:this.phaseName(),secondNests:this.second,extraEliteSpawned:this.extraEliteSpawned,supportPulses:this.supportPulses,frogSupport:this.s.frogStats(),shieldBlocks:this.shieldBlocks,shrine:{...this.shrine},frog:this.frog?{state:this.frog.state,x:this.frog.x,y:this.frog.y,progress:this.frog.progress}:null};}
+    summary(){return {chestsOpened:this.chestsOpened,chestXp:this.chestXp,chests:this.chests.map(({x,y,xp,opened})=>({x,y,xp,opened})),starter:this.s.starter,party:this.party(),phase:this.phaseName(),secondNests:this.second,laterDenRounds:[...this.laterRounds],extraEliteSpawned:this.extraEliteSpawned,supportPulses:this.supportPulses,frogSupport:this.s.frogStats(),shieldBlocks:this.shieldBlocks,shrine:{...this.shrine},frog:this.frog?{state:this.frog.state,x:this.frog.x,y:this.frog.y,progress:this.frog.progress}:null};}
   }
   window.Expedition=Expedition;
 })();

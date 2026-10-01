@@ -52,6 +52,55 @@ Pixel Composer effects: open the `.pxc`, press **F5** then **F6** to write the P
 
 Rarity colors: common `#78949b`, rare `#8973ab`, legendary `#f7b750`. Not done yet: Priority 3 (capture affinity variants, guardian arrival).
 
+## Evolution merge (2026-10-01)
+
+Shared by all four evolutions (white, tinted in code with the element colour, except the gold slot glow and purple discovery ring). Five are Pixel Composer projects built by `build_merge.py` (`Merge_*.pxc`, `Evolved_Slot_Glow.pxc`, `Recipe_Discovered.pxc`): open each, play it through, **F5** then **F6** to replace the placeholder PNG (`build_fillers.py merge`) at the same size, frame count and anchor. `Merge_Trail` is hand-drawn in `build_fillers.py` (too small for shapes), like `Reward_Trail`.
+
+| Asset | Size | Frames @fps | Loop | Anchor | Used for |
+|---|---|---|---|---|---|
+| `Merge_Trail` | 8×8 | 6 @24 | no | 4,4 | motes behind each converging parent, in that parent's colour (world, 3x) |
+| `Merge_Core` | 32×32 | 6 @24 | no | 16,16 | cocoon pulse hiding the swap (world, 3x; local, never full-screen) |
+| `Merge_Reveal` | 48×48 | 8 @24 | no | 24,24 | single burst as the result appears (world, 3x) |
+| `Merge_Ring` | 64×44 | 8 @24 | no | 32,22 | 3:2 ground shockwave under the result (world, 3x, below actors) |
+| `Evolved_Slot_Glow` | 32×24 | 6 @15 | no | 16,12 | gold glow on the party slot the result lands in (UI, 2x over 62×48) |
+| `Recipe_Discovered` | 64×64 | 8 @8 | yes | 32,32 | rotating sparkle ring behind the portrait on the NEW EVOLUTION panel (UI, 3x) |
+
+## Evolution abilities (2026-10-01, Phase B)
+
+Built by `build_abilities.py`; wiring is in `docs/evolution-vfx-integration.md`. Every JSON carries `visible_w` so code can scale to the gameplay radius. Ink and fire are palette-coloured (no tint); the others are white, tinted in code.
+
+| Effect | Source | Size | Frames @fps | Loop |
+|---|---|---|---|---|
+| Ink landing | `Ink_Splat.pxc` | 48×32 | 6 @20 | no |
+| Ink pool start / loop / end | `Ink_Pool_{Start,Loop,End}.pxc` | 48×32 | 4 @15 / 8 @8 / 4 @15 | loop only |
+| Octopus tentacle sweep (points right; rotate) | `Tentacle_Sweep.pxc` | 96×96 | 6 @20 | no |
+| Inked hit | `Ink_Hit.pxc` | 16×16 | 5 @20 | no |
+| Reptile charge kick (authored charging right) | `Charge_Kick.pxc` | 48×32 | 6 @20 | no |
+| Burning ground start / loop / end | `Fire_Pool_{Start,Loop,End}.pxc` | 48×32 | 4 @15 / 8 @10 / 4 @15 | loop only |
+| Heavy bite (teeth only: snap, hold, slow fade) | `Bite_Impact.pxc` | 64×48 | 12 @20 | no |
+| Burning detonation | `Fire_Detonate.pxc` | 64×48 | 8 @20 | no |
+| Contact spark | `Zap_Spark.pxc` | 16×16 | 5 @24 | no |
+| Thunder warning | `Thunder_Warning.pxc` | 48×32 | 6 @12 | yes |
+| Axolotl shield pulse | `Bubble_Pulse.pxc` | 48×48 | 7 @20 | no |
+| Bubble break ring | `Bubble_Break.pxc` | 64×44 | 8 @20 | no |
+| Bubble Rally motes (gold) | `Rally_Motes.pxc` | 24×32 | 8 @12 | yes |
+| Tengu feather (hand-placed, `build_fillers.py tengu`) | — | 16×8 | 4 @15 | yes |
+| Lightning link strip (hand-placed, `build_fillers.py tengu`) | — | 32×12 | 4 @20 | yes |
+
+## Evolution upgrade icons (2026-10-01, Phase C)
+
+Pixel art built in Pixel Composer by `build_icons.py`, using the Castle/Tree sample recipe: flat shapes with no anti-aliasing, a 1px `#1c080c` outline outside drawn after the spin, and a Toasted40 posterize. Each is 16×16 with 16 frames @12 as a looping coin spin. After export, add each to `UPGRADE_ICONS` in `scripts/build-ui-assets.py` as `('sheet', 'Icon_…')`. The other eight evolution upgrades use pack icons (see `UPGRADE_ICONS`).
+
+| Upgrade | Icon | Motif |
+|---|---|---|
+| reptileTrail Blazing Wake | `Icon_Blazing_Wake.pxc` | wall of fire |
+| reptileRush Double Charge | `Icon_Double_Charge.pxc` | two chevrons pointing right |
+| octoPool Ink Flood | `Icon_Ink_Flood.pxc` | jar of ink |
+| octoCrush Squeezing Grip | `Icon_Squeezing_Grip.pxc` | curling tentacle |
+| axoPulse Bubble Rhythm | `Icon_Bubble_Rhythm.pxc` | three rising bubbles |
+| axoRing Ink Halo | `Icon_Ink_Halo.pxc` | flat purple ring |
+| axoHaste Bubble Rally | `Icon_Bubble_Rally.pxc` | bubble with a gold up-chevron |
+
 ## Monster attacks (from "THE SCROLL — Confirmed Monsters")
 
 Already covered by earlier effects: Blushcap = `Bubble_Burst`, Outsnip = `Scissor_Snip`, Parasocial Relationships = `Heart_*`.
