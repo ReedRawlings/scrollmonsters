@@ -1,10 +1,12 @@
 (() => {
   'use strict';
-  const MAX_FX = 60;
+  const GEM_PICKUP = 38, MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
+  // Each creature's element colour, matching the hit bursts the sim already uses for it.
+  const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff};
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
-  // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
-  // Math.random() (the sim uses it for dens and chests), scene.burst() or camera.shake() (uses Math.random).
+  // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(), Math.random(),
+  // scene.burst() or camera.shake() (Math.random) from here; cosmetic randomness uses this.rand().
   class SurvivorJuice {
     constructor(s){
       this.s=s;this.enabled=true;this.reduced=s.ui.reducedMotion;this.seed=(Date.now()>>>0)||1;
@@ -12,7 +14,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;this.uiLarge=saved.uiLarge===true;
@@ -23,8 +25,9 @@
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
+      for(const c of this.titleCritters||[])c.sprite.destroy();this.titleCritters=[];this.fireflyG?.clear();this.irisAt=null;
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -64,7 +67,10 @@
     }
     // Damage hooks from the sim. boost = product of the conditional multipliers on this hit; 25%+ reads as a crit.
     damage(target,amount,boost=1){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(target,amount,{crit:boost>=1.25});}
-    hurt(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{hurt:true});}
+    hurt(amount){if(!this.enabled||amount<=0)return;this.hpJoltAt=this.now();if(this.numbersOn)this.numbers.show(this.s.player,amount,{hurt:true});}
+    heal(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{heal:true});}
+    // The HP bar jolts sideways for 150ms when the player is hit.
+    hpJolt(){const t=this.now()-this.hpJoltAt;return this.reduced||t>=150?0:Math.round(3*Math.sin(t/150*Math.PI*4)*(1-t/150))||1;}
     setNumbers(on){this.numbersOn=!!on;if(!on)this.numbers.reset();this.saveSettings();}
     setUiLarge(on){this.uiLarge=!!on;this.saveSettings();}
     saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({damageNumbers:this.numbersOn,uiLarge:this.uiLarge}));}catch{}}
@@ -90,7 +96,8 @@
         f.sprite.setFrame(this.frameName(f.key,this.frameAt(f.key,t,f.loop)));}
       this.advanceFlights(now);
       this.numbers.update(now);
-      if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(0,0);
+      if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(...this.titlePan());
+      this.updateTitle(now);this.drawIris();
       this.updateAura(now);
       this.updateWorld?.(now);
     }
@@ -106,7 +113,21 @@
       return 'walker';
     }
     slotPoint(type){const slots=this.s.hud.layout.slots,slot=slots.find(v=>v.type===type)||slots[0];return {x:slot.x+24,y:slot.y+26};}
+    // XP gems: the sim moves them in a straight line; this bends the drawn path into an arc that lands on the player.
+    gemOffset(item){
+      const p=this.s.player,dx=p.x-item.x,dy=p.y-item.y,d=Math.hypot(dx,dy)||1;
+      if(!this.enabled||!(item.magnetized||d<100))return {x:0,y:0,scale:1};
+      let g=this.gems.get(item);if(!g){g={d0:Math.max(d,1),side:this.rand()<.5?-1:1};this.gems.set(item,g);}
+      // Progress runs to the pickup radius (38px), where the sim collects the gem, so the arc lands on the player.
+      const t=g.d0<=GEM_PICKUP?1:clamp((g.d0-d)/(g.d0-GEM_PICKUP),0,1),a=Math.sin(t*Math.PI),amp=Math.min(22,g.d0*.3)*g.side;
+      return {x:-dy/d*amp*a,y:dx/d*amp*a-14*a,scale:1-.4*t};
+    }
+    onGem(e){const now=this.now();this.xpFlashAt=now;
+      if(now-this.lastSpark>60){this.lastSpark=now;const p=this.s.player;this.play('Reward_Trail',p.x+(this.rand()*2-1)*6,p.y-12,{scale:2,depth:p.y+40});}}
+    // 0..1 brightness for the XP bar: a short flash per gem, a long one on level-up.
+    xpFlash(){const now=this.now();if(!this.enabled||this.reduced)return 0;return Math.max(clamp(1-(now-this.xpFlashAt)/140,0,1)*.6,clamp(1-(now-this.levelFlashAt)/420,0,1));}
     onLevelUp(e){
+      this.levelFlashAt=this.now();this.flashCopy(this.s.playerSprite,90);this.jitter(2,160);this.freeze(60);
       // A level-up chained straight after a pick never passes through a draw, so re-arm the deal-in clock here.
       this.mode='upgrade';this.modeAt=this.now();
       this.aura={phase:'Ignite',start:this.now()};this.note('LevelUp_Aura_Ignite_Back');
@@ -114,19 +135,39 @@
     onUpgrade(e){
       const card=this.s.screens.layout.cards?.[e.index];if(!card)return;
       this.freeze(260);
-      const choice=this.s.choices[e.index];this.picked={card:{...card},label:(e.index+1)+'. '+(choice?.name||''),detail:choice?.detail||'',id:e.id,at:this.now()};
-      const to=this.slotPoint(this.ownerOf(e.id));
-      this.flyTo('upgrade_'+e.id,{x:card.x+24,y:card.y+card.h/2},to,{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});
+      const choice=this.s.choices[e.index],cards=this.s.screens.layout.cards||[];
+      this.picked={card:{...card},label:(e.index+1)+'. '+(choice?.name||''),detail:choice?.detail||'',id:e.id,at:this.now(),
+        others:cards.map((c,i)=>i===e.index?null:{card:{...c},label:(i+1)+'. '+(this.s.choices[i]?.name||''),id:this.s.choices[i]?.id}).filter(Boolean)};
+      this.travel(e.id,{x:card.x+24,y:card.y+card.h/2});
     }
-    onPack(e){this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});}
+    // Where an upgrade lands: party-wide upgrades visit every occupied slot, Tough Hide the HP bar, the rest their owner's slot.
+    travel(id,from){
+      const land=(type)=>p=>{this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1});if(type==='hp')this.hpFlashAt=this.now();else this.slotFlashAt[type]=this.now();};
+      if(id==='hide'){const hp=this.s.hud.layout.hp;if(hp)return this.flyTo('upgrade_'+id,from,{x:hp.x+hp.w/2,y:hp.y+hp.h/2},{onLand:land('hp')});}
+      const types=PARTY_WIDE.includes(id)?this.s.hud.layout.slots.filter(v=>v.type).map(v=>v.type):[this.ownerOf(id)];
+      for(const t of types)this.flyTo('upgrade_'+id,from,this.slotPoint(t),{onLand:land((this.s.hud.layout.slots.find(v=>v.type===t)||this.s.hud.layout.slots[0])?.type)});
+    }
+    slotFlash(type){if(this.reduced)return 0;return clamp(1-(this.now()-(this.slotFlashAt[type]??-1e9))/250,0,1);}
+    hpFlash(){if(this.reduced)return 0;return clamp(1-(this.now()-this.hpFlashAt)/250,0,1);}
+    // Pickup: the pack bursts open in the world and jumps to the centre of the screen as the reveal starts.
+    onPack(e){const key='Pack_Drop_'+SurvivorPacks.rarity(e.size);this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});
+      const {w,h}=this.s.uiSize();this.flyTo(key,this.s.toUI(e.x,e.y),{x:w/2,y:this.s.screens.packCardY(w,h)},{size:48});}
     onPackFlip(e){if(this.reduced)return;const w=this.s.uiSize().w;
       this.play('Pack_Flip',w/2,this.s.screens.layout.packCard??200,{ui:true,scale:3,tint:parseInt(SurvivorPacks.COLORS[e.size].slice(1),16)});}
     onPackApply(e){const hand=this.s.screens.layout.hand||[];
-      e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.flyTo('upgrade_'+id,from,this.slotPoint(this.ownerOf(id)),{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});});}
+      e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.travel(id,from);});}
     // The chosen relic flies from its card to its cell in the HUD relic row (the row is laid out on the next draw).
-    onRelic(e){const card=this.s.screens.layout.cards?.[e.index];if(!card)return;this.s.draw();
-      const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
-      this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});}
+    // The relic card presses and the others drop away (screens.dismiss), then the relic flies to its HUD cell and the icon bumps.
+    onRelic(e){const card=e.cards?.[e.index];if(!card)return;const R=this.s.relics,label=(i,id)=>(i+1)+'. '+R.name(id);
+      this.freeze(260);
+      this.picked={card,label:label(e.index,e.id),detail:'',id:e.id,icon:'relic_'+e.id,at:this.now(),
+        others:e.ids.map((id,i)=>i===e.index||!e.cards[i]?null:{card:e.cards[i],label:label(i,id),id,icon:'relic_'+id}).filter(Boolean)};
+      this.s.draw();const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
+      this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>{this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1});this.relicBumpAt[e.id]=this.now();}});}
+    relicBump(id){if(this.reduced)return 0;return clamp(1-(this.now()-(this.relicBumpAt[id]??-1e9))/220,0,1);}
+    // Ground packs tumble out of the defeated enemy and land exactly on their sim position.
+    packOffset(item){if(!this.enabled||this.reduced)return {x:0,y:0,rot:0};let t0=this.packSeen.get(item);if(t0==null){t0=this.now();this.packSeen.set(item,t0);}
+      const t=clamp((this.now()-t0)/600,0,1),e=1-Math.pow(1-t,2);return t>=1?{x:0,y:0,rot:0}:{x:24*(1-e),y:-28*(1-e)-50*Math.sin(Math.PI*t),rot:-2*Math.PI*(1-e)};}
     // Aura: Ignite once, Loop while the level-up screen is up, then Fade once.
     updateAura(now){
       const a=this.aura;if(!a){this.auraSprites?.forEach(s=>s.setVisible(false));return;}
@@ -149,19 +190,47 @@
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
       if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm']){
-        const b=this.s.expedition.captureBody(type);if(b?.state==='ready')this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});}
+        const b=this.s.expedition.captureBody(type);if(b?.state!=='ready')continue;this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});
+        // The creature trembles harder each quarter of the charge (drawn offset only; the sim position is untouched).
+        const sp=this.captureSprite(type,b),q=Math.floor(clamp(b.progress/2.5,0,.999)*4);if(sp&&q&&!this.reduced){const a=q*.75;sp.setPosition(sp.x+(this.rand()*2-1)*a,sp.y+(this.rand()*2-1)*a);}}
       this.updateShrine?.(now);
       for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
     }
     onUnlock(e){this.unlocks.push(e.type);this.unlockAt=this.now()+900;}
+    // Title field (presentation only): unlocked creatures wander, fireflies drift, the view pans slowly. Gone once a run starts.
+    titlePan(){if(this.s.mode!=='title'||this.reduced||!this.enabled)return [0,0];const t=this.since('title')/12000*Math.PI*2;return [Math.round(16*Math.sin(t)),Math.round(-10*Math.sin(t*.7))];}
+    updateTitle(now){
+      const s=this.s,title=s.mode==='title'&&this.enabled;
+      if(!title){if(this.titleCritters.length){for(const c of this.titleCritters)c.sprite.destroy();this.titleCritters=[];}this.fireflyG?.clear();this.fireflies=0;return;}
+      const cam=s.cameras.main,cx=cam.midPoint.x,cy=cam.midPoint.y,vw=cam.width/2,vh=cam.height/2;
+      if(!this.titleCritters.length)for(const type of s.unlocked.slice(0,6)){if(!s.textures.exists(type))continue;
+        const x=cx+(this.rand()*2-1)*vw*.8,y=cy+(this.rand()*2-1)*vh*.8;this.titleCritters.push({type,x,y,vx:0,vy:0,next:0,sprite:s.add.sprite(x,y,type,0).setScale(3)});}
+      const dt=Math.min(.05,(now-(this.titleLast??now))/1000);this.titleLast=now;
+      for(const c of this.titleCritters){if(now>=c.next){const a=this.rand()*Math.PI*2,sp=this.rand()<.3?0:18+this.rand()*16;c.vx=Math.cos(a)*sp;c.vy=Math.sin(a)*sp;c.next=now+1400+this.rand()*1800;}
+        c.x=clamp(c.x+c.vx*dt,cx-vw+24,cx+vw-24);c.y=clamp(c.y+c.vy*dt,cy-vh+40,cy+vh-40);
+        const moving=Math.hypot(c.vx,c.vy)>1;c.sprite.setPosition(c.x,c.y).setDepth(c.y+20).setFlipX(c.vx<0).setFrame(moving?Math.floor(now/160)%4*4:0);}
+      // 16 fireflies rise and fade on their own loops.
+      const g=this.fireflyG??=s.add.graphics().setDepth(2990);g.clear();this.fireflies=16;
+      for(let i=0;i<16;i++){const seed=Math.sin(i*12.9898)*43758.5453,f=seed-Math.floor(seed),period=2600+f*1600,k=((now+f*3000)%period)/period;
+        const x=cx-vw+((f*7919)%1)*vw*2+Math.sin(k*6+i)*8,y=cy+vh-((f*104729)%1)*vh*2-k*60;g.fillStyle(0xffe680,Math.sin(k*Math.PI)).fillRect(Math.round(x),Math.round(y),3,3);}
+    }
+    // BEGIN closes an iris on the field and opens it on the run (0..1 = radius fraction; 1 = no iris).
+    iris(){if(this.reduced||!this.enabled)return;this.irisAt=this.now();this.freeze(400);}
+    irisRadius(){const t=this.now()-(this.irisAt??-1e9);return t>=400?1:1-Math.pow(1-t/400,2);}
+    drawIris(){const r=this.irisRadius(),g=this.irisG??=this.s.add.graphics();if(g.parentContainer!==this.front)this.front.add(g);g.clear();if(r>=1)return;
+      const {w,h}=this.s.uiSize(),R=Math.hypot(w,h)/2,rr=Math.max(0,r*R),thick=R*2;g.lineStyle(thick,0x000000,1).strokeCircle(w/2,h/2,rr+thick/2);}
+    elementTint(type){return ELEMENT_TINT[type]??0xffffff;}
+    captureSprite(type,b){const s=this.s;return b?.sprite||{cat:s.catSprite,owl:s.owlSprite,beast:s.encounters.beastSprite,frog:s.expedition.frogSprite}[type];}
+    slotFill(type){const t0=this.slotFillAt[type];return t0==null?1:clamp((this.now()-t0)/300,0,1);}
     onCapture(e){
-      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);
+      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);this.flashCopy(this.captureSprite(e.type,this.s.expedition.captureBody(e.type)),120);this.jitter(2,200);
+      this.slotFillAt[e.type]=this.now()+960; // the bar stays empty through the 500ms hold and 460ms flight, then fills
       if(this.fx.length+this.faces.length>=MAX_FX)return;
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
       if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}
       // Tracked so reset() can cancel a pending flight when the run restarts.
       const entry={face};entry.timer=this.s.time.delayedCall(500,()=>{this.faces=this.faces.filter(f=>f!==entry);const from={x:face.x,y:face.y};face.destroy();
-        this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1})});});
+        this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>{this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1});this.slotFillAt[e.type]=this.now();this.slotFlashAt[e.type]=this.now();}});});
       this.faces.push(entry);
     }
     updateShrine(now){

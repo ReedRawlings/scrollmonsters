@@ -81,7 +81,7 @@
     }
     completeShrine(e){const s=this.s,sh=this.shrine;if(!sh.inCombat||e.shrineTier!==sh.completed+1)return;
       sh.completed++;sh.inCombat=false;sh.done=sh.completed===3;sh.active=!sh.done;s.relics.reward(sh.done?'final_shrine':'shrine_challenge');sh.needsExit=true;sh.progress=0;
-      const healed=sh.completed===1?Math.min(12,s.maxHp-s.player.hp):0;s.player.hp+=healed;const xp=s.xpNeeded();s.gainXP(xp,false);
+      const healed=sh.completed===1?Math.min(12,s.maxHp-s.player.hp):0;s.player.hp+=healed;s.juice.heal(healed);const xp=s.xpNeeded();s.gainXP(xp,false);
       s.logEvent('shrine_completed',{tier:sh.completed,heal:healed,xp});s.reward('shrine',{tier:sh.completed,final:sh.done,x:sh.x,y:sh.y});s.announce(sh.done?'Shrine exhausted. Final bonus upgrade earned!':'Bonus upgrade earned! Leave the circle before the next challenge.');
     }
 

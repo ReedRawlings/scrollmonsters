@@ -64,7 +64,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await state(pk, () => { const s = __survivorTest.scene; s.start(); s.spawnTimer = 999; s.xp = s.xpNeeded(); s.checkLevel(); s.draw(); });
     await wait(450);
     const names = await state(pk, () => __survivorTest.scene.choices.map((c, i) => (i + 1) + '. ' + c.name));
-    const cp = await controlPoint(pk, names[0]); await pk.mouse.click(cp.x, cp.y); await wait(80);
+    const cp = await controlPoint(pk, names[0]); await pk.mouse.click(cp.x, cp.y); await wait(150); // the other cards finish dropping away at 120ms
     const mid = await state(pk, names => { const s = __survivorTest.scene; s.draw(); const shown = []; s.ui.walk(o => { if (o.type === 'Text' && o.visible && names.includes(o.text) && o.alpha > 0.05) { let a = o.alpha; for (let n = o.parentContainer; n; n = n.parentContainer) a *= n.alpha; if (a > 0.05) shown.push(o.text); } });
       const f = s.juice.flights[0], c = s.juice.picked?.card; return {shown, from: f && f.from, card: c}; }, names);
     await pk.screenshot({path: 'output/feedback/pick-dismiss.png'});

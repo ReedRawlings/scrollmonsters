@@ -1,7 +1,7 @@
 const {spawn}=require('node:child_process');
 const net=require('node:net');
 const path=require('node:path');
-const tests=['greens-map','greens-browser','starter-grid','opening-balance','enemy-pressure','enemy-variety','enemy-damage-growth','summoners','swarm-spawning','looping-world','dash-input','dash-abilities','player-aim','survivor-fx','elements','relic-growth','determinism','party-growth','matching-dens','exploration','entrypoints','survivors','creatures','expedition','survivor-encounters','capture-choice','relic-contracts','survivor-reliability','ui-foundation','juice','damage-numbers','upgrade-packs','feedback'];
+const tests=['greens-map','greens-browser','starter-grid','opening-balance','enemy-pressure','enemy-variety','enemy-damage-growth','summoners','swarm-spawning','looping-world','dash-input','dash-abilities','player-aim','survivor-fx','elements','relic-growth','determinism','party-growth','matching-dens','exploration','entrypoints','survivors','creatures','expedition','survivor-encounters','capture-choice','relic-contracts','survivor-reliability','ui-foundation','juice','damage-numbers','upgrade-packs','feedback','beats'];
 const root=path.resolve(__dirname,'..');
 let server,child,interrupted=false;
 const stop=()=>{child?.kill('SIGTERM');server?.kill('SIGTERM');};
