@@ -149,6 +149,33 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await up.screenshot({path: 'output/beats/unlock.png'});
     assert.deepEqual(up.errors, []);
     await up.context().close();
+
+    // --- title: wake from black, a live panning field with wandering creatures and fireflies, logo slam and bob,
+    //     faces pop in 45ms apart, NEW on unseen unlocks, an iris on BEGIN ---
+    const tp = await open(browser, {width: 1100, height: 760}, {init: () => { localStorage.setItem('scrollmonsters-starters-v1', JSON.stringify(['owl'])); localStorage.setItem('scrollmonsters-seen-starters-v1', JSON.stringify(['cat'])); }});
+    const ti = await state(tp, async () => { const s = __survivorTest.scene, j = s.juice, out = {}; const at = t => { j.modeAt = j.now() - t; s.draw(); return {...s.screens.layout.titleFx}; };
+      out.t100 = at(100); out.t450 = at(450); out.t900 = at(900); out.t2000 = at(2000);
+      out.critters = j.titleCritters.length; const c0 = j.titleCritters.map(c => c.x); await new Promise(r => setTimeout(r, 300)); s.draw(); out.walked = j.titleCritters.some((c, i) => Math.abs(c.x - c0[i]) > .5);
+      out.fireflies = j.fireflies; out.pan = (() => { const o = []; for (const t of [1000, 4000, 7000]) { j.modeAt = j.now() - t; s.draw(); j.update(); o.push(Math.round(s.cameras.main.followOffset.x)); } return o; })();
+      out.newBadge = s.screens.layout.newFaces; return out; });
+    assert(ti.t100.wake > 0 && ti.t450.wake === 0, 'The title wakes from black');
+    assert(ti.t450.logo > 1 && Math.abs(ti.t2000.logo - 1) < 1e-9, 'The logo slams in, then settles');
+    assert(ti.t2000.bob !== undefined, 'and bobs');
+    assert(ti.t900.faces[0] === 1 && ti.t900.faces.at(-1) < 1 && ti.t2000.faces.every(f => f === 1), 'Faces pop in one after another');
+    assert.equal(ti.critters, 2, 'Unlocked creatures wander the field'); assert.equal(ti.walked, true);
+    assert.equal(ti.fireflies, 16, 'Fireflies drift'); assert(new Set(ti.pan).size > 1, 'The view pans slowly: ' + ti.pan);
+    assert.deepEqual(ti.newBadge, ['owl'], 'A new unlock wears NEW');
+    const after = await state(tp, () => { const s = __survivorTest.scene; s.chooseStarter('owl'); s.screens.markSeen?.('owl'); s.draw(); return {badge: s.screens.layout.newFaces, saved: JSON.parse(localStorage.getItem('scrollmonsters-seen-starters-v1'))}; });
+    assert.deepEqual(after.badge, [], 'Choosing it clears NEW'); assert(after.saved.includes('owl'));
+    await tp.screenshot({path: 'output/beats/title.png'});
+    const begin = await controlPoint(tp, 'BEGIN'); await tp.mouse.click(begin.x, begin.y); await wait(60);
+    const ir = await state(tp, () => { const s = __survivorTest.scene, j = s.juice; j.update(); return {mode: s.mode, critters: j.titleCritters.length, iris: j.irisRadius()}; });
+    assert.equal(ir.mode, 'playing'); assert.equal(ir.critters, 0, 'Title critters leave with the menu'); assert(ir.iris > 0 && ir.iris < 1, 'An iris closes on BEGIN');
+    assert.deepEqual(tp.errors, []);
+    await tp.close();
+    const firstRun = await open(browser);
+    assert.deepEqual(await state(firstRun, () => { const s = __survivorTest.scene; s.draw(); return s.screens.layout.newFaces; }), [], 'A first visit shows no NEW badges');
+    await firstRun.close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

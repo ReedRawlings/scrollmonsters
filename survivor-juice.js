@@ -25,6 +25,7 @@
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
+      for(const c of this.titleCritters||[])c.sprite.destroy();this.titleCritters=[];this.fireflyG?.clear();
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
       this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
@@ -95,7 +96,8 @@
         f.sprite.setFrame(this.frameName(f.key,this.frameAt(f.key,t,f.loop)));}
       this.advanceFlights(now);
       this.numbers.update(now);
-      if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(0,0);
+      if(now<this.jitterUntil){const p=this.jitterPx;cam.setFollowOffset((this.rand()*2-1)*p,(this.rand()*2-1)*p);}else cam.setFollowOffset(...this.titlePan());
+      this.updateTitle(now);this.drawIris();
       this.updateAura(now);
       this.updateWorld?.(now);
     }
@@ -194,6 +196,28 @@
       for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
     }
     onUnlock(e){this.unlocks.push(e.type);this.unlockAt=this.now()+900;}
+    // Title field (presentation only): unlocked creatures wander, fireflies drift, the view pans slowly. Gone once a run starts.
+    titlePan(){if(this.s.mode!=='title'||this.reduced||!this.enabled)return [0,0];const t=this.since('title')/12000*Math.PI*2;return [Math.round(16*Math.sin(t)),Math.round(-10*Math.sin(t*.7))];}
+    updateTitle(now){
+      const s=this.s,title=s.mode==='title'&&this.enabled;
+      if(!title){if(this.titleCritters.length){for(const c of this.titleCritters)c.sprite.destroy();this.titleCritters=[];}this.fireflyG?.clear();this.fireflies=0;return;}
+      const cam=s.cameras.main,cx=cam.midPoint.x,cy=cam.midPoint.y,vw=cam.width/2,vh=cam.height/2;
+      if(!this.titleCritters.length)for(const type of s.unlocked.slice(0,6)){if(!s.textures.exists(type))continue;
+        const x=cx+(this.rand()*2-1)*vw*.8,y=cy+(this.rand()*2-1)*vh*.8;this.titleCritters.push({type,x,y,vx:0,vy:0,next:0,sprite:s.add.sprite(x,y,type,0).setScale(3)});}
+      const dt=Math.min(.05,(now-(this.titleLast??now))/1000);this.titleLast=now;
+      for(const c of this.titleCritters){if(now>=c.next){const a=this.rand()*Math.PI*2,sp=this.rand()<.3?0:18+this.rand()*16;c.vx=Math.cos(a)*sp;c.vy=Math.sin(a)*sp;c.next=now+1400+this.rand()*1800;}
+        c.x=clamp(c.x+c.vx*dt,cx-vw+24,cx+vw-24);c.y=clamp(c.y+c.vy*dt,cy-vh+40,cy+vh-40);
+        const moving=Math.hypot(c.vx,c.vy)>1;c.sprite.setPosition(c.x,c.y).setDepth(c.y+20).setFlipX(c.vx<0).setFrame(moving?Math.floor(now/160)%4*4:0);}
+      // 16 fireflies rise and fade on their own loops.
+      const g=this.fireflyG??=s.add.graphics().setDepth(2990);g.clear();this.fireflies=16;
+      for(let i=0;i<16;i++){const seed=Math.sin(i*12.9898)*43758.5453,f=seed-Math.floor(seed),period=2600+f*1600,k=((now+f*3000)%period)/period;
+        const x=cx-vw+((f*7919)%1)*vw*2+Math.sin(k*6+i)*8,y=cy+vh-((f*104729)%1)*vh*2-k*60;g.fillStyle(0xffe680,Math.sin(k*Math.PI)).fillRect(Math.round(x),Math.round(y),3,3);}
+    }
+    // BEGIN closes an iris on the field and opens it on the run (0..1 = radius fraction; 1 = no iris).
+    iris(){if(this.reduced||!this.enabled)return;this.irisAt=this.now();this.freeze(500);}
+    irisRadius(){const t=this.now()-(this.irisAt??-1e9);return t>=500?1:t<250?1-t/250:(t-250)/250;}
+    drawIris(){const r=this.irisRadius(),g=this.irisG??=this.s.add.graphics();if(g.parentContainer!==this.front)this.front.add(g);g.clear();if(r>=1)return;
+      const {w,h}=this.s.uiSize(),R=Math.hypot(w,h)/2,rr=Math.max(0,r*R),thick=R*2;g.lineStyle(thick,0x000000,1).strokeCircle(w/2,h/2,rr+thick/2);}
     elementTint(type){return ELEMENT_TINT[type]??0xffffff;}
     captureSprite(type,b){const s=this.s;return b?.sprite||{cat:s.catSprite,owl:s.owlSprite,beast:s.encounters.beastSprite,frog:s.expedition.frogSprite}[type];}
     slotFill(type){const t0=this.slotFillAt[type];return t0==null?1:clamp((this.now()-t0)/300,0,1);}

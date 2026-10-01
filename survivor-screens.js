@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const D = () => ScrollUI.DARK;
+  const SEEN_KEY = 'scrollmonsters-seen-starters-v1';
   const pretty = id => id==='storm'?'Storm Lizard':id[0].toUpperCase()+id.slice(1);
   class SurvivorScreens {
     constructor(s){this.s=s;this.layout={faces:[]};}
@@ -19,8 +20,8 @@
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
     dim(w,h){const ui=this.s.ui;ui.rect(0,0,w,h,'#0b0710b0');ui.hitArea(0,0,w,h,()=>{},'modal-blocker');}
     title(w,h){
-      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced;
-      this.dim(w,h);
+      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
+      this.dim(w,h);this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
       // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
       const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
@@ -28,7 +29,9 @@
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
       const ease=k=>1+2.2*Math.pow(k-1,3)+1.2*Math.pow(k-1,2),bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
         for(const [cx,cy,dx,dy] of [[x-4,y-4,1,1],[x+bw+4,y-4,-1,1],[x-4,y+bh+4,1,-1],[x+bw+4,y+bh+4,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);};
-      ui.banner('SCROLL MONSTERS',...L.banner);
+      // Logo: slams in at 350ms (1.6x to 1x over 200ms), then bobs 2px.
+      const lk=red?1:tt<350?0:Math.min(1,(tt-350)/200);fx.logo=red?1:tt<350?0:1.6-.6*(1-Math.pow(1-lk,3));fx.bob=red||tt<550?0:Math.round(2*Math.sin((tt-550)/600*Math.PI));
+      if(fx.logo>0){const [bx0,by0]=L.banner;ui.beginGroup('titlelogo',{x:bx0*(1-fx.logo),y:(by0+16)*(1-fx.logo)+fx.bob,scale:fx.logo});ui.banner('SCROLL MONSTERS',bx0,by0);ui.endGroup();}
       // Hero flip (prototype menu): squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
       const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
       const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
@@ -44,7 +47,10 @@
       roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
         if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
         this.layout.faces.push({id,x:x+ox,y:y+oy,size:38,known}); // layout is recorded in screen space
-        const f=ui.image('face_'+id,x,y,38,38);if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
+        // Faces pop in 45ms apart from 650ms; unseen unlocks wear a pulsing NEW.
+        const fk=red?1:Math.max(0,Math.min(1,(tt-650-i*45)/120)),fs=fk>=1?1:fk<=0?0:1+2.7*Math.pow(fk-1,3)+1.7*Math.pow(fk-1,2);fx.faces.push(fs);
+        const f=fs>0?ui.image('face_'+id,x+19-19*fs,y+19-19*fs,38*fs,38*fs):null;if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
+        if(known&&!seen.has(id)){this.layout.newFaces.push(id);if(fs>0)ui.darkText('NEW',x+40,y+2,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));}
         ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);});
       // The selection brackets slide from the previous face over 150ms.
       const to=pos(ids.indexOf(sel)),from=s.starterFrom?pos(ids.indexOf(s.starterFrom)):to,bk=red?1:Math.min(1,t/150),be=bk>=1?1:ease(bk);
@@ -55,7 +61,13 @@
       ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
       if(!portrait)ui.endGroup();
+      // Wake: fade up from black over the first 350ms.
+      fx.wake=tt<350?1-tt/350:0;if(fx.wake>0)ui.rect(0,0,W,H,'#000000'+Math.round(fx.wake*255).toString(16).padStart(2,'0'));
     }
+    // Starters the player has already picked at least once; a first visit counts every current unlock as seen.
+    seenSet(){if(this.seen)return this.seen;let list=null;try{list=JSON.parse(localStorage.getItem(SEEN_KEY)||'null');}catch{}
+      if(!Array.isArray(list)){list=[...this.s.unlocked];try{localStorage.setItem(SEEN_KEY,JSON.stringify(list));}catch{}}return this.seen=new Set(list);}
+    markSeen(id){const set=this.seenSet();if(!id||set.has(id))return;set.add(id);try{localStorage.setItem(SEEN_KEY,JSON.stringify([...set]));}catch{}}
     paused(w,h){
       const s=this.s,ui=s.ui,ids=[...new Set(s.relics.equipped)];this.dim(w,h);
       if(ids.length){
