@@ -1,0 +1,9 @@
+[
+  {"shot": "title",   "start": 0,   "frames": 230, "caption": null},
+  {"shot": "capture", "start": 120, "frames": 300, "caption": "CATCH WILD MONSTERS"},
+  {"shot": "party",   "start": 25,  "frames": 240, "caption": "BUILD YOUR PARTY"},
+  {"shot": "merge",   "start": 50,  "frames": 370, "caption": "MERGE AND EVOLVE"},
+  {"shot": "boss",    "start": 25,  "frames": 300, "caption": "FACE THE GUARDIAN"},
+  {"shot": "horde",   "start": 25,  "frames": 240, "caption": "SURVIVE THE SWARM"},
+  {"shot": "END", "seconds": 3.8, "bgshot": "horde", "bg": 264, "tagline": "Catch. Merge. Survive.", "cta": "Play now in your browser"}
+]
