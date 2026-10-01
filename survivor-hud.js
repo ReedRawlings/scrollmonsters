@@ -8,7 +8,8 @@
     // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
     draw(w,h){
       const s=this.s,ui=s.ui;this.layout={slots:[],relics:[]};
-      this.status(ui);
+      // The whole status block jolts sideways when the player is hit (presentation only).
+      const jolt=s.juice.hpJolt();this.layout.hpJolt=jolt;ui.beginGroup('status',{x:jolt});this.status(ui);ui.endGroup();
       this.timer(ui,w);
       const rowBottom=this.relicRow(ui,w);
       this.partyBar(ui,w,h);

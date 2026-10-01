@@ -24,7 +24,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.slotFlashAt={};this.hpFlashAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -64,7 +64,10 @@
     }
     // Damage hooks from the sim. boost = product of the conditional multipliers on this hit; 25%+ reads as a crit.
     damage(target,amount,boost=1){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(target,amount,{crit:boost>=1.25});}
-    hurt(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{hurt:true});}
+    hurt(amount){if(!this.enabled||amount<=0)return;this.hpJoltAt=this.now();if(this.numbersOn)this.numbers.show(this.s.player,amount,{hurt:true});}
+    heal(amount){if(this.enabled&&this.numbersOn&&amount>0)this.numbers.show(this.s.player,amount,{heal:true});}
+    // The HP bar jolts sideways for 150ms when the player is hit.
+    hpJolt(){const t=this.now()-this.hpJoltAt;return this.reduced||t>=150?0:Math.round(3*Math.sin(t/150*Math.PI*4)*(1-t/150))||1;}
     setNumbers(on){this.numbersOn=!!on;if(!on)this.numbers.reset();this.saveSettings();}
     setUiLarge(on){this.uiLarge=!!on;this.saveSettings();}
     saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify({damageNumbers:this.numbersOn,uiLarge:this.uiLarge}));}catch{}}

@@ -66,6 +66,30 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert(land > 0, 'The landing slot flashes its charge bar');
     assert.deepEqual(pk.errors, []);
     await pk.close();
+
+    // --- damage numbers: drift, 4x crits with "!" that never merge, 4x red hurts that jolt the HP bar, green "+N" heals ---
+    const dn = await open(browser);
+    const d = await state(dn, async () => { const s = __survivorTest.scene, j = s.juice, n = j.numbers, out = {}; s.start(); s.spawnTimer = 999;
+      const glyphs = e => e.digits.filter(im => im.visible).map(im => +im.frame.name.slice(1));
+      const live = () => n.pool.filter(v => v.live);
+      const t = {x: s.player.x + 60, y: s.player.y, r: 10};
+      j.damage(t, 7, 1.3); j.damage(t, 7, 1.3); out.crits = live().map(v => [v.crit, v.box.scaleX >= 4]);
+      out.bang = glyphs(live()[0]).at(-1); j.damage(t, 2); out.after = live().map(v => [v.value, v.crit]);
+      out.shake = j.jitterUntil > j.now();
+      n.reset(); s.player.inv = 0; s.shield = false; s.encounters.damage(5, 'test'); const hurt = live()[0]; out.hurt = [hurt.hurt, hurt.box.scaleX >= 4]; s.draw(); out.jolt = s.hud.layout.hpJolt !== 0;
+      n.reset(); j.heal(8); const heal = live()[0]; out.heal = [heal.heal, heal.value, glyphs(heal)[0], heal.digits[0].tintTopLeft];
+      n.reset(); j.damage(t, 3); const one = live()[0], x0 = one.box.x; await new Promise(r => setTimeout(r, 300)); n.update(j.now()); out.drift = Math.abs(one.box.x - x0) > 1;
+      return out; });
+    assert.deepEqual(d.crits, [[true, true], [true, true]], 'Two crits on one target stay two 4x numbers (crits never merge)');
+    assert.equal(d.bang, 11, 'Crits end in "!"');
+    assert.deepEqual(d.after, [[7, true], [7, true], [2, false]], 'A plain hit after a crit starts its own white number');
+    assert.equal(d.shake, true, 'A crit gives a quick shake');
+    assert.deepEqual(d.hurt, [true, true], 'Hits on the player are 4x'); assert.equal(d.jolt, true, 'and jolt the HP bar');
+    assert.deepEqual(d.heal.slice(0, 3), [true, 8, 10], 'Heals show "+N"'); assert.equal(d.heal[3], 0x4ac56b, 'in green');
+    assert.equal(d.drift, true, 'Numbers drift sideways as they rise');
+    await dn.screenshot({path: 'output/beats/damage.png'});
+    assert.deepEqual(dn.errors, []);
+    await dn.close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

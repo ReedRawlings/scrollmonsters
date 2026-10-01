@@ -26,7 +26,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const core = await open(browser, {width: 1100, height: 760});
     const strip = await state(core, () => { const s = __survivorTest.scene, d = FX_SHEETS.Damage_Digits, c = FX_SHEETS.Damage_Crit;
       return {d: d && [d.fw, d.fh, d.n, d.adv.length], narrowOne: d && d.adv[1] < d.adv[0], crit: c && [c.fw, c.fh, c.n], loaded: s.textures.exists('Damage_Digits') && s.textures.exists('Damage_Crit')}; });
-    assert.deepEqual(strip.d, [8, 9, 10, 10], 'Ten 8x9 digit cells with an advance per digit');
+    assert.deepEqual(strip.d, [8, 9, 12, 12], 'Twelve 8x9 cells (0-9, "+", "!") with an advance per glyph');
     assert.equal(strip.narrowOne, true, '"1" advances less than "0" (proportional, like the font)');
     assert.deepEqual(strip.crit, [24, 24, 5]);
     assert.equal(strip.loaded, true);
@@ -118,7 +118,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const calm = await open(browser, {width: 1100, height: 760}, {reducedMotion: 'reduce'});
     const c = await state(calm, () => { const s = __survivorTest.scene, j = s.juice; s.start(); j.played.length = 0; j.damage({x: 300, y: 300}, 4, 2);
       return {scale: j.numbers.list()[0].scale, burst: j.played.includes('Damage_Crit')}; });
-    assert.deepEqual(c, {scale: 3, burst: false}, 'Reduced motion: crit at its resting size, no Damage_Crit');
+    assert.deepEqual(c, {scale: 4, burst: false}, 'Reduced motion: crit at its resting 4x size, no Damage_Crit');
     await calm.close();
 
     // --- crit bursts never starve reward juice; a steadily hit target gets fresh numbers ---
@@ -128,7 +128,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       const merged = j.fx.filter(f => f.key === 'Damage_Crit').length;
       for (let i = 0; i < 80; i++) j.damage({x: 100 + i, y: 300}, 1, 2);
       return {merged, crits: j.fx.filter(f => f.key === 'Damage_Crit').length, capture: !!j.play('Capture_Burst', 300, 300)}; });
-    assert.equal(b.merged, 1, 'Merged crit hits play one burst, not one per hit');
+    assert(b.merged <= 8, `Crits never merge (prototype), but their bursts stay within the budget of 8 (got ${b.merged})`);
     assert(b.crits <= 8, `Crit bursts have their own small budget (got ${b.crits})`);
     assert.equal(b.capture, true, 'A crit-heavy fight still leaves room for capture juice');
     const steady = await state(busy, async () => { const j = __survivorTest.scene.juice, boss = {x: 400, y: 400}; j.numbers.reset(); const before = j.numbers.spawned;

@@ -45,27 +45,28 @@ def xp_gem():
 FONT = ROOT / 'assets/ui/font_medium_9px.ttf'
 DIGITS_OUT = ROOT / 'assets/ui/damage_digits.png'
 def digit_strip():
-    """White NovelMix digits with a 1px dark outline in 8x9 cells, and each digit's advance.
+    """White NovelMix glyphs 0-9, "+" and "!" (frames 10, 11) with a 1px dark outline in 8x9 cells, and each advance.
 
     At 9px the digit glyphs are at most 6px wide and 7px tall and start 4px below the em top,
     so drawing at (1, -3) leaves exactly one outline pixel on every side.
     """
     font = ImageFont.truetype(str(FONT), 9)
     cw, ch = 8, 9
-    strip, adv = Image.new('RGBA', (cw * 10, ch), (0, 0, 0, 0)), []
-    for d in range(10):
+    glyphs = '0123456789+!'
+    strip, adv = Image.new('RGBA', (cw * len(glyphs), ch), (0, 0, 0, 0)), []
+    for d, ch_ in enumerate(glyphs):
         glyph = Image.new('L', (cw, ch), 0)
         draw = ImageDraw.Draw(glyph); draw.fontmode = '1'
-        draw.text((1, -3), str(d), font=font, fill=255)
+        draw.text((1, -3), ch_, font=font, fill=255)
         box = glyph.getbbox()
         assert box and box[0] >= 1 and box[1] >= 1 and box[2] <= cw - 1 and box[3] <= ch - 1, (d, box)
         cell = Image.new('RGBA', (cw, ch), (0, 0, 0, 0))
         cell.paste((18, 10, 26, 255), (0, 0), glyph.filter(ImageFilter.MaxFilter(3)))
         cell.paste((255, 255, 255, 255), (0, 0), glyph)
         strip.paste(cell, (d * cw, 0))
-        adv.append(int(font.getlength(str(d))))
+        adv.append(int(font.getlength(ch_)))
     strip.save(DIGITS_OUT)
-    return {'src': 'assets/ui/damage_digits.png', 'fw': cw, 'fh': ch, 'n': 10, 'fps': 1, 'loop': False, 'ax': 0, 'ay': ch // 2, 'adv': adv}
+    return {'src': 'assets/ui/damage_digits.png', 'fw': cw, 'fh': ch, 'n': len(glyphs), 'fps': 1, 'loop': False, 'ax': 0, 'ay': ch // 2, 'adv': adv}
 # Every offerable upgrade id -> ('tiny', strip) | ('ninja', Items/ path, static) | ('sheet', artist strip in assets/fx/sheets).
 # No icon may repeat or closely resemble another upgrade's or a relic's icon.
 UPGRADE_ICONS = {
