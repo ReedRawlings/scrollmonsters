@@ -5,7 +5,7 @@
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
   class SurvivorHud {
     constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
-    // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
+    // w,h are logical: 270x480 portrait; 720x480 (Normal) or 480x320 (Large) landscape. Called inside the ui2x group, scaled by scene.uiScale().
     draw(w,h){
       const s=this.s,ui=s.ui;this.layout={slots:[],relics:[]};
       // The whole status block jolts sideways when the player is hit (presentation only).

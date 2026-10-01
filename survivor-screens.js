@@ -23,7 +23,7 @@
       const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
       this.dim(w,h);this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
       // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
-      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
+      const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2)+28;/* +28: the frame's content spans y 10..246, so this centres it */if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
         ?{banner:[w/2,26],hero:[87,72],name:[w/2,186],desc:[w/2,204,240],grid:[24,228],begin:[55,340,160,44],field:[55,398,76,26],hist:[139,398,76,26]}
         :{banner:[w/2,10],hero:[64,56],name:[112,172],desc:[112,190,200],grid:[240,60],begin:[250,168,212,40],field:[250,220,104,26],hist:[358,220,104,26]};
@@ -129,11 +129,13 @@
     // Upgrade pack reveal (prototype Moment 5). Cards are 120x170 logical: Pack_CardBack at 2x face down,
     // a DarkMode panel with the rarity strip, spinning icon, name, detail and owner face up.
     // Centre y of the reveal card; the juice aims the pickup flight here before the first draw.
-    packCardY(w,h){return (h>w?96:40)+44+85;}
+    packCardY(w,h){return this.packTop(w,h)+44+85;}
+    // Portrait keeps its fixed top; landscape centres the banner-to-pile block (234 logical px tall).
+    packTop(w,h){return h>w?96:Math.max(40,Math.round((h-234)/2));}
     pack(w,h){
       const s=this.s,ui=s.ui,j=s.juice,r=s.packs.reveal;if(!r)return;this.dim(w,h);
       const now=j.now(),t=now-r.start,n=r.cards.length,ri={1:0,3:1,5:2}[r.size],color=SurvivorPacks.COLORS[r.size];
-      const tall=h>w,cw=120,ch=170,cx=Math.round((w-cw)/2),top=tall?96:40,cy=top+44;
+      const tall=h>w,cw=120,ch=170,cx=Math.round((w-cw)/2),top=this.packTop(w,h),cy=top+44;
       this.layout.packCard=cy+ch/2;
       ui.banner(SurvivorPacks.rarity(r.size).toUpperCase()+' PACK',w/2,top-8);
       ui.darkText(n===1?'1 card':n+' cards',w/2,top+30,{align:'center',color});

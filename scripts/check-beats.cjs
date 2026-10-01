@@ -176,6 +176,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const firstRun = await open(browser);
     assert.deepEqual(await state(firstRun, () => { const s = __survivorTest.scene; s.draw(); return s.screens.layout.newFaces; }), [], 'A first visit shows no NEW badges');
     await firstRun.close();
+
+    // --- desktop at Normal (720x480): the pack reveal and the title sit centred vertically ---
+    const cv = await open(browser);
+    const ctr = await state(cv, () => { const s = __survivorTest.scene, {w, h} = s.uiSize(), out = {h};
+      s.draw(); const b = s.screens.layout.begin, faces = s.screens.layout.faces; out.title = [Math.min(...faces.map(f => f.y)) - 40, b[1] + b[3] + 32];
+      s.start(); s.spawnTimer = 999; const p = s.packs.drop(s.player.x, s.player.y, 'test'); p.size = 5; p.cards = s.packs.draw(s.upgradePool(), 5).map(u => u.id); s.tick(1 / 60); s.packs.reveal.start -= 5000; s.draw();
+      out.pack = s.screens.layout.packCard; return out; });
+    const mid = ([a, b]) => (a + b) / 2;
+    assert(Math.abs(mid(ctr.title) - ctr.h / 2) <= 24, 'The title sits centred: ' + JSON.stringify(ctr));
+    assert(Math.abs(ctr.pack - ctr.h / 2) <= 24, 'The pack card sits centred: ' + JSON.stringify(ctr));
+    await cv.close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
