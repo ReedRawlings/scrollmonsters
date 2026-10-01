@@ -121,6 +121,34 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     assert(rl.bump > 0, 'The HUD relic icon bumps when the relic lands');
     assert.deepEqual(rp.errors, []);
     await rp.context().close();
+
+    // --- capture: trembles harder each quarter, flashes and shakes at the snap, the new slot's charge bar fills up ---
+    const cp = await open(browser);
+    const cap = await state(cp, async () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
+      s.expedition.release('mouse', s.player.x + 200, s.player.y, false); const b = s.expedition.captureBody('mouse'); b.state = 'ready';
+      const off = () => { s.draw(); return Math.round(Math.hypot(b.sprite.x - b.x, b.sprite.y - b.y) * 10) / 10; };
+      b.progress = 0; out.calm = off(); b.progress = 2.2; let big = 0; for (let i = 0; i < 12; i++) big = Math.max(big, off()); out.shaking = big;
+      s.reward('capture', {type: 'mouse', x: b.x, y: b.y}); out.flash = j.fx.some(f => f.key === 'flash'); out.shake = j.jitterUntil > j.now();
+      b.state = 'ally'; s.expedition.release('mouse', b.x, b.y, true);
+      let fills = []; for (let n = 0; n < 60; n++) { await new Promise(r => setTimeout(r, 25)); s.draw(); const sl = s.hud.layout.slots.find(v => v.type === 'mouse'); if (sl) fills.push(sl.charge); }
+      out.filling = fills.some(c => c < .2); out.full = Math.abs(fills.at(-1) - s.hud.chargeOf('mouse')) < 1e-6; return out; });
+    assert.equal(cap.calm, 0, 'No tremble at zero progress'); assert(cap.shaking >= 1, 'The creature trembles near a full ring: ' + cap.shaking);
+    assert.deepEqual([cap.flash, cap.shake], [true, true], 'The snap flashes the creature and shakes the view');
+    assert(cap.filling && cap.full, 'The new slot charge bar fills up from empty to the creature\'s own charge');
+    assert.deepEqual(cp.errors, []);
+    await cp.close();
+    // --- starter unlock: panel scales in, flash and sparks at the fill, NEW STARTER stamps with a shake, Continue after the reveal ---
+    const up = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const un = await state(up, () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.openUnlock('owl');
+      const at = t => { j.modeAt = j.now() - t; s.played = j.played.length; s.draw(); return {...s.screens.layout.unlock}; };
+      out.t100 = at(100); out.t1100 = at(1100); out.t1300 = at(1300); out.t1800 = at(1800);
+      out.sparks = j.played.filter(k => k === 'Reward_Trail').length; return out; });
+    assert(un.t100.scale < 1, 'The panel scales in'); assert(un.t1100.stamp > 1 && un.t1100.shake !== 0, 'NEW STARTER stamps down and the panel shakes');
+    assert(un.sparks >= 6, 'Sparks burst when the colour fills in');
+    assert.equal(un.t1300.continue, false, 'Continue waits for the reveal'); assert.equal(un.t1800.continue, true, 'then appears');
+    await up.screenshot({path: 'output/beats/unlock.png'});
+    assert.deepEqual(up.errors, []);
+    await up.context().close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

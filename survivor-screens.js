@@ -182,17 +182,25 @@
         ui.endGroup();});
       this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
+    // Starter unlock (prototype): the panel scales in over 200ms, the silhouette fills with a white flash and element sparks,
+    // NEW STARTER stamps down at 1050ms with a 150ms panel shake, the name fades in, and Continue waits until 1750ms.
     unlock(w,h){
-      const s=this.s,ui=s.ui,j=s.juice,type=s.unlockType,t=j.since('unlock'),cx=w/2,cy=h/2-10;
-      this.dim(w,h);ui.banner('NEW STARTER',cx,cy-130);
+      const s=this.s,ui=s.ui,j=s.juice,type=s.unlockType,t=j.since('unlock'),cx=w/2,cy=h/2-10,red=j.reduced,STAMP=1050,CONT=1750;
+      this.dim(w,h);
+      const k=red?1:Math.min(1,t/200),sc=.6+.4*(1-Math.pow(1-k,3)),st=t-STAMP,shake=!red&&st>=0&&st<150?Math.round(3*Math.sin(st/150*Math.PI*4)*(1-st/150))||1:0;
+      ui.beginGroup('unlockpanel',{x:cx*(1-sc)+shake,y:cy*(1-sc),scale:sc}).setAlpha(k);
       ui.image('Unlock_Rays',cx-96,cy-96,192,192,{frame:j.frameRect('Unlock_Rays',j.frameAt('Unlock_Rays',t,true))});
       const fillAt=400,fillEnd=fillAt+j.meta('Unlock_Fill').n/j.meta('Unlock_Fill').fps*1000;
       const face=ui.image('face_'+type,cx-38,cy-38,76,76);if(face){if(t<fillEnd)face.setTint(0x2a2238);else face.clearTint();}
       if(t>=fillAt&&t<fillEnd)ui.image('Unlock_Fill',cx-48,cy-48,96,96,{frame:j.frameRect('Unlock_Fill',j.frameAt('Unlock_Fill',t-fillAt,false))});
-      const name=type==='storm'?'STORM LIZARD':String(type).toUpperCase();
-      ui.darkText(t<fillEnd?'???':name,cx,cy+64,{size:18,align:'center'});
-      ui.darkText('Now available as a starter',cx,cy+86,{align:'center',color:ScrollUI.DARK.muted});
-      if(t>=900)this.button('Continue',cx-60,cy+106,120,26,()=>s.closeUnlock(),'continue');
+      if(!red&&t>=fillEnd&&t<fillEnd+150)ui.rect(cx-38,cy-38,76,76,'#ffffff'+Math.round((1-(t-fillEnd)/150)*230).toString(16).padStart(2,'0'));
+      if(t>=fillEnd&&this.unlockSparks!==j.modeAt){this.unlockSparks=j.modeAt;if(!red)for(let n=0;n<8;n++){const a=n*Math.PI/4+j.rand()*.4,r=34+j.rand()*20;j.play('Reward_Trail',cx+Math.cos(a)*r,cy+Math.sin(a)*r,{ui:true,scale:2,tint:j.elementTint(type)});}}
+      let stamp=0;if(t>=STAMP){stamp=red?1:st<120?2-st/120:1;ui.beginGroup('unlockstamp',{x:cx*(1-stamp),y:(cy-114)*(1-stamp),scale:stamp});ui.banner('NEW STARTER',cx,cy-130);ui.endGroup();}
+      const nk=red?1:Math.max(0,Math.min(1,(t-STAMP)/200)),name=type==='storm'?'STORM LIZARD':String(type).toUpperCase();
+      if(t<STAMP)ui.darkText('???',cx,cy+64,{size:18,align:'center'});
+      else{ui.darkText(name,cx,cy+64,{size:18,align:'center'}).setAlpha(nk);ui.darkText('Now available as a starter',cx,cy+86,{align:'center',color:ScrollUI.DARK.muted}).setAlpha(nk);}
+      if(t>=CONT)this.button('Continue',cx-60,cy+106,120,26,()=>s.closeUnlock(),'continue');
+      ui.endGroup();this.layout.unlock={scale:sc,stamp,shake,continue:t>=CONT};
     }
   }
   SurvivorScreens.LOCK_MS = 370;

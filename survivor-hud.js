@@ -58,7 +58,7 @@
         if(type){if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32]});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
-          const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
+          const charge=this.chargeOf(type)*s.juice.slotFill(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
           if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');
           // A landing upgrade flashes the slot's charge bar.
           const fl=s.juice.slotFlash(type);this.layout.slots[i].flash=fl;if(fl>0)ui.rect(x+51,y+SLOT_H-41,6,36,'#ffffff'+Math.round(fl*200).toString(16).padStart(2,'0'));}}

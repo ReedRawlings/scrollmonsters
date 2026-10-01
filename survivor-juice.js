@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
+  // Each creature's element colour, matching the hit bursts the sim already uses for it.
+  const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff};
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
@@ -24,7 +26,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFillAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -185,19 +187,24 @@
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
       if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm']){
-        const b=this.s.expedition.captureBody(type);if(b?.state==='ready')this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});}
+        const b=this.s.expedition.captureBody(type);if(b?.state!=='ready')continue;this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});
+        // The creature trembles harder each quarter of the charge (drawn offset only; the sim position is untouched).
+        const sp=this.captureSprite(type,b),q=Math.floor(clamp(b.progress/2.5,0,.999)*4);if(sp&&q&&!this.reduced){const a=q*.75;sp.setPosition(sp.x+(this.rand()*2-1)*a,sp.y+(this.rand()*2-1)*a);}}
       this.updateShrine?.(now);
       for(const r of Object.values(this.rings))if(!r.seen){r.ring.setVisible(false);r.fill.setVisible(false);}
     }
     onUnlock(e){this.unlocks.push(e.type);this.unlockAt=this.now()+900;}
+    elementTint(type){return ELEMENT_TINT[type]??0xffffff;}
+    captureSprite(type,b){const s=this.s;return b?.sprite||{cat:s.catSprite,owl:s.owlSprite,beast:s.encounters.beastSprite,frog:s.expedition.frogSprite}[type];}
+    slotFill(type){const t0=this.slotFillAt[type];return t0==null?1:clamp((this.now()-t0)/300,0,1);}
     onCapture(e){
-      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);
+      this.play('Capture_Burst',e.x,e.y+20,{depth:e.y+30});this.freeze(90);this.flashCopy(this.captureSprite(e.type,this.s.expedition.captureBody(e.type)),120);this.jitter(2,200);
       if(this.fx.length+this.faces.length>=MAX_FX)return;
       const p=this.s.toUI(e.x,e.y-30),face=this.s.add.image(p.x,p.y,'face_'+e.type).setDisplaySize(38,38);this.front.add(face);
       if(!this.reduced){face.setScale(face.scaleX*.3);this.s.tweens.add({targets:face,scaleX:face.scaleX/.3,scaleY:face.scaleY/.3,duration:260,ease:'Back.Out'});}
       // Tracked so reset() can cancel a pending flight when the run restarts.
       const entry={face};entry.timer=this.s.time.delayedCall(500,()=>{this.faces=this.faces.filter(f=>f!==entry);const from={x:face.x,y:face.y};face.destroy();
-        this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1})});});
+        this.flyTo('face_'+e.type,from,this.slotPoint(e.type),{size:32,onLand:q=>{this.play('Slot_PowerUp',q.x,q.y,{ui:true,scale:1});this.slotFillAt[e.type]=this.now();this.slotFlashAt[e.type]=this.now();}});});
       this.faces.push(entry);
     }
     updateShrine(now){
