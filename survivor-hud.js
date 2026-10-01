@@ -25,6 +25,8 @@
         let yy=y;for(const [c,f] of bands){const bh=Math.round(hh*f);g.fillStyle(c).fillRect(x,yy,Math.max(0,(w-slant)*fill),bh);yy+=bh;}};
       bar(56,32,96,10,8,hp,[[0x6c192b,.2],[0xaf2424,.4],[0x4d0c1e,.4]]);
       bar(52,48,84,6,4,xp,[[0x187c8c,.34],[0x2dc5c0,.33],[0x0c4067,.33]]);
+      // Gems and level-ups flash the XP bar white (presentation only).
+      const flash=s.juice.xpFlash();this.layout.xpFlash=flash;if(flash>0)g.fillStyle(0xffffff,flash).fillRect(52,47,Math.max(6,80*xp),8);
       ui.image('dk_status',2,10,166,70);
       ui.image('dk_heart',26,37,18,16);
       ui.darkText('LV '+s.level,148,51,{color:D().teal});

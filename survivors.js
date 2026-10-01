@@ -44,6 +44,7 @@
       this.load.image('nature',A+'Backgrounds/Tilesets/TilesetNature.png');SurvivorGreens.preload(this);
       this.load.audio('hit',A+'Audio/Sounds/Menu/Accept4.wav');
       for(const k of ['panel','slot','pill','banner','status','zslot','heart'])this.load.image('dk_'+k,'assets/ui/darkmode/'+k+'.png');
+      this.load.image('xpGem','assets/ui/xp_gem.png');
       this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
       this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
       for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
@@ -260,7 +261,7 @@
     // Map callouts are off by design (playtest 2026-09-29); only headline() shows a header.
     announce(message){}
     headline(message){this.notice=message;this.noticeTime=4;}
-    drop(type,x,y){const sprite=this.pooled(this.pickupPool,{xp:'shieldPickup',heal:'heart',haste:'frenzyPickup',shield:'shieldPickup',magnet:'magnetPickup',cleanse:'cleansePickup'}[type],type==='xp'?.3:type==='shield'?.85:1.7);this.pickups.push({type,x,y,life:type==='xp'?Infinity:25,sprite});}
+    drop(type,x,y){const sprite=this.pooled(this.pickupPool,{xp:'xpGem',heal:'heart',haste:'frenzyPickup',shield:'shieldPickup',magnet:'magnetPickup',cleanse:'cleansePickup'}[type],type==='xp'?2:type==='shield'?.85:1.7);this.pickups.push({type,x,y,life:type==='xp'?Infinity:25,sprite});}
     summonOwl(){
       this.logEvent('owl_appeared');this.owlAppeared=true;const p=this.player;let x=p.x,y=p.y;
       for(let n=0;n<24;n++){const a=n*Math.PI/12;x=p.x+Math.cos(a)*220;y=p.y+Math.sin(a)*220;if(!this.blocked(x,y,70))break;}
@@ -383,7 +384,7 @@
         if(s.life>0)for(const e of this.hitTargets()){if(e.hp>0&&!s.hits?.has(e)&&distance(e,s)<e.r+6){this.hit(e,s.source==='owl'?this.companionStats().owl.damage*(s.split ? 0.33 : 1):(s.damage||2),s.source||'player',s);if(s.source==='owl'){if(this.upgrades.marks)e.markUntil=this.elapsed+3;s.hits.add(e);this.encounters.splitShot(s);if(s.hits.size>=3){s.life=0;break;}}else{this.relics.impact(s,e);if(s.life<=0)break;}}}}
       for(const fx of this.effects)fx.life-=dt;
       for(const item of this.pickups){if(item.life<=0)continue;item.life-=dt;if(item.type==='xp'&&(item.magnetized||distance(item,p)<100)){const d=distance(item,p)||1;item.x+=(p.x-item.x)/d*Math.min(d,(item.magnetized?900:320)*dt);item.y+=(p.y-item.y)/d*Math.min(d,(item.magnetized?900:320)*dt);}if(distance(item,p)<38){
-        if(item.type==='xp'){this.gainXP(1);item.life=0;}
+        if(item.type==='xp'){this.gainXP(1);item.life=0;this.reward('gem',{x:item.x,y:item.y});}
         if(item.type==='heal'&&(p.hp<this.maxHp||this.relics.has('bloodroot'))){const healed=Math.min(8,this.maxHp-p.hp);p.hp=Math.min(this.maxHp,p.hp+8);p.inv=Math.max(p.inv,.25);this.logEvent('healed',{amount:healed,hp:p.hp});this.relics.heal(healed);item.life=0;this.announce('+'+healed+' health');}
         if(item.type==='magnet'){for(const xp of this.pickups)if(xp.type==='xp'&&xp.life>0)xp.magnetized=true;item.life=0;this.announce('XP magnet!');this.logEvent('supply_collected',{pickup:'magnet'});}
         if(item.type==='cleanse'){const el=this.creatures.elements;for(const z of [...el.zones])if(z.hostile&&distance(z,p)<300)el.removeZone(z);el.casts=el.casts.filter(c=>!c.hostile||distance(c,p)>=300);this.creatures.strikes=this.creatures.strikes.filter(c=>!c.hostile||distance(c,p)>=300);el.slow=0;this.burst('fxWater',p.x,p.y,8,.6,0xbfffd5);item.life=0;this.announce('Nearby hazards cleared!');this.logEvent('supply_collected',{pickup:'cleanse'});}
@@ -423,7 +424,7 @@
       this.greens?.draw();this.encounters.draw();this.expedition.draw();this.creatures.draw();this.relics.draw();
       for(const s of this.shots){s.sprite.setPosition(s.x,s.y).setRotation(s.source==='owl'?Math.atan2(s.dy,s.dx):this.elapsed*8).setDepth(800000000);if(s.source==='owl'){s.sprite.setScale(s.split?1.5:2).setTint(0xd8faff);this.fx.lineStyle(s.split?1:2,0xadebff,.7).lineBetween(s.x,s.y,s.x-s.dx*18,s.y-s.dy*18);}if(s.charged)s.sprite.setTint(0xffd36b).setScale(.7);}
       for(const e of this.effects)e.sprite.setPosition(e.x,e.y).setRotation(e.a).setFrame(Math.min((e.frames||4)-1,Math.floor((1-e.life/(e.maxLife||.26))*(e.frames||4)))).setDepth(800000001);
-      for(const e of this.pickups){e.sprite.setPosition(e.x,e.y).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
+      for(const e of this.pickups){const o=e.type==='xp'?this.juice.gemOffset(e):null;if(o)e.sprite.setScale(2*o.scale);e.sprite.setPosition(e.x+(o?.x||0),e.y+(o?.y||0)).setDepth(e.y+30).setTint(e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xffffff);if(e.type!=='xp')this.fx.lineStyle(2,e.type==='haste'?0xffd36b:e.type==='shield'?0x83d9ff:0xff9292,.9).strokeCircle(e.x,e.y,18);}
       this.ui.begin(this.mode);
       const logical=this.uiSize();
       this.ui.beginGroup('ui2x',{scale:this.uiScale()});

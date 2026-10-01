@@ -12,7 +12,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
+      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;this.uiLarge=saved.uiLarge===true;
@@ -24,7 +24,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -106,7 +106,20 @@
       return 'walker';
     }
     slotPoint(type){const slots=this.s.hud.layout.slots,slot=slots.find(v=>v.type===type)||slots[0];return {x:slot.x+24,y:slot.y+26};}
+    // XP gems: the sim moves them in a straight line; this bends the drawn path into an arc that lands on the player.
+    gemOffset(item){
+      const p=this.s.player,dx=p.x-item.x,dy=p.y-item.y,d=Math.hypot(dx,dy)||1;
+      if(!this.enabled||!(item.magnetized||d<100))return {x:0,y:0,scale:1};
+      let g=this.gems.get(item);if(!g){g={d0:Math.max(d,1),side:this.rand()<.5?-1:1};this.gems.set(item,g);}
+      const t=clamp(1-d/g.d0,0,1),a=Math.sin(t*Math.PI),amp=Math.min(22,g.d0*.3)*g.side;
+      return {x:-dy/d*amp*a,y:dx/d*amp*a-14*a,scale:1-.4*t};
+    }
+    onGem(e){const now=this.now();this.xpFlashAt=now;
+      if(now-this.lastSpark>60){this.lastSpark=now;const p=this.s.player;this.play('Reward_Trail',p.x+(this.rand()*2-1)*6,p.y-12,{scale:2,depth:p.y+40});}}
+    // 0..1 brightness for the XP bar: a short flash per gem, a long one on level-up.
+    xpFlash(){const now=this.now();if(!this.enabled)return 0;return Math.max(clamp(1-(now-this.xpFlashAt)/140,0,1)*.6,clamp(1-(now-this.levelFlashAt)/420,0,1));}
     onLevelUp(e){
+      this.levelFlashAt=this.now();this.flashCopy(this.s.playerSprite,90);this.jitter(2,160);this.freeze(60);
       // A level-up chained straight after a pick never passes through a draw, so re-arm the deal-in clock here.
       this.mode='upgrade';this.modeAt=this.now();
       this.aura={phase:'Ignite',start:this.now()};this.note('LevelUp_Aura_Ignite_Back');
