@@ -24,7 +24,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.packSeen=new WeakMap();this.relicBumpAt={};this.slotFlashAt={};this.hpFlashAt=-1e9;this.hpJoltAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -144,15 +144,25 @@
     }
     slotFlash(type){return clamp(1-(this.now()-(this.slotFlashAt[type]??-1e9))/250,0,1);}
     hpFlash(){return clamp(1-(this.now()-this.hpFlashAt)/250,0,1);}
-    onPack(e){this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});}
+    // Pickup: the pack bursts open in the world and jumps to the centre of the screen as the reveal starts.
+    onPack(e){const key='Pack_Drop_'+SurvivorPacks.rarity(e.size);this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});
+      const {w,h}=this.s.uiSize();this.flyTo(key,this.s.toUI(e.x,e.y),{x:w/2,y:this.s.screens.packCardY(w,h)},{size:48});}
     onPackFlip(e){if(this.reduced)return;const w=this.s.uiSize().w;
       this.play('Pack_Flip',w/2,this.s.screens.layout.packCard??200,{ui:true,scale:3,tint:parseInt(SurvivorPacks.COLORS[e.size].slice(1),16)});}
     onPackApply(e){const hand=this.s.screens.layout.hand||[];
       e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.travel(id,from);});}
     // The chosen relic flies from its card to its cell in the HUD relic row (the row is laid out on the next draw).
-    onRelic(e){const card=this.s.screens.layout.cards?.[e.index];if(!card)return;this.s.draw();
-      const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
-      this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});}
+    // The relic card presses and the others drop away (screens.dismiss), then the relic flies to its HUD cell and the icon bumps.
+    onRelic(e){const card=e.cards?.[e.index];if(!card)return;const R=this.s.relics,label=(i,id)=>(i+1)+'. '+R.name(id);
+      this.freeze(260);
+      this.picked={card,label:label(e.index,e.id),detail:'',id:e.id,icon:'relic_'+e.id,at:this.now(),
+        others:e.ids.map((id,i)=>i===e.index||!e.cards[i]?null:{card:e.cards[i],label:label(i,id),id,icon:'relic_'+id}).filter(Boolean)};
+      this.s.draw();const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;
+      this.flyTo('relic_'+e.id,{x:card.x+24,y:card.y+card.h/2},{x:cell.x+10,y:cell.y+10},{size:24,onLand:p=>{this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1});this.relicBumpAt[e.id]=this.now();}});}
+    relicBump(id){return clamp(1-(this.now()-(this.relicBumpAt[id]??-1e9))/220,0,1);}
+    // Ground packs tumble out of the defeated enemy and land exactly on their sim position.
+    packOffset(item){if(!this.enabled||this.reduced)return {x:0,y:0,rot:0};let t0=this.packSeen.get(item);if(t0==null){t0=this.now();this.packSeen.set(item,t0);}
+      const t=clamp((this.now()-t0)/600,0,1),e=1-Math.pow(1-t,2);return t>=1?{x:0,y:0,rot:0}:{x:24*(1-e),y:-28*(1-e)-50*Math.sin(Math.PI*t),rot:-2*Math.PI*(1-e)};}
     // Aura: Ignite once, Loop while the level-up screen is up, then Fade once.
     updateAura(now){
       const a=this.aura;if(!a){this.auraSprites?.forEach(s=>s.setVisible(false));return;}

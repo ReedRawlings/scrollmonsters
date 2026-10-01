@@ -116,6 +116,8 @@
     }
     // Upgrade pack reveal (prototype Moment 5). Cards are 120x170 logical: Pack_CardBack at 2x face down,
     // a DarkMode panel with the rarity strip, spinning icon, name, detail and owner face up.
+    // Centre y of the reveal card; the juice aims the pickup flight here before the first draw.
+    packCardY(w,h){return (h>w?96:40)+44+85;}
     pack(w,h){
       const s=this.s,ui=s.ui,j=s.juice,r=s.packs.reveal;if(!r)return;this.dim(w,h);
       const now=j.now(),t=now-r.start,n=r.cards.length,ri={1:0,3:1,5:2}[r.size],color=SurvivorPacks.COLORS[r.size];
@@ -126,11 +128,13 @@
       // Face-down pile: the cards still to reveal, each landing 90ms apart during the deal-in.
       for(let i=n-1;i>r.kept;i--){if(!j.reduced&&t<(n-1-i)*90)continue;const off=(i-r.kept)*3;
         ui.image('Pack_CardBack',cx+off,cy+off,cw,ch,{frame:j.frameRect('Pack_CardBack',ri)});}
+      // The next card nudges up (3%, 180ms) after one is filed.
+      const nudge=!j.reduced&&r.keptAt!=null&&now-r.keptAt<180?.03*Math.sin(Math.PI*(now-r.keptAt)/180):0;this.layout.topNudge=nudge;
       if(r.kept<n&&(j.reduced||t>=(n-1-r.kept)*90)){
         const card=r.cards[r.kept],since=r.flippedAt===null?-1:now-r.flippedAt;
         // Flip: squash the back to nothing over 90ms, then open the face over the next 90ms.
         const k=since<0?1:j.reduced?1:since<90?1-since/90:Math.min(1,(since-90)/90),face=since>=(j.reduced?0:90),dw=Math.max(2,Math.round(cw*k)),dx=cx+Math.round((cw-dw)/2);
-        if(!face)ui.image('Pack_CardBack',dx,cy,dw,ch,{frame:j.frameRect('Pack_CardBack',ri)});
+        if(!face)ui.image('Pack_CardBack',dx-Math.round(dw*nudge/2),cy-Math.round(ch*nudge),Math.round(dw*(1+nudge)),Math.round(ch*(1+nudge)),{frame:j.frameRect('Pack_CardBack',ri)});
         else{ui.darkPanel(dx,cy,dw,ch);ui.rect(dx+6,cy+6,Math.max(0,dw-12),4,color);
           if(k>=1){const owner=j.ownerOf(card.id),key='upgrade_'+card.id;
             if(s.textures.exists(key))ui.image(key,cx+40,cy+14,40,40,{frame:j.frameRect(key,j.frameAt(key,now,true))});
@@ -154,12 +158,12 @@
       const sc=red?1:t<30?1-.04*t/30:t<90?.96+.1*(t-30)/60:1.06-.11*(t-90)/(SurvivorScreens.HOLD_MS-90),alpha=t<90?1:1-(t-90)/(SurvivorScreens.HOLD_MS-90);
       // The other cards drop 20px and fade over 120ms.
       const ok=Math.min(1,t/120),oe=1-Math.pow(1-ok,2),oa=1-ok,dy=red?0:20*oe;j.dismissState={picked:sc,others:{alpha:oa,dy}};
-      if(oa>0)p.others.forEach((o,i)=>{const {x,y,w:cw,h:ch}=o.card;ui.beginGroup('pickother'+i,{y:dy}).setAlpha(oa);ui.panel('dk_slot',x,y,cw,ch,5,2);
-        if(s.textures.exists('upgrade_'+o.id))ui.image('upgrade_'+o.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});ui.darkText(o.label,x+40,y+12);ui.endGroup();});
+      if(oa>0)p.others.forEach((o,i)=>{const {x,y,w:cw,h:ch}=o.card,ik=o.icon||'upgrade_'+o.id;ui.beginGroup('pickother'+i,{y:dy}).setAlpha(oa);ui.panel('dk_slot',x,y,cw,ch,5,2);
+        if(s.textures.exists(ik))ui.image(ik,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});ui.darkText(o.label,x+40,y+12);ui.endGroup();});
       const {x,y,w:cw,h:ch}=p.card,cx=x+cw/2,cy=y+ch/2;
       ui.beginGroup('pickdismiss',{x:cx*(1-sc),y:cy*(1-sc),scale:sc}).setAlpha(alpha);
       ui.panel('dk_slot',x,y,cw,ch,5,2);
-      if(s.textures.exists('upgrade_'+p.id))ui.image('upgrade_'+p.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});
+      const icon=p.icon||'upgrade_'+p.id;if(s.textures.exists(icon))ui.image(icon,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});
       ui.darkText(p.label,x+40,y+12);ui.darkText(p.detail,x+40,y+25,{color:D().muted,wrap:cw-50}).setOrigin(0,0);
       if(!j.reduced&&t<60)ui.rect(x,y,cw,ch,'#ffffff'+Math.round((1-t/60)*128).toString(16).padStart(2,'0'));
       ui.endGroup();

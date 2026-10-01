@@ -90,6 +90,37 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await dn.screenshot({path: 'output/beats/damage.png'});
     assert.deepEqual(dn.errors, []);
     await dn.close();
+
+    // --- packs: tumble out on the drop, jump to the centre on pickup, the next card nudges up ---
+    const pp = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const pk1 = await state(pp, async () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
+      const item = s.packs.drop(s.player.x + 300, s.player.y, 'test'); s.draw(); await new Promise(r => setTimeout(r, 100)); s.draw();
+      out.mid = [Math.round(item.sprite.x - item.x), Math.round(item.sprite.y - item.y), item.sprite.rotation !== 0];
+      await new Promise(r => setTimeout(r, 650)); s.draw(); out.rest = [Math.round(item.sprite.x - item.x), Math.round(item.sprite.y - item.y), item.sprite.rotation];
+      item.size = 3; item.cards = s.packs.draw(s.upgradePool(), 3).map(u => u.id); s.player.x = item.x; s.player.y = item.y; s.tick(1 / 60); s.draw();
+      const f = j.flights.find(f => /^Pack_Drop_/.test(f.key)); out.jump = f && [Math.round(f.to.x), Math.round(f.to.y)]; out.center = [s.uiSize().w / 2, s.screens.layout.packCard];
+      const r = s.packs.reveal; r.start -= 5000; s.packs.act(); r.flippedAt -= 500; s.packs.act(); s.draw(); await new Promise(r => setTimeout(r, 60)); s.draw(); out.nudge = s.screens.layout.topNudge;
+      return out; });
+    assert(Math.abs(pk1.mid[0]) + Math.abs(pk1.mid[1]) > 4 && pk1.mid[2], 'The pack tumbles out: ' + JSON.stringify(pk1.mid));
+    assert.deepEqual(pk1.rest, [0, 0, 0], 'and settles exactly where the sim put it');
+    assert.deepEqual(pk1.jump, pk1.center.map(Math.round), 'On pickup the pack jumps to the centre of the screen');
+    assert(pk1.nudge > 0, 'The next card nudges up after one is filed');
+    assert.deepEqual(pp.errors, []);
+    await pp.context().close();
+    // --- relic: press and drop-away like upgrades, the flight leaves the chosen card even when a level-up opens next, the HUD icon bumps ---
+    const rp = await open(browser, {width: 390, height: 844}, {mobile: true});
+    const rl = await state(rp, async () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
+      s.relics.reward('shrine_challenge'); s.xp = s.xpNeeded(); s.checkLevel(); s.draw(); j.modeAt -= 1000; const card = {...s.screens.layout.cards[1]}, id = s.relics.offers[1].id;
+      s.relics.choose(1); out.mode = s.mode; s.draw();
+      const f = j.flights.find(f => f.key === 'relic_' + id); out.from = f && f.from; out.card = card; out.icon = j.picked?.icon; out.others = j.picked?.others.length;
+      for (let n = 0; n < 40; n++) { await new Promise(r => setTimeout(r, 25)); s.draw(); const c = s.hud.layout.relics.find(r => r.id === id); if (c?.bump > 0) { out.bump = c.bump; break; } }
+      return out; });
+    assert.equal(rl.mode, 'upgrade', 'test setup: a level-up opens right after the relic pick');
+    assert(rl.from && rl.from.x >= rl.card.x && rl.from.x <= rl.card.x + rl.card.w && rl.from.y >= rl.card.y && rl.from.y <= rl.card.y + rl.card.h, 'The relic flies from the card that was chosen: ' + JSON.stringify(rl));
+    assert(/^relic_/.test(rl.icon) && rl.others === 2, 'The relic card presses and the other two drop away');
+    assert(rl.bump > 0, 'The HUD relic icon bumps when the relic lands');
+    assert.deepEqual(rp.errors, []);
+    await rp.context().close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

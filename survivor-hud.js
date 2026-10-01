@@ -45,7 +45,9 @@
       const s=this.s,ids=[...new Set(s.relics.equipped)];
       let i=0;const cell=()=>{const x=54+(i%RELICS_PER_ROW)*RELIC_PITCH,y=58+Math.floor(i/RELICS_PER_ROW)*RELIC_PITCH;i++;return {x,y};};
       for(const id of ids){const {x,y}=cell(),count=s.relics.count(id);this.layout.relics.push({id,count,x,y});
-        ui.image('relic_'+id,x+2,y+2,16,16,{frame:[0,0,16,16]});
+        // The icon bumps (up to 1.4x) when a relic lands on it.
+        const bump=s.juice.relicBump(id),sz=Math.round(16*(1+.4*bump));this.layout.relics.at(-1).bump=bump;
+        ui.image('relic_'+id,x+10-sz/2,y+10-sz/2,sz,sz,{frame:[0,0,16,16]});
         if(count>1)ui.darkText(String(count),x+22,y+19,{align:'right'});}
       return i?58+Math.ceil(i/RELICS_PER_ROW)*RELIC_PITCH:58; // bottom of the last occupied row
     }
