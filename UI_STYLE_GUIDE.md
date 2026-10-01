@@ -56,6 +56,16 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 - `<` and `>` beside the portrait step through unlocked creatures. A change flips the portrait (80ms squash, 220ms open with an 8px lift) with a sparkle burst; the selection brackets slide 150ms; name and description slide up while fading in. Locked faces shake and show "???" with how to unlock. BEGIN always wears the white corner brackets.
 - A picked upgrade card stays on screen through the 260ms hold (brief flash, then fade and shrink) so its icon visibly lifts off it.
 
+### Prototype beats (2026-09-30)
+- **XP gems:** an 8×8 gem (`assets/ui/xp_gem.png`) at 2×. The sim moves gems in a straight line; the drawn path arcs and shrinks into the player. Each gem flashes the XP bar (merged, no strobe) with a small sparkle.
+- **Level-up:** player flash, 2px/160ms shake, bright XP-bar flash and a 60ms hold, on top of the aura. The panel heading "LEVEL N" stays; no floating "LEVEL N" over the player.
+- **Pick:** the card dips to 96% then grows to 106%; the others drop 20px and fade over 120ms. Party Power/Tempo fly to every occupied slot, Tough Hide to the HP bar, the rest to their owner. Landing flashes the slot's charge bar (or the HP bar).
+- **Damage numbers:** spawn at 1.5× and settle in 60ms, drift sideways as they rise. Crits are 4× gold with "!", a 1px shake, and never merge. Hits on the player are 4× red and jolt the HP bar. Heals are green "+N".
+- **Packs:** tumble out of the enemy onto their sim spot; on pickup the pack jumps to the centre; the next card nudges up after one is filed. **Relics:** same press/drop-away as upgrades, the icon flies from the chosen card, and the HUD icon bumps on landing.
+- **Capture:** the creature trembles harder each quarter of the charge, flashes white with a small shake at the snap, and its new slot's charge bar fills from empty. **Unlock:** panel scales in; white flash and element-coloured sparks at the fill; NEW STARTER stamps down with a panel shake; the name fades in; Continue at 1750ms.
+- **Title:** wakes from black; unlocked creatures wander, 16 fireflies drift, the view pans slowly (off under reduced motion); the logo slams in and bobs; faces pop in 45ms apart; unseen unlocks wear a pulsing NEW (`scrollmonsters-seen-starters-v1`); BEGIN closes and opens an iris.
+- **No toasts** (user rule): no floating text callouts in play other than the den header and numbers.
+
 ### Assets
 - `scripts/build-ui-assets.py` regenerates `assets/ui/darkmode/*` and `assets/icons/relics/*` from the purchased packs. Ship only the crops; never commit the packs.
 - Every relic and upgrade has its own icon; never reuse one or ship a near look-alike.

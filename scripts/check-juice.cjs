@@ -149,7 +149,7 @@ async function expeditionEvents(browser, juiceOn) {
     assert.equal(await state(un, () => __survivorTest.scene.elapsed), t0, 'The game is stopped behind the unlock screen');
     await state(un, () => window.dispatchEvent(new Event('blur')));
     assert.equal(await state(un, () => __survivorTest.scene.mode), 'unlock', 'Blur does not break the unlock screen');
-    await wait(900);
+    await wait(1800); // Continue appears after the reveal (prototype: 1750ms)
     assert.deepEqual(await offscreenTexts(un), [], 'Unlock screen fits');
     await un.screenshot({path: 'output/juice/unlock.png'});
     const cont = await controlPoint(un, 'Continue');

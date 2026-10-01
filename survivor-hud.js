@@ -5,10 +5,11 @@
   const SLOT_W = 62, SLOT_H = 48, SLOT_GAP = 4, RELIC_PITCH = 24, RELICS_PER_ROW = 8;
   class SurvivorHud {
     constructor(s){this.s=s;this.layout={slots:[],relics:[]};}
-    // w,h are logical (270x480 portrait, 480x320 landscape). Called inside the x2 group.
+    // w,h are logical: 270x480 portrait; 720x480 (Normal) or 480x320 (Large) landscape. Called inside the ui2x group, scaled by scene.uiScale().
     draw(w,h){
       const s=this.s,ui=s.ui;this.layout={slots:[],relics:[]};
-      this.status(ui);
+      // The whole status block jolts sideways when the player is hit (presentation only).
+      const jolt=s.juice.hpJolt();this.layout.hpJolt=jolt;ui.beginGroup('status',{x:jolt});this.status(ui);ui.endGroup();
       this.timer(ui,w);
       const rowBottom=this.relicRow(ui,w);
       this.partyBar(ui,w,h);
@@ -25,6 +26,9 @@
         let yy=y;for(const [c,f] of bands){const bh=Math.round(hh*f);g.fillStyle(c).fillRect(x,yy,Math.max(0,(w-slant)*fill),bh);yy+=bh;}};
       bar(56,32,96,10,8,hp,[[0x6c192b,.2],[0xaf2424,.4],[0x4d0c1e,.4]]);
       bar(52,48,84,6,4,xp,[[0x187c8c,.34],[0x2dc5c0,.33],[0x0c4067,.33]]);
+      // Gems and level-ups flash the XP bar white (presentation only).
+      this.layout.hp={x:56,y:32,w:96,h:10};const hpf=s.juice.hpFlash();if(hpf>0)g.fillStyle(0xffffff,hpf*.8).fillRect(56,32,Math.max(6,88*hp),10);
+      const flash=s.juice.xpFlash();this.layout.xpFlash=flash;if(flash>0)g.fillStyle(0xffffff,flash).fillRect(52,47,Math.max(6,80*xp),8);
       ui.image('dk_status',2,10,166,70);
       ui.image('dk_heart',26,37,18,16);
       ui.darkText('LV '+s.level,148,51,{color:D().teal});
@@ -41,7 +45,9 @@
       const s=this.s,ids=[...new Set(s.relics.equipped)];
       let i=0;const cell=()=>{const x=54+(i%RELICS_PER_ROW)*RELIC_PITCH,y=58+Math.floor(i/RELICS_PER_ROW)*RELIC_PITCH;i++;return {x,y};};
       for(const id of ids){const {x,y}=cell(),count=s.relics.count(id);this.layout.relics.push({id,count,x,y});
-        ui.image('relic_'+id,x+2,y+2,16,16,{frame:[0,0,16,16]});
+        // The icon bumps (up to 1.4x) when a relic lands on it.
+        const bump=s.juice.relicBump(id),sz=Math.round(16*(1+.4*bump));this.layout.relics.at(-1).bump=bump;
+        ui.image('relic_'+id,x+10-sz/2,y+10-sz/2,sz,sz,{frame:[0,0,16,16]});
         if(count>1)ui.darkText(String(count),x+22,y+19,{align:'right'});}
       return i?58+Math.ceil(i/RELICS_PER_ROW)*RELIC_PITCH:58; // bottom of the last occupied row
     }
@@ -52,8 +58,10 @@
         if(type){if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32]});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
-          const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
-          if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');}}
+          const charge=this.chargeOf(type)*s.juice.slotFill(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
+          if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');
+          // A landing upgrade flashes the slot's charge bar.
+          const fl=s.juice.slotFlash(type);this.layout.slots[i].flash=fl;if(fl>0)ui.rect(x+51,y+SLOT_H-41,6,36,'#ffffff'+Math.round(fl*200).toString(16).padStart(2,'0'));}}
 
     }
     // 0 right after an attack, 1 when ready. Reads timers only.

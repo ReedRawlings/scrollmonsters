@@ -31,7 +31,7 @@
       for(let i=1;i<steps;i++)if(s.blocked(e.x+(x-e.x)*i/steps,e.y+(y-e.y)*i/steps,4))return false;
       return true;
     },
-    visible(s,e){const c=s.cameras.main;return e.x>c.scrollX+24&&e.x<c.scrollX+c.width-24&&e.y>c.scrollY+24&&e.y<c.scrollY+c.height-24;},
+    visible(s,e){const c=s.cameras.main,v=s.viewScroll();return e.x>v.x+24&&e.x<v.x+c.width-24&&e.y>v.y+24&&e.y<v.y+c.height-24;},
     approach(s,e,dt,desired){
       const p=s.player,dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1;
       if(d>desired||!this.visible(s,e)){const x=e.x,y=e.y;s.move(e,dx/d*e.speed*dt,dy/d*e.speed*dt);if(Math.hypot(e.x-x,e.y-y)<e.speed*dt*.3)s.move(e,-dy/d*e.speed*dt,dx/d*e.speed*dt);}
