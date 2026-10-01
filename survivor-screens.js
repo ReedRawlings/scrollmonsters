@@ -148,9 +148,16 @@
     // The picked upgrade card lingers through the 260ms hold: a brief flash, then it fades and shrinks away,
     // so the icon flying to the party bar visibly lifts off it. Drawn in any mode; no hit areas.
     dismiss(w,h){
-      const s=this.s,j=s.juice,p=j.picked;if(!p)return;const t=j.now()-p.at;if(t>=SurvivorScreens.HOLD_MS)return;
-      const {x,y,w:cw,h:ch}=p.card,k=t/SurvivorScreens.HOLD_MS,sc=j.reduced?1:1-.1*k,cx=x+cw/2,cy=y+ch/2,ui=s.ui;
-      ui.beginGroup('pickdismiss',{x:cx*(1-sc),y:cy*(1-sc),scale:sc}).setAlpha(1-k);
+      const s=this.s,j=s.juice,p=j.picked;if(!p)return;const t=j.now()-p.at;if(t>=SurvivorScreens.HOLD_MS){j.dismissState=null;return;}
+      const ui=s.ui,red=j.reduced;
+      // Press: dip to 96% over 30ms, grow to 106% by 90ms, then shrink and fade out by the end of the hold.
+      const sc=red?1:t<30?1-.04*t/30:t<90?.96+.1*(t-30)/60:1.06-.11*(t-90)/(SurvivorScreens.HOLD_MS-90),alpha=t<90?1:1-(t-90)/(SurvivorScreens.HOLD_MS-90);
+      // The other cards drop 20px and fade over 120ms.
+      const ok=Math.min(1,t/120),oe=1-Math.pow(1-ok,2),oa=1-ok,dy=red?0:20*oe;j.dismissState={picked:sc,others:{alpha:oa,dy}};
+      if(oa>0)p.others.forEach((o,i)=>{const {x,y,w:cw,h:ch}=o.card;ui.beginGroup('pickother'+i,{y:dy}).setAlpha(oa);ui.panel('dk_slot',x,y,cw,ch,5,2);
+        if(s.textures.exists('upgrade_'+o.id))ui.image('upgrade_'+o.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});ui.darkText(o.label,x+40,y+12);ui.endGroup();});
+      const {x,y,w:cw,h:ch}=p.card,cx=x+cw/2,cy=y+ch/2;
+      ui.beginGroup('pickdismiss',{x:cx*(1-sc),y:cy*(1-sc),scale:sc}).setAlpha(alpha);
       ui.panel('dk_slot',x,y,cw,ch,5,2);
       if(s.textures.exists('upgrade_'+p.id))ui.image('upgrade_'+p.id,x+8,y+(ch-32)/2,32,32,{frame:[0,0,16,16]});
       ui.darkText(p.label,x+40,y+12);ui.darkText(p.detail,x+40,y+25,{color:D().muted,wrap:cw-50}).setOrigin(0,0);

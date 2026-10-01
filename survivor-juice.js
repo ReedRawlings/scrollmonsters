@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const MAX_FX = 60;
+  const MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(),
@@ -24,7 +24,7 @@
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
       for(const f of this.faces||[]){f.timer.remove(false);this.s.tweens.killTweensOf(f.face);f.face.destroy();}
-      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
+      this.faces=[];this.fx=[];this.flights=[];this.rings={};this.frozenUntil=0;this.jitterUntil=0;this.unlocks=[];this.unlockAt=0;this.aura=null;this.chunks=0;this.picked=null;this.gems=new WeakMap();this.slotFlashAt={};this.hpFlashAt=-1e9;this.xpFlashAt=-1e9;this.levelFlashAt=-1e9;this.lastSpark=-1e9;
       this.mode=this.s.mode;this.modeAt=this.now();this.s.cameras.main.setFollowOffset(0,0);this.numbers?.reset();
     }
     rand(){let t=this.seed=(this.seed+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
@@ -127,15 +127,25 @@
     onUpgrade(e){
       const card=this.s.screens.layout.cards?.[e.index];if(!card)return;
       this.freeze(260);
-      const choice=this.s.choices[e.index];this.picked={card:{...card},label:(e.index+1)+'. '+(choice?.name||''),detail:choice?.detail||'',id:e.id,at:this.now()};
-      const to=this.slotPoint(this.ownerOf(e.id));
-      this.flyTo('upgrade_'+e.id,{x:card.x+24,y:card.y+card.h/2},to,{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});
+      const choice=this.s.choices[e.index],cards=this.s.screens.layout.cards||[];
+      this.picked={card:{...card},label:(e.index+1)+'. '+(choice?.name||''),detail:choice?.detail||'',id:e.id,at:this.now(),
+        others:cards.map((c,i)=>i===e.index?null:{card:{...c},label:(i+1)+'. '+(this.s.choices[i]?.name||''),id:this.s.choices[i]?.id}).filter(Boolean)};
+      this.travel(e.id,{x:card.x+24,y:card.y+card.h/2});
     }
+    // Where an upgrade lands: party-wide upgrades visit every occupied slot, Tough Hide the HP bar, the rest their owner's slot.
+    travel(id,from){
+      const land=(type)=>p=>{this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1});if(type==='hp')this.hpFlashAt=this.now();else this.slotFlashAt[type]=this.now();};
+      if(id==='hide'){const hp=this.s.hud.layout.hp;if(hp)return this.flyTo('upgrade_'+id,from,{x:hp.x+hp.w/2,y:hp.y+hp.h/2},{onLand:land('hp')});}
+      const types=PARTY_WIDE.includes(id)?this.s.hud.layout.slots.filter(v=>v.type).map(v=>v.type):[this.ownerOf(id)];
+      for(const t of types)this.flyTo('upgrade_'+id,from,this.slotPoint(t),{onLand:land((this.s.hud.layout.slots.find(v=>v.type===t)||this.s.hud.layout.slots[0])?.type)});
+    }
+    slotFlash(type){return clamp(1-(this.now()-(this.slotFlashAt[type]??-1e9))/250,0,1);}
+    hpFlash(){return clamp(1-(this.now()-this.hpFlashAt)/250,0,1);}
     onPack(e){this.play('Pack_Open_'+SurvivorPacks.rarity(e.size),e.x,e.y,{scale:3,depth:e.y+30});}
     onPackFlip(e){if(this.reduced)return;const w=this.s.uiSize().w;
       this.play('Pack_Flip',w/2,this.s.screens.layout.packCard??200,{ui:true,scale:3,tint:parseInt(SurvivorPacks.COLORS[e.size].slice(1),16)});}
     onPackApply(e){const hand=this.s.screens.layout.hand||[];
-      e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.flyTo('upgrade_'+id,from,this.slotPoint(this.ownerOf(id)),{onLand:p=>this.play('Slot_PowerUp',p.x,p.y,{ui:true,scale:1})});});}
+      e.cards.forEach((id,i)=>{const from=hand[i];if(from)this.travel(id,from);});}
     // The chosen relic flies from its card to its cell in the HUD relic row (the row is laid out on the next draw).
     onRelic(e){const card=this.s.screens.layout.cards?.[e.index];if(!card)return;this.s.draw();
       const cell=this.s.hud.layout.relics.find(r=>r.id===e.id);if(!cell)return;

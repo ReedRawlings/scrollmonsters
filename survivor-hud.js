@@ -26,6 +26,7 @@
       bar(56,32,96,10,8,hp,[[0x6c192b,.2],[0xaf2424,.4],[0x4d0c1e,.4]]);
       bar(52,48,84,6,4,xp,[[0x187c8c,.34],[0x2dc5c0,.33],[0x0c4067,.33]]);
       // Gems and level-ups flash the XP bar white (presentation only).
+      this.layout.hp={x:56,y:32,w:96,h:10};const hpf=s.juice.hpFlash();if(hpf>0)g.fillStyle(0xffffff,hpf*.8).fillRect(56,32,Math.max(6,88*hp),10);
       const flash=s.juice.xpFlash();this.layout.xpFlash=flash;if(flash>0)g.fillStyle(0xffffff,flash).fillRect(52,47,Math.max(6,80*xp),8);
       ui.image('dk_status',2,10,166,70);
       ui.image('dk_heart',26,37,18,16);
@@ -55,7 +56,9 @@
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
           const charge=this.chargeOf(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;
-          if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');}}
+          if(bh>0)ui.rect(x+52,y+SLOT_H-6-bh,4,bh,charge>=1?'#08ec64':'#08a048');
+          // A landing upgrade flashes the slot's charge bar.
+          const fl=s.juice.slotFlash(type);this.layout.slots[i].flash=fl;if(fl>0)ui.rect(x+51,y+SLOT_H-41,6,36,'#ffffff'+Math.round(fl*200).toString(16).padStart(2,'0'));}}
 
     }
     // 0 right after an attack, 1 when ready. Reads timers only.

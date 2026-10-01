@@ -109,8 +109,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await rv.keyboard.press('Enter'); await wait(250); await rv.keyboard.press('Enter');
     let end = await R(); assert.equal(end.mode, 'pack', 'Still showing the full hand for a moment');
     await rv.screenshot({path: 'output/upgrade-packs/hand.png'});
+    // Party-wide cards (Party Power, Party Tempo) fly to every occupied slot; the rest fly once.
+    const expected = await state(rv, () => { const s = __survivorTest.scene, occupied = s.hud.layout.slots.filter(v => v.type).length; return s.packs.reveal.cards.reduce((n, c) => n + (['partyDamage', 'partySpeed'].includes(c.id) ? occupied : 1), 0); });
     await wait(300); end = await R();
-    assert.deepEqual(end, {mode: 'playing', flights: 3}, 'After the last card, each icon flies to its slot and combat resumes');
+    assert.deepEqual(end, {mode: 'playing', flights: expected}, 'After the last card, each icon flies to its slot(s) and combat resumes');
     assert.deepEqual(rv.errors, []);
     await rv.context().close();
     // Landscape and reduced motion: the whole reveal fits, and no flip flash plays.
