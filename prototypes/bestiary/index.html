@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bestiary Prototypes</title>
+<style>
+  :root{--bg:#100d18;--card:#191426;--line:#2f2745;--txt:#ece8f7;--mut:#a79fc0;--gold:#ffc41b;--teal:#2dc5c0}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 50% -10%,#2a1b44,transparent 65%),var(--bg);color:var(--txt);font:16px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 16px 60px}
+  h1{margin:0 0 6px;font-size:30px;letter-spacing:-.01em}
+  h2{margin:34px 0 10px;font-size:20px}
+  p{margin:0 0 10px;color:var(--mut);max-width:70ch}
+  a{color:var(--teal)}
+  .lead{font-size:17px;color:#cfc8e4}
+  .principles{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px;padding:0;margin:0;list-style:none}
+  .principles li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--mut);font-size:14px}
+  .principles b{display:block;color:var(--txt);font-size:15px;margin-bottom:2px}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
+  .card:hover{transform:translateY(-3px);border-color:var(--gold)}
+  .shot{position:relative;aspect-ratio:16/10;overflow:hidden;background:#000;border-bottom:1px solid var(--line)}
+  .shot iframe{position:absolute;left:0;top:0;width:1280px;height:800px;border:0;transform-origin:0 0;pointer-events:none}
+  .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px}
+  .num{color:var(--gold);font-weight:700;font-size:13px;letter-spacing:.08em}
+  .card h3{margin:0;font-size:20px}
+  .card p{font-size:14px;margin:0}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tags span{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--mut)}
+  .tags .good{border-color:#2dc5c066;color:#7fe3de}.tags .bad{border-color:#ef526666;color:#f59aa7}
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--mut)}
+  th{color:var(--txt);background:#1f1830;font-weight:600}
+  td:first-child{color:var(--txt);font-weight:600;white-space:nowrap}
+  .scroll{overflow-x:auto}
+  .rec{background:linear-gradient(135deg,#2a1d44,#191426);border:1px solid var(--gold);border-radius:12px;padding:16px 18px}
+  .rec p{color:#d8d1ec}
+  small{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bestiary prototypes</h1>
+  <p class="lead">Four ways to show the same monsters. All four use the same roster, the same sprites and the same mock save. Open one, then use the DEMO bar at the bottom to switch between a new save, a mid-game save and a complete save.</p>
+
+  <h2>What the research says</h2>
+  <ul class="principles">
+    <li><b>1. Information is the reward</b>Hollow Knight's Hunter's Journal and Monster Hunter World's research levels fill in as you play. New facts feel earned. <a href="https://hollowknight.wiki/w/The_Hunter">Hunter's Journal</a>, <a href="https://attackofthefanboy.com/guides/monster-hunter-world-guide-research/">MH World research</a></li>
+    <li><b>2. Show the gaps</b>Dark silhouettes and "N of M" counters pull players to finish a set. An 11 of 12 set motivates more than 0 of 12. <a href="https://csaf.itch.io/bestiary-codex">Bestiary Codex</a>, <a href="https://yukaichou.com/advanced-gamification/game-design-technique-collection-sets/">Collection sets</a></li>
+    <li><b>3. Seen is not owned</b>Palworld logs a Pal as a silhouette when you meet it. It fills in only after you capture one. <a href="https://xgamingserver.com/blog/palworld-paldeck-guide/">Paldeck guide</a></li>
+    <li><b>4. Portrait first, numbers second</b>The Pokédex puts a large sprite next to a short two or three sentence note. Stats come after. <a href="https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9dex">Pokédex</a></li>
+    <li><b>5. Show what changes play</b>Monster Hunter lists weak points and drops. The best entries answer "what do I do about this?" for foes and "what do I pair it with?" for allies.</li>
+    <li><b>6. Tie it to the player's story</b>Hades' Codex fills in as you meet, talk to and defeat each subject. Personal history makes an entry feel like yours. <a href="https://hades.fandom.com/wiki/Codex">Hades Codex</a></li>
+  </ul>
+  <p style="margin-top:12px"><small>The Bestiary Codex and Collection Sets pages blocked direct access in this environment. Those two points come from search summaries only.</small></p>
+
+  <h2>The four directions</h2>
+  <div class="cards">
+    <a class="card" href="v1-field-guide.html"><div class="shot"><iframe src="v1-field-guide.html?embed" title="Preview of Field Guide"></iframe></div>
+      <div class="body"><span class="num">1 &middot; FIELD GUIDE</span><h3>The classic dex</h3>
+      <p>A scrolling list on the left. A large animated portrait, radar chart and tabs on the right. It copies the game's current DarkMode style.</p>
+      <div class="tags"><span class="good">Fastest to scan</span><span class="good">Closest to today's screen</span><span class="bad">Least surprising</span></div></div></a>
+    <a class="card" href="v2-hunters-journal.html"><div class="shot"><iframe src="v2-hunters-journal.html?embed" title="Preview of Hunter's Journal"></iframe></div>
+      <div class="body"><span class="num">2 &middot; HUNTER'S JOURNAL</span><h3>Research fills the page</h3>
+      <p>Every section is on the page. Marker bars cover what you have not researched. A rank-up wipes the bars away. The sketch goes from silhouette to pencil to full colour.</p>
+      <div class="tags"><span class="good">Best progression story</span><span class="good">Cheap to build</span><span class="bad">Breaks the dark style</span></div></div></a>
+    <a class="card" href="v3-card-binder.html"><div class="shot"><iframe src="v3-card-binder.html?embed" title="Preview of Card Binder"></iframe></div>
+      <div class="body"><span class="num">3 &middot; CARD BINDER</span><h3>Collect them all</h3>
+      <p>Every entry is a card in a sleeve. Unmet cards show a card back. Seen cards are ghosts. Mastered cards get foil. Hover tilts a card. Tap one to inspect it and flip it.</p>
+      <div class="tags"><span class="good">Most fun to browse</span><span class="good">Suits unlock moments</span><span class="bad">Hardest to port</span></div></div></a>
+    <a class="card" href="v4-evolution-web.html"><div class="shot"><iframe src="v4-evolution-web.html?embed" title="Preview of Evolution Web"></iframe></div>
+      <div class="body"><span class="num">4 &middot; EVOLUTION WEB</span><h3>The game's own hook</h3>
+      <p>Creatures are stars. Gold arrows are evolution recipes. Teal dashes are party combos. Foes switch to a timeline of when they arrive and who calls whom.</p>
+      <div class="tags"><span class="good">Shows merge and combos</span><span class="good">Finds loose ends</span><span class="bad">Poor for browsing a list</span></div></div></a>
+  </div>
+
+  <h2>Side by side</h2>
+  <div class="scroll"><table>
+    <tr><th></th><th>1 Field Guide</th><th>2 Journal</th><th>3 Binder</th><th>4 Web</th></tr>
+    <tr><td>Best at</td><td>Finding and reading one entry fast</td><td>Making progress feel earned</td><td>The joy of collecting</td><td>Showing how creatures connect</td></tr>
+    <tr><td>Weak at</td><td>Emotion. It is a database.</td><td>Matching the dark game UI</td><td>Dense information</td><td>Browsing all 24 entries in order</td></tr>
+    <tr><td>Phone</td><td>List, then detail page</td><td>Index, then page</td><td>Two-column grid, full-screen inspect</td><td>Tall map, bottom sheet</td></tr>
+    <tr><td>Port to Phaser</td><td>Easy. Extends today's Bestiary screen.</td><td>Medium. Needs new paper art.</td><td>Hard. Tilt and foil need shaders or fakes.</td><td>Medium. Lines and nodes are simple.</td></tr>
+    <tr><td>Uses ranks</td><td>Locked rows inside tabs</td><td>Marker bars on every section</td><td>Ghost cards and silver scratch panels</td><td>Dim stars and dotted recipes</td></tr>
+  </table></div>
+
+  <h2>My suggestion</h2>
+  <div class="rec">
+    <p><b style="color:var(--gold)">Mix them.</b> Use <b>1 Field Guide</b> as the base screen because it is the safest on a phone and the closest to what you ship. Add the <b>research ranks</b> from 2 as the data model, so every locked row shows what is missing. Make the Evolutions tab the <b>Web</b> from 4, because merging is your most unusual feature. Keep the <b>card flip and foil</b> from 3 for the moment a creature unlocks, where your game already has a reveal.</p>
+    <p style="margin:0">Details and open questions are in <a href="README.md">README.md</a>.</p>
+  </div>
+</div>
+<script>
+  // Scale each 1280x800 preview to fit its card.
+  const fit = () => document.querySelectorAll('.shot').forEach((s) => { s.querySelector('iframe').style.transform = `scale(${s.clientWidth / 1280})`; });
+  new ResizeObserver(fit).observe(document.body); fit();
+</script>
+</body>
+</html>
