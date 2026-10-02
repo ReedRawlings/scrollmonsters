@@ -1,0 +1,822 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ScrollMonsters Bestiary Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a page shell around one fixed logical "stage" (the game's 270x480 phone or 480x320 desktop frame),
+   zoomed by whole numbers when it fits. Four variants render into the same stage. Single dark look on purpose. */
+@font-face{font-family:"NovelMix";src:url("assets/ui/font_medium_9px.ttf") format("truetype");font-display:block}
+:root{
+  color-scheme:dark;
+  /* page shell */
+  --bg:#150f1d; --panel:#1f182b; --line:#3a2f4c; --fg:#f4f0ff; --muted:#b9b0d0;
+  /* game DarkMode palette (phaser-ui.js DARK) */
+  --ink:#120a1a; --gold:#ffc41b; --teal:#2dc5c0; --danger:#ef5266;
+  /* GBC dex palette, after the reference */
+  --cover:#ef5266; --cover-d:#c23a4c; --cover-dd:#8e2238; --paper:#f8f6ee; --pink:#101018; --rule:#101018;
+  /* pack rarity colours (UI_STYLE_GUIDE upgrade packs) */
+  --common:#5ed5f2; --rare:#b58cff; --legend:#ffd36b;
+  --screen:#0b0710; --bezel:#2a2238;
+  --pixel:"NovelMix",ui-monospace,monospace;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font:16px/1.55 var(--body);padding-inline:16px;padding-block:0 48px}
+a{color:var(--teal)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- page shell ---------- */
+.top{max-width:1180px;margin:0 auto;padding-block:20px 12px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.brand h1{margin:0;font:400 18px/1 var(--pixel);letter-spacing:1px;color:var(--fg)}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px;max-width:52ch}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.seg{display:flex;gap:2px;background:var(--ink);padding:2px;border:1px solid var(--line);border-radius:4px}
+.seg button{background:transparent;border:0;padding:6px 10px;border-radius:2px;cursor:pointer;font:400 9px/1 var(--pixel);letter-spacing:.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--ink)}
+.seg-label{font:400 9px/1 var(--pixel);color:var(--muted);margin-right:6px;letter-spacing:.5px}
+.ctl{display:flex;align-items:center}
+.tabs{max-width:1180px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tabs button{display:flex;gap:10px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer;min-width:0}
+.tabs button[aria-pressed="true"]{border-color:var(--cover);box-shadow:inset 0 -3px 0 var(--cover);background:#2a1c2c}
+.tabs .n{font:400 18px/1 var(--pixel);color:var(--cover)}
+.tabs b{display:block;font:400 9px/1.3 var(--pixel);letter-spacing:.5px;color:var(--fg)}
+.tabs small{display:block;color:var(--muted);font-size:13px;line-height:1.3;margin-top:2px}
+.viewport{max-width:1180px;margin:0 auto;display:flex;justify-content:center;align-items:flex-start;min-height:200px;padding-block:8px;overflow:hidden}
+.notes{max-width:1180px;margin:22px auto 0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;min-width:0}
+.card h2{margin:0 0 10px;font:400 9px/1.2 var(--pixel);letter-spacing:1px;color:var(--gold);text-transform:uppercase}
+.card h3{margin:0 0 4px;font-size:18px;line-height:1.25;text-wrap:balance}
+.card p,.card li{max-width:68ch;color:#ddd6ee}
+.card ul,.card ol{margin:0;padding-left:20px}
+.card li{margin:4px 0}
+.card dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:12px 0 0}
+.card dt{font:400 9px/1.9 var(--pixel);color:var(--muted);letter-spacing:.5px}
+.card dd{margin:0;color:#ddd6ee}
+.research{max-width:1180px;margin:16px auto 0}
+.research ol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 32px}
+.research li b{color:var(--fg)}
+.research .src{font-size:14px;color:var(--muted);margin-top:14px}
+.keys{font-size:13px;color:var(--muted)}
+kbd{font:400 9px/1 var(--pixel);background:var(--ink);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:3px 5px;color:var(--fg)}
+@media (max-width:820px){.notes{grid-template-columns:minmax(0,1fr)}.research ol{grid-template-columns:minmax(0,1fr)}.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.tabs small{display:none}}
+
+/* ---------- stage (logical px; zoomed as a whole) ---------- */
+.stage{position:relative;overflow:hidden;flex:none;font:400 9px/11px var(--pixel);color:var(--pink);user-select:none;-webkit-user-select:none;-webkit-font-smoothing:none;image-rendering:pixelated;box-shadow:0 10px 40px #0009}
+.stage *{box-sizing:border-box}
+.stage img,.spr,.px{image-rendering:pixelated}
+/* zero-specificity reset so component classes keep their own position and size */
+:where(.stage) button{all:unset;cursor:pointer;box-sizing:border-box}
+.stage button:focus-visible{outline:1px solid var(--gold);outline-offset:1px}
+.a{position:absolute}
+.t18{font-size:18px;line-height:18px}
+.r{text-align:right}
+.spr{display:block;background-repeat:no-repeat;flex:none}
+.sil{filter:brightness(0)}
+.sil-d{filter:brightness(0) invert(.36)}
+.ol{color:#fff;text-shadow:1px 0 var(--ink),-1px 0 var(--ink),0 1px var(--ink),0 -1px var(--ink),1px 1px var(--ink),-1px -1px var(--ink),1px -1px var(--ink),-1px 1px var(--ink)}
+.mut{color:var(--muted)}.gold{color:var(--gold)}.teal{color:var(--teal)}.dng{color:var(--danger)}
+.qbox{display:grid;place-items:center;font-size:18px;line-height:18px}
+/* white corner brackets: the game's selection mark */
+.brk{position:relative}
+.brk::after{content:"";position:absolute;inset:-4px;pointer-events:none;--c:#fff;
+  background:linear-gradient(var(--c),var(--c)) 0 0/6px 2px no-repeat,linear-gradient(var(--c),var(--c)) 0 0/2px 6px no-repeat,
+  linear-gradient(var(--c),var(--c)) 100% 0/6px 2px no-repeat,linear-gradient(var(--c),var(--c)) 100% 0/2px 6px no-repeat,
+  linear-gradient(var(--c),var(--c)) 0 100%/6px 2px no-repeat,linear-gradient(var(--c),var(--c)) 0 100%/2px 6px no-repeat,
+  linear-gradient(var(--c),var(--c)) 100% 100%/6px 2px no-repeat,linear-gradient(var(--c),var(--c)) 100% 100%/2px 6px no-repeat}
+.brk.ink::after{--c:var(--pink)}
+/* GBC double rule */
+.dbl{border:2px solid var(--rule);box-shadow:inset 0 0 0 1px var(--paper),inset 0 0 0 2px var(--rule);background:var(--paper)}
+.tb{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.tb img{width:9px;height:9px}
+.stars{display:flex;gap:1px}
+.stars img{width:7px;height:7px}
+
+/* ---------- 1 FIELD BINDER ---------- */
+.v-binder{background:var(--cover)}
+.v-binder .grain{position:absolute;inset:0;background:radial-gradient(#0000 60%,#0000001a),repeating-linear-gradient(0deg,#ffffff08 0 1px,#0000 1px 3px)}
+.bd-spine{position:absolute;background:linear-gradient(90deg,var(--cover-d) 0 3px,var(--cover-dd) 3px 9px,var(--cover-d) 9px)}
+.bd-spine.h{background:linear-gradient(180deg,var(--cover-d) 0 2px,var(--cover-dd) 2px 8px,var(--cover-d) 8px)}
+.bd-spine i{position:absolute;background:var(--cover-d);border:1px solid var(--cover-dd)}
+.pg{position:absolute}
+.pg>svg{position:absolute;inset:0}
+.pg>.in{position:absolute;inset:0}
+.bd-name{position:absolute;left:10px;top:7px;display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.bd-no{position:absolute;top:18px;right:9px}
+.portrait{position:absolute;display:grid;place-items:center;overflow:hidden;cursor:pointer;background:var(--paper)}
+.portrait .ground{position:absolute;left:18%;right:18%;bottom:14%;height:4px;background:#0000001f;border-radius:50%}
+.bd-id{position:absolute;display:flex;flex-direction:column;gap:3px}
+.bd-id .sp{line-height:10px}
+.bd-kv{display:grid;grid-template-columns:auto 1fr;gap:1px 6px}
+.bd-kv b{font-weight:400;text-align:right}
+.bd-stats{position:absolute;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}
+.st{border-left:3px double var(--rule);border-top:3px double var(--rule);padding:2px 0 0 3px;height:30px;display:flex;flex-direction:column;justify-content:space-between}
+.st .stars{align-self:flex-end;padding-right:4px}
+.st.q .stars{opacity:.35}
+.bd-line{display:flex;justify-content:space-between;gap:6px}
+.fs{position:absolute;border:3px double var(--rule);margin:0;padding:4px 6px 6px;background:var(--paper)}
+.fs legend{padding:0 3px;margin-left:2px}
+.dex{white-space:pre-wrap}
+.chain{display:flex;align-items:center;flex:none}
+.cbox{width:44px;height:44px;display:grid;place-items:center;overflow:hidden;position:relative}
+.clink{flex:1;height:5px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);position:relative;min-width:12px;background:var(--paper)}
+.clink span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--paper);padding:0 2px;line-height:9px}
+.bd-arrow{position:absolute;width:20px;height:20px;display:grid;place-items:center;background:var(--paper);border:2px solid var(--rule)}
+.bd-arrow:active{transform:scale(.96)}
+.bd-strip{position:absolute;display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:4px 5px}
+.bd-strip::-webkit-scrollbar{display:none}
+.thumb{width:18px;height:18px;flex:none;background:var(--paper);border:1px solid var(--rule);overflow:hidden;display:grid;place-items:center;position:relative}
+.thumb.brk{overflow:visible}
+.thumb .clip{width:16px;height:16px;overflow:hidden;display:grid;place-items:center}
+.thumb.foe{background:#ffe6c8}
+.thumb.fusion{background:#efe6ff}
+.flipin{animation:flipin .28s steps(6) both;transform-origin:0 50%}
+.flipin.h{transform-origin:50% 0;animation-name:flipinh}
+@keyframes flipin{from{transform:perspective(500px) rotateY(-80deg);filter:brightness(.7)}to{transform:none}}
+@keyframes flipinh{from{transform:perspective(500px) rotateX(80deg);filter:brightness(.7)}to{transform:none}}
+
+/* ---------- 2 POCKET DEX ---------- */
+.v-device{background:#1b1424}
+.shell{position:absolute;background:var(--cover);box-shadow:inset 2px 2px 0 #ff8c9c,inset -3px -3px 0 var(--cover-d),0 3px 0 var(--cover-dd)}
+.lens{position:absolute;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e6fffd 0 2px,#7ff0ea 3px,var(--teal) 6px,#127a77 11px);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ink)}
+.led{position:absolute;width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 1px var(--ink)}
+.bezel{position:absolute;background:var(--bezel);box-shadow:inset 0 0 0 1px #00000080}
+.screen{position:absolute;background:var(--screen);overflow:hidden;color:#fff}
+.screen .frame{position:absolute;inset:0;border:10px solid transparent;border-image:url("assets/ui/darkmode/panel.png") 5 fill/10px stretch;pointer-events:none}
+.slot{border:10px solid transparent;border-image:url("assets/ui/darkmode/slot.png") 5 fill/10px stretch;position:relative;display:grid;place-items:center}
+.slot>*{position:absolute}
+.dpad{position:absolute;width:62px;height:62px}
+.dpad button{position:absolute;background:var(--ink);width:21px;height:21px;box-shadow:inset 0 -2px 0 #000,inset 0 1px 0 #3a3046}
+.dpad .u{left:21px;top:0;border-radius:3px 3px 0 0}.dpad .d{left:21px;top:41px;border-radius:0 0 3px 3px}
+.dpad .l{left:0;top:21px;border-radius:3px 0 0 3px}.dpad .rr{left:41px;top:21px;border-radius:0 3px 3px 0}
+.dpad .c{position:absolute;left:21px;top:21px;width:21px;height:21px;background:var(--ink)}
+.dpad .c::after{content:"";position:absolute;inset:6px;border-radius:50%;background:#1d1626}
+.dpad button img{position:absolute;left:7px;top:7px;width:7px;height:7px;opacity:.55}
+.dpad button:active,.abtn:active,.pillbtn:active{transform:scale(.96)}
+.abtn{position:absolute;width:26px;height:26px;border-radius:50%;background:#8b2a5a;box-shadow:inset 0 -3px 0 #5a1438,0 0 0 2px var(--ink);display:grid!important;place-items:center}
+.abtn span{position:absolute;top:30px;left:0;right:0;text-align:center;color:var(--ink)}
+.pillbtn{position:absolute;display:block;width:38px;height:11px;border:5px solid transparent;border-image:url("assets/ui/darkmode/pill.png") 5 fill/5px stretch;transform:rotate(-22deg)}
+.pillbtn span{position:absolute;top:12px;left:-6px;right:-6px;text-align:center;color:var(--ink);transform:rotate(0)}
+.grille{position:absolute;display:flex;gap:4px;transform:rotate(-30deg)}
+.grille i{width:3px;height:30px;border-radius:2px;background:var(--cover-dd);box-shadow:inset 1px 1px 0 #0006}
+.row{display:flex;align-items:center;gap:4px;height:13px;white-space:nowrap;padding-left:2px;overflow:hidden;cursor:pointer}
+.row>*{flex:none}
+.row.on{background:#ffffff14}
+.row .cur{width:5px;height:7px}
+.tabsr{display:flex;gap:2px}
+.tabsr span{padding:1px 4px 2px;color:var(--muted)}
+.tabsr span.on{color:var(--gold);background:#ffffff12}
+.bar{display:flex;gap:1px}
+.bar i{width:6px;height:5px;background:#2b2238}
+.blink{animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+
+/* ---------- 3 CARD ALBUM ---------- */
+.v-album{background:var(--cover)}
+.sheet{position:absolute;background:#1b1424;border:2px solid var(--ink);box-shadow:inset 0 0 0 1px #3a2f4c}
+.sheet .hd{position:absolute;left:6px;right:6px;top:4px;display:flex;justify-content:space-between}
+.grid9{position:absolute;display:grid;grid-template-columns:repeat(3,1fr)}
+.sleeve{position:relative;background:#ffffff10;border:1px solid #ffffff22;border-radius:2px}
+.sleeve::after{content:"";position:absolute;inset:0;background:linear-gradient(125deg,#ffffff1a 0 18%,#0000 18% 100%);pointer-events:none}
+.tcard{position:absolute;inset:1px;border-radius:3px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;background:var(--paper);border:2px solid var(--rule);box-shadow:inset 0 0 0 1px var(--paper),inset 0 0 0 2px var(--rule);transition:transform .12s}
+.tcard:hover{transform:translateY(-2px)}
+.tcard .band{height:12px;flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;margin:1px 0 0;background:var(--tc)}
+.tcard .band b{font-weight:400}
+.tcard .band b.long{letter-spacing:-.5px}
+.tcard .win{flex:1;margin:2px 3px;position:relative;display:grid;place-items:center;overflow:hidden;background:linear-gradient(#0000 70%,#00000014 70%),color-mix(in srgb,var(--tc) 22%,var(--paper));border:1px solid var(--rule)}
+.tcard .ft{height:11px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 3px 2px}
+.tcard .ft>span{display:flex;gap:1px;align-items:center}
+.tcard .gem{width:7px;height:7px}
+.tcard.master{border-color:#b8860b;box-shadow:inset 0 0 0 1px #ffe9a8,inset 0 0 0 2px #b8860b}
+.holo{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,#0000 30%,#ffffff99 42%,#5ed5f266 48%,#b58cff66 54%,#0000 66%);background-size:300% 100%;mix-blend-mode:screen;animation:holo 3.2s linear infinite}
+@keyframes holo{from{background-position:120% 0}to{background-position:-120% 0}}
+.stamp{position:absolute;right:2px;bottom:2px;padding:1px 2px;border:1px solid currentColor;transform:rotate(-8deg);background:#ffffffcc;line-height:9px}
+.back{background:repeating-linear-gradient(45deg,var(--cover-d) 0 3px,var(--cover) 3px 6px);border-color:var(--ink);box-shadow:inset 0 0 0 2px #ffffff40;justify-content:center;align-items:center}
+.back .emb{width:28px;height:28px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);display:grid;place-items:center;font-size:18px;line-height:18px}
+.overlay{position:absolute;inset:0;background:#0b0710f0;display:grid;place-items:center;z-index:5}
+.big{position:relative;cursor:pointer;transition:transform .13s ease-in}
+.big.squash{transform:scaleX(0)}
+.big .face{position:absolute;inset:0}
+.big .backside,.big.flipped .front{display:none}
+.big.flipped .backside{display:block}
+.big .tcard{inset:0;cursor:pointer}
+.big .tcard:hover{transform:none}
+.bk{position:absolute;inset:0;background:var(--paper);border:2px solid var(--rule);box-shadow:inset 0 0 0 1px var(--paper),inset 0 0 0 2px var(--rule);border-radius:3px;padding:7px 8px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.pop{animation:pop .22s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes pop{from{transform:scale(.6) translateY(20px);opacity:.3}}
+.hint{position:absolute;bottom:3px;left:0;right:0;text-align:center}
+
+/* ---------- 4 FUSION WEB ---------- */
+.v-web{background:var(--cover)}
+.v-web .dots{position:absolute;background-image:radial-gradient(#ffffff40 1px,#0000 1.5px);background-size:8px 8px;background-color:var(--cover-d);border:2px solid var(--ink)}
+.v-web svg{position:absolute;overflow:visible}
+.node{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;overflow:hidden;cursor:pointer}
+.node.fz{border-color:var(--rule)}
+.node.dim{filter:saturate(.25) brightness(.8)}
+.node .tag{position:absolute;top:-1px;right:-1px;background:var(--gold);color:var(--ink);line-height:9px;padding:0 1px}
+.node.brk{overflow:visible}
+.web-lab{position:absolute;transform:translateX(-50%);white-space:nowrap;color:#fff}
+.edge-hot{stroke-dasharray:4 2;animation:march .6s linear infinite}
+@keyframes march{to{stroke-dashoffset:-6}}
+.wpanel{position:absolute;background:var(--paper);border:2px solid var(--rule);box-shadow:inset 0 0 0 1px var(--paper),inset 0 0 0 2px var(--rule);padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.ready{background:var(--gold);color:var(--ink);padding:1px 3px}
+
+@media (prefers-reduced-motion:reduce){.flipin,.pop,.holo,.edge-hot,.blink{animation:none!important}.big{transition:none}}
+</style>
+
+<header class="top">
+  <div class="brand">
+    <h1>BESTIARY CONCEPTS</h1>
+    <p>Four work-in-progress directions for the ScrollMonsters bestiary. Each one uses the game's real art, the NovelMix font and its logical screen sizes.</p>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span class="seg-label">FRAME</span><div class="seg" id="frameSeg" role="group" aria-label="Frame">
+      <button type="button" id="frame-phone" data-frame="phone">Phone 270x480</button><button type="button" id="frame-desktop" data-frame="desktop">Desktop 480x320</button></div></div>
+    <div class="ctl"><span class="seg-label">SAVE</span><div class="seg" id="saveSeg" role="group" aria-label="Sample save">
+      <button type="button" id="save-fresh" data-save="fresh">New</button><button type="button" id="save-mid" data-save="mid">Mid game</button><button type="button" id="save-full" data-save="full">Complete</button></div></div>
+  </div>
+</header>
+<nav class="tabs" id="tabs" aria-label="Variants">
+  <button type="button" id="tab-binder" data-v="binder"><span class="n">1</span><span><b>FIELD BINDER</b><small>Two-page spread, closest to the reference</small></span></button>
+  <button type="button" id="tab-device" data-v="device"><span class="n">2</span><span><b>POCKET DEX</b><small>DarkMode screen in a red handheld</small></span></button>
+  <button type="button" id="tab-album" data-v="album"><span class="n">3</span><span><b>CARD ALBUM</b><small>Collect cards, flip for detail</small></span></button>
+  <button type="button" id="tab-web" data-v="web"><span class="n">4</span><span><b>FUSION WEB</b><small>Map of every merge recipe</small></span></button>
+</nav>
+<div class="viewport" id="viewport"><div class="stage" id="stage" tabindex="0" aria-label="Bestiary prototype"></div></div>
+<section class="notes">
+  <article class="card" id="vnote"></article>
+  <article class="card">
+    <h2>Shared rules in all four</h2>
+    <dl>
+      <dt>REVEAL</dt><dd>Each entry climbs a ladder: <b>???</b> → <b>SEEN</b> (silhouette, name, type, wild stats) → <b>CAUGHT</b> (colour art, ratings, attack, dex text, fusions) → <b>MASTERED</b> (records and a field note). Use the SAVE buttons to see each step.</dd>
+      <dt>TYPES</dt><dd>Each base creature has one type, taken from its attack. A fusion takes one type from each parent. Example: Owl (WING) + Storm Lizard (STORM) = Tengu (WING/STORM).</dd>
+      <dt>DATA</dt><dd>Wild HP, speed and size come from the game code. Fusion HP and party bonuses are the real values. Star ratings, species names, types, dash names and dex text are draft copy.</dd>
+      <dt>STYLE</dt><dd>NovelMix at 9 and 18 only. Art at whole-number scale. The red cover is the game's danger red. The device screen uses the DarkMode panel, slot and pill art.</dd>
+      <dt>KEYS</dt><dd class="keys"><kbd>ARROWS</kbd> move, <kbd>ENTER</kbd> open or A, <kbd>ESC</kbd> back or B. Click the stage first.</dd>
+    </dl>
+  </article>
+</section>
+<section class="research card">
+  <h2>Research: what makes a great bestiary</h2>
+  <ol>
+    <li><b>Reveal in steps.</b> Terraria shows more data after 1, 10, 25 and 50 kills. Hollow Knight unlocks notes after enough kills. Monster Hunter shows weak points after more hunts. Here: the SEEN → CAUGHT → MASTERED ladder.</li>
+    <li><b>Show the gaps.</b> Numbers and silhouettes tell the player what is still missing. The Ammonomicon shows question marks for locked entries. Here: numbered entries, silhouettes, SEEN and OWN counts.</li>
+    <li><b>Make it useful in play.</b> The Monster Hunter field guide shows habitats and weak points. Here: attack, dash, party bonus, fusion recipes and a READY flag.</li>
+    <li><b>Give it one voice.</b> In Hollow Knight, each entry is in the Hunter's own words. Here: one narrator, two short sentences per entry, and a field note for mastery.</li>
+    <li><b>Make it an object in the world.</b> The Ammonomicon is a book. The Pokédex is a device. Here: binder, handheld and album.</li>
+    <li><b>Keep the player's records.</b> The Pokédex keeps size records. Monster Hunter counts hunts and captures. Here: caught, merged, runs and best damage (sample numbers).</li>
+    <li><b>Reward completion.</b> In Terraria, 10% of the bestiary opens the Zoologist shop, and more entries add more stock. Proposal: mastery gives a cosmetic, a title or a shiny palette.</li>
+    <li><b>Make each creature feel alive.</b> Animated sprites and cries. Here: sprites walk and turn when clicked, and the Pocket Dex plays a cry.</li>
+  </ol>
+  <p class="src">Sources: <a href="https://terraria.wiki.gg/wiki/Bestiary">Terraria Wiki, Bestiary</a> · <a href="https://www.thegamer.com/bestiary-monster-index-best/">TheGamer, Best bestiaries in video games</a> · <a href="https://www.thegamer.com/hollow-knight-hunters-journal-complete-guide/">TheGamer, Hunter's Journal guide</a> · <a href="https://enterthegungeon.wiki.gg/wiki/Ammonomicon">Enter the Gungeon Wiki, Ammonomicon</a> · <a href="https://primagames.com/tips/monster-hunter-world-how-find-monster-weaknesses">Prima Games, Monster Hunter World weaknesses</a></p>
+</section>
+
+<script>
+(() => {
+'use strict';
+// ---------------------------------------------------------------- art
+// FLAT_ART is switched on only in the published copy, where the art is copied to art/<id>-face.png and art/<id>-sheet.png.
+const FLAT_ART = false;
+const NA = 'assets/Ninja Adventure - Asset Pack/Actor/';
+// id: [face, sheet, frameW, frameH, layout ('grid' = 4 facing columns x walk rows, 'row' = frames left to right), frames, sheetW, sheetH]
+const ART = {
+  cat:['Animals/CatCyclop/Faceset.png','Animals/CatCyclop/SpriteSheet.png',16,16,'row',2,32,16],
+  owl:['Monsters/Arcane/Tier1/Owl/Faceset.png','Monsters/Arcane/Tier1/Owl/Owl.png',16,16,'grid',4,64,64],
+  beast:['Monsters/Feral/Tier1/Beast/Faceset.png','Monsters/Feral/Tier1/Beast/Beast.png',16,16,'grid',4,64,64],
+  frog:['Animals/Frog/Faceset.png','Animals/Frog/SpriteSheet.png',16,16,'row',2,32,16],
+  mouse:['Monsters/Arcane/Tier1/MouseBlack/Faceset.png','Monsters/Arcane/Tier1/MouseBlack/SpriteSheet.png',16,16,'grid',4,64,64],
+  mole:['Monsters/Bloom/Tier1/Mole/Faceset.png','Monsters/Bloom/Tier1/Mole/Mole.png',16,16,'grid',4,64,64],
+  bear:['Monsters/Feral/Tier2/Bear/Faceset.png','Monsters/Feral/Tier2/Bear/SpriteSheet.png',16,16,'grid',4,64,64],
+  salamander:['Monsters/Feral/Tier1/Lizard/Faceset.png','Monsters/Feral/Tier1/Lizard/Lizard.png',16,16,'grid',4,64,64],
+  spider:['Monsters/Feral/Tier2/SpiderRed/Faceset.png','Monsters/Feral/Tier2/SpiderRed/SpriteSheet.png',16,16,'grid',4,64,64],
+  storm:['Monsters/Feral/Tier1/Lizard2/Faceset.png','Monsters/Feral/Tier1/Lizard2/Lizard2.png',16,16,'grid',4,64,64],
+  mollusc:['Monsters/Mollusc/Faceset.png','Monsters/Mollusc/Mollusc.png',16,16,'grid',4,64,64],
+  octopus:['Monsters/Octopus/Faceset.png','Monsters/Octopus/SpriteSheet.png',16,16,'grid',4,64,64],
+  reptile:['Monsters/Feral/Tier2/Reptile/Faceset.png','Monsters/Feral/Tier2/Reptile/Reptile.png',16,16,'grid',4,64,64],
+  tengu:['Monsters/Arcane/Tier2/Tengu/Faceset.png','Monsters/Arcane/Tier2/Tengu/SpriteSheet.png',16,16,'grid',4,64,112],
+  axolotl:['Monsters/Axolot/Faceset.png','Monsters/Axolot/SpriteSheet.png',16,16,'grid',4,64,64],
+  shaman:[null,'!assets/Enemies/shaman_yellow.png',16,16,'grid',4,64,112],
+  guardian:['Boss/DemonCyclop/Faceset.png','Boss/DemonCyclop/Walk.png',50,50,'row',6,300,50],
+  ancient:['Boss/DemonCyclop2/Faceset.png','Boss/DemonCyclop2/Walk.png',50,50,'row',6,300,50],
+};
+const url = (id, kind) => {
+  if (FLAT_ART) return `art/${id}-${kind}.png`;
+  const p = ART[id][kind === 'face' ? 0 : 1];
+  return encodeURI(p[0] === '!' ? p.slice(1) : NA + p);
+};
+
+// ---------------------------------------------------------------- data
+// wild: [HP, speed, size] from survivors.js / survivor-enemies.js / survivor-encounters.js. s: draft star ratings.
+const STATS = [['POWER','#ef5266'],['RATE','#ff9b3d'],['RANGE','#f2b81e'],['AREA','#4a9ff0'],['CONTROL','#4fb83a'],['SUPPORT','#e04ac0']];
+const TYPES = {claw:['CLAW','#d9475f'],wing:['WING','#3fa6e0'],rush:['RUSH','#d9822b'],ward:['WARD','#25aaa6'],swarm:['SWARM','#6577a8'],
+  earth:['EARTH','#5f9e30'],fire:['FIRE','#f2552e'],web:['WEB','#9a8cc4'],storm:['STORM','#e0aa12'],ink:['INK','#7d55e0']};
+const MON = [
+ {id:'cat',kind:'base',name:'Cat',sp:'CYCLOPS CAT',t:['claw'],wild:[7,72,11],s:[2,4,1,3,3,1],atk:['SWEEP','A wide melee arc. Upgrades push foes back.'],dash:'SWIPE AT END',dex:'Its one eye never blinks. It sweeps its tail in a wide arc and knocks foes away.',note:'It purrs when the whole party is at full health.'},
+ {id:'owl',kind:'base',name:'Owl',sp:'VOLLEY OWL',t:['wing'],wild:[6,68,11],s:[2,4,5,1,1,2],atk:['FEATHER VOLLEY','Piercing feathers at long range. Can mark foes.'],dash:'FEATHER BURST',dex:'It watches from high stumps. Its feathers fly straight through a crowd.',note:'Its shed feathers always land facing north.'},
+ {id:'beast',kind:'base',name:'Beast',sp:'HORN BEAST',t:['rush'],wild:[9,47,16],s:[4,2,3,3,2,1],atk:['CHARGE','Rams through groups. A shockwave follows.'],dash:'RAMMING DASH',dex:'It lowers its horns and charges. The ground shakes where it stops.',note:'It cannot turn in the middle of a charge.'},
+ {id:'frog',kind:'base',name:'Frog',sp:'BUBBLE FROG',t:['ward'],wild:[6,42,10],s:[1,2,1,2,1,5],atk:['BUBBLE SHIELD','Blocks one hit. Every party hit deals +1.'],dash:'GAIN A SHIELD',dex:'Its croak blows a bubble around its friends. Allies near it hit harder.',note:'The bubble pops if it croaks off-key.'},
+ {id:'mouse',kind:'base',name:'Mouse',sp:'PACK MOUSE',t:['swarm'],wild:[2,95,8],s:[1,3,4,2,1,2],atk:['PACK CALL','Calls 3 biters that chase foes.'],dash:'DROP BITERS',dex:'Never alone. One squeak calls a pack of small biters out of the grass.',note:'No one has counted the whole pack.'},
+ {id:'mole',kind:'base',name:'Mole',sp:'RUMBLE MOLE',t:['earth'],wild:[12,40,12],s:[4,2,4,4,2,1],atk:['ERUPTION','A delayed blast under the biggest group.'],dash:'ERUPT AT END',dex:'It hears footsteps from below. Then the ground bursts under the crowd.',note:'It sleeps all day under old dens.'},
+ {id:'bear',kind:'base',name:'Bear',sp:'QUAKE BEAR',t:['earth'],wild:[28,32,20],s:[5,2,4,4,4,3],atk:['CROSS TREMOR','A cross-shaped quake, strongest at the center.'],dash:'SMALL TREMOR',dex:'It slams both paws down. The quake runs out in a cross and staggers foes.',note:'Its tremor splits stumps in a perfect cross.'},
+ {id:'salamander',kind:'base',name:'Salamander',sp:'EMBER NEWT',t:['fire'],wild:[12,42,12],s:[2,2,3,3,1,1],atk:['EMBER SPIT','Burning patches. Kills can spread fire.'],dash:'FIRE TRAIL',dex:'Its spit lights the grass. Foes that burn can pass the fire on.',note:'Rain does not put out its fire.'},
+ {id:'spider',kind:'base',name:'Spider',sp:'RED WEAVER',t:['web'],wild:[10,45,12],s:[2,1,3,3,5,3],atk:['SNARE WEB','Webs slow foes. Webbed foes take +20%.'],dash:'WEB AT START',dex:'It strings red silk between trees. Prey caught in it takes more damage.',note:'Its red silk is stronger than rope.'},
+ {id:'storm',kind:'base',name:'Storm Lizard',short:'STORM LIZ.',sp:'THUNDER GECKO',t:['storm'],wild:[12,42,12],s:[2,3,4,3,1,1],atk:['CHAIN BOLT','Lightning jumps across 3 foes.'],dash:'BOLT AT END',dex:'It basks in thunderstorms. A bolt from its tail jumps from foe to foe.',note:'Its tail glows before a storm.'},
+ {id:'mollusc',kind:'base',name:'Mollusc',sp:'INK SNAIL',t:['ink'],wild:[12,38,12],s:[1,2,3,3,4,1],atk:['INK POOL','Ink pools that hurt and slow.'],dash:'INK SPLASH',dex:'It leaves a trail of dark ink. Foes that step in it slow down.',note:'The ink smells like old scrolls.'},
+ {id:'octopus',kind:'fusion',name:'Octopus',sp:'REEF BRAWLER',t:['ink','claw'],from:['cat','mollusc'],hp:8,bonus:'+15% vs slowed foes',s:[3,5,3,4,4,2],atk:['TENTACLE SWEEP','Fast sweeps that spread slowing ink.'],dash:'INK SWEEP',dex:'Born when Cat and Mollusc merge. Its arms sweep the field and leave ink.',note:'Each arm keeps its own grudge.'},
+ {id:'reptile',kind:'fusion',name:'Reptile',sp:'BLAZE DRAKE',t:['fire','rush'],from:['salamander','beast'],hp:12,bonus:'+6% party damage',s:[5,2,3,3,2,2],atk:['BLAZE RUSH','Charges leave fire, then a heavy bite.'],dash:'FIRE CHARGE',dex:'Born from Salamander and Beast. It charges straight through its own fire.',note:'It runs hotter after every charge.'},
+ {id:'tengu',kind:'fusion',name:'Tengu',sp:'STORM CROW',t:['wing','storm'],from:['owl','storm'],hp:4,bonus:'+6% attack speed',s:[3,4,5,3,1,2],atk:['STORM QUILLS','Piercing feathers chain lightning.'],dash:'LIGHTNING QUILLS',dex:'Born from Owl and Storm Lizard. Every feather it throws carries a spark.',note:'It mimics thunder to scare rivals.'},
+ {id:'axolotl',kind:'fusion',name:'Axolotl',sp:'BUBBLE GUARD',t:['ward','ink'],from:['frog','mollusc'],hp:12,bonus:'10% less damage taken',s:[1,2,2,4,3,5],atk:['BUBBLE BURST','Shield pulses. Broken shields burst into ink.'],dash:'SHIELD RING',dex:'Born from Frog and Mollusc. When its shield breaks, ink sprays out.',note:'It smiles even when its shield breaks.'},
+ {id:'shaman',kind:'foe',name:'Shaman',sp:'MASK SUMMONER',t:['swarm'],wild:[18,52,12],s:[1,2,4,2,1,4],atk:['SUMMON','Calls minions until it falls.'],when:'FROM 1:30',dex:'It shakes a rattle and the grass fills with minions. Defeat it first.',note:'Its minions stop the moment it falls.'},
+ {id:'guardian',kind:'boss',name:'Guardian',sp:'DEN GUARDIAN',t:['fire','earth'],wild:[1200,85,null],s:[4,3,5,4,2,1],atk:['VOLLEY','Aimed shots, ring volleys and eruptions.'],when:'ARRIVES 9:30',dex:'It wakes when the field gets loud. It throws fire in rings and splits the ground.',note:'It guards the oldest den in the field.'},
+ {id:'ancient',kind:'boss',name:'Ancient Guardian',short:'ANCIENT G.',sp:'ELDER GUARDIAN',t:['fire','earth'],wild:[4000,null,null],s:[5,4,5,5,3,1],atk:['ELDER VOLLEY','Stronger volleys. Its fall ends the run.'],when:'ARRIVES 19:00',dex:'Older than the scrolls. Defeat it to finish the expedition.',note:'Its eye is the green of the first scroll.'},
+];
+MON.forEach((m,i) => { m.no = String(i+1).padStart(3,'0'); m.i = i; });
+const BY = Object.fromEntries(MON.map(m => [m.id, m]));
+const CREATURES = MON.filter(m => m.kind === 'base' || m.kind === 'fusion');
+const fusionsOf = id => MON.filter(m => m.from?.includes(id));
+const hash = s => [...s].reduce((h,c) => (h*31 + c.charCodeAt(0)) >>> 0, 7);
+const rec = id => { const h = hash(id); return {caught:1 + h%7, merged:h%4, runs:2 + h%11, best:300 + h%1700, defeated:3 + h%20}; };
+
+// 0 unknown, 1 seen, 2 caught (foes: defeated), 3 mastered
+const SAVES = {
+  fresh:{cat:2,owl:1,beast:1,mollusc:1},
+  mid:{cat:3,owl:2,beast:1,frog:2,mouse:1,mole:2,salamander:2,spider:1,storm:2,mollusc:2,octopus:2,tengu:2,shaman:2,guardian:2,ancient:1},
+  full:Object.fromEntries(MON.map(m => [m.id, ['mouse','spider','reptile','axolotl','shaman','ancient'].includes(m.id) ? 2 : 3])),
+};
+
+// ---------------------------------------------------------------- state
+const store = { get(k){ try { return localStorage.getItem('bestiary-concepts-' + k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('bestiary-concepts-' + k, v); } catch {} } };
+const VARIANTS = ['binder','device','album','web'];
+const hashV = location.hash.slice(1);
+const S = {
+  v: VARIANTS.includes(hashV) ? hashV : (store.get('v') || 'binder'),
+  frame: store.get('frame') || (innerWidth < 640 ? 'phone' : 'desktop'),
+  save: store.get('save') || 'mid',
+  sel: 'cat', facing: 0, chainPick: 0, typeIt: false,
+  dev: {mode:'list', tab:0, top:0},
+  album: {page:0, open:null, flipped:false},
+};
+if (!VARIANTS.includes(S.v)) S.v = 'binder';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const st = id => SAVES[S.save][id] || 0;
+const cur = () => BY[S.sel];
+const isFoe = m => m.kind === 'foe' || m.kind === 'boss';
+const ready = m => m.kind === 'fusion' && st(m.id) < 2 && m.from.every(p => st(p) >= 2);
+const label = m => (m.short || m.name).toUpperCase();
+const stateWord = m => { const s = st(m.id); return s === 0 ? '???' : s === 1 ? 'SEEN' : s === 3 ? 'MASTERED' : isFoe(m) ? 'DEFEATED' : 'CAUGHT'; };
+const counts = () => ({seen: CREATURES.filter(m => st(m.id) >= 1).length, own: CREATURES.filter(m => st(m.id) >= 2).length,
+  master: CREATURES.filter(m => st(m.id) >= 3).length, foes: MON.filter(m => isFoe(m) && st(m.id) >= 2).length, total: CREATURES.length});
+
+// ---------------------------------------------------------------- pixel icons (drawn once, used as <img>)
+const ICON = {};
+const bitmap = (rows, paint) => { const h = rows.length, w = rows[0].length, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); rows.forEach((r,y) => [...r].forEach((ch,x) => { const col = paint[ch]; if (col) { g.fillStyle = col; g.fillRect(x,y,1,1); } })); return c.toDataURL(); };
+const STAR = ['...#...','...#...','#######','.#####.','..###..','.##.##.','.#...#.'];
+const GLYPH = {
+  claw:['#.#.#','#.#.#','#.#.#','#.#.#','.#.#.'], wing:['#....','##...','###..','.###.','..###'], rush:['#.#..','.#.#.','..#.#','.#.#.','#.#..'],
+  ward:['#####','#####','#####','.###.','..#..'], swarm:['##.##','##.##','.....','.##..','.##..'], earth:['..#..','.###.','.###.','#####','#####'],
+  fire:['..#..','.##..','.###.','#####','.###.'], web:['#.#.#','.###.','##.##','.###.','#.#.#'], storm:['..##.','.##..','####.','..##.','.##..'],
+  ink:['..#..','..#..','.###.','#####','.###.'] };
+function makeIcons(){
+  for (const [, c] of STATS) ICON['star' + c] = bitmap(STAR, {'#':c});
+  ICON.starOff = bitmap(STAR, {'#':'#d6d2c8'});
+  ICON.starOffD = bitmap(STAR, {'#':'#2b2238'});
+  for (const [t, [, c]] of Object.entries(TYPES)) {
+    const rows = []; for (let y = 0; y < 9; y++) { let r = ''; for (let x = 0; x < 9; x++) {
+      const edge = x === 0 || y === 0 || x === 8 || y === 8, corner = (x === 0 || x === 8) && (y === 0 || y === 8);
+      const g = x >= 2 && x <= 6 && y >= 2 && y <= 6 && GLYPH[t][y-2][x-2] === '#';
+      r += corner ? '.' : edge ? 'k' : g ? 'w' : 'c'; } rows.push(r); }
+    ICON['type' + t] = bitmap(rows, {k:'#101018', c, w:'#ffffff'});
+  }
+  ICON.ring = bitmap(['..###..','.#...#.','#..#..#','#.###.#','#..#..#','.#...#.','..###..'], {'#':'#101018'});
+  ICON.ringW = bitmap(['..###..','.#...#.','#..#..#','#.###.#','#..#..#','.#...#.','..###..'], {'#':'#2dc5c0'});
+  ICON.spark = bitmap(['...#...','...#...','..###..','#######','..###..','...#...','...#...'], {'#':'#ffc41b'});
+  ICON.sparkK = bitmap(['...#...','...#...','..###..','#######','..###..','...#...','...#...'], {'#':'#b8860b'});
+  ICON.tri = bitmap(['#....','##...','###..','####.','###..','##...','#....'], {'#':'#101018'});
+  ICON.triL = bitmap(['....#','...##','..###','.####','..###','...##','....#'], {'#':'#101018'});
+  ICON.triW = bitmap(['#....','##...','###..','####.','###..','##...','#....'], {'#':'#ffffff'});
+  ICON.triG = bitmap(['#....','##...','###..','####.','###..','##...','#....'], {'#':'#ffc41b'});
+  ICON.up = bitmap(['...#...','..###..','.#####.','#######'], {'#':'#ffffff'});
+  ICON.dn = bitmap(['#######','.#####.','..###..','...#...'], {'#':'#ffffff'});
+  ICON.lf = bitmap(['...#','..##','.###','####','.###','..##','...#'], {'#':'#ffffff'});
+  ICON.rt = bitmap(['#...','##..','###.','####','###.','##..','#...'], {'#':'#ffffff'});
+  ICON.gemC = bitmap(['..#..','.###.','#####','.###.','..#..'], {'#':'#5ed5f2'});
+  ICON.gemR = bitmap(['..#..','.###.','#####','.###.','..#..'], {'#':'#b58cff'});
+  ICON.gemL = bitmap(['..#..','.###.','#####','.###.','..#..'], {'#':'#ffd36b'});
+}
+const img = (k, cls = '', st = '') => `<img class="px ${cls}" src="${ICON[k]}" alt="" style="${st}">`;
+const stars = (n, color, known = true, dark = false) => `<span class="stars">${[0,1,2,3,4].map(i => img(known && i < n ? 'star' + color : dark ? 'starOffD' : 'starOff')).join('')}</span>`;
+const typeTag = (t, dark = false) => { const [n, c] = TYPES[t]; return `<span class="tb">${img('type' + t)}<span style="color:${dark ? 'color-mix(in srgb,' + c + ' 60%,#fff)' : 'color-mix(in srgb,' + c + ' 75%,#000)'}">${n}</span></span>`; };
+const types = (m, dark) => m.t.map(t => typeTag(t, dark)).join(`<span${dark ? ' class="mut"' : ''}>/</span>`);
+const gem = m => img(m.kind === 'fusion' ? 'gemR' : m.kind === 'boss' ? 'gemL' : 'gemC', 'gem');
+
+// ---------------------------------------------------------------- sprites and faces
+// Sprites animate from one ticker: data-* hold the sheet geometry; facing picks the column on 4-way sheets.
+function spr(id, scale, opt = {}) {
+  const [, , fw, fh, layout, frames, sw, sh] = ART[id];
+  const s = st(id), sil = s === 1 ? (opt.dark ? ' sil-d' : ' sil') : '';
+  if (s === 0 && !opt.force) return opt.q === false ? '' : `<span class="qbox${opt.dark ? ' mut' : ''}" style="width:${fw*scale}px;height:${fh*scale}px">?</span>`;
+  const face = opt.facing ?? 0;
+  return `<i class="spr${sil}" data-l="${layout}" data-n="${frames}" data-fw="${fw*scale}" data-fh="${fh*scale}" data-c="${face}" data-o="${hash(id) % 4}"
+    style="width:${fw*scale}px;height:${fh*scale}px;background-image:url('${url(id,'sheet')}');background-size:${sw*scale}px ${sh*scale}px;background-position:${layout === 'grid' ? -face*fw*scale : 0}px 0"></i>`;
+}
+function face(id, scale, opt = {}) {
+  const s = st(id), sil = s === 1 ? (opt.dark ? ' sil-d' : ' sil') : '';
+  if (s === 0 && !opt.force) return `<span class="qbox${opt.dark ? ' mut' : ''}" style="width:${38*scale}px;height:${38*scale}px">?</span>`;
+  // Facesets have an opaque background, so a SEEN silhouette uses the transparent sprite instead.
+  if (!ART[id][0] || (s === 1 && !opt.force)) return `<span style="width:${38*scale}px;height:${38*scale}px;display:grid;place-items:center">${spr(id, fitScale(id, 38*scale - 4), opt)}</span>`;
+  return `<img class="px${sil}" src="${url(id,'face')}" alt="" width="${38*scale}" height="${38*scale}">`;
+}
+// Fits a sprite inside a box at the largest whole scale.
+const fitScale = (id, box) => Math.max(1, Math.floor(Math.min(box / ART[id][2], box / ART[id][3])));
+let tick = 0;
+setInterval(() => { tick++;
+  for (const el of document.querySelectorAll('#stage .spr')) {
+    const n = +el.dataset.n, f = (tick + +el.dataset.o) % n, fw = +el.dataset.fw, fh = +el.dataset.fh, c = +el.dataset.c;
+    el.style.backgroundPosition = el.dataset.l === 'grid' ? `${-c*fw}px ${-f*fh}px` : `${-f*fw}px 0px`;
+  } }, 160);
+
+// ---------------------------------------------------------------- sound: each creature gets a short square-wave cry
+let AC = null;
+function cry(id) {
+  try { AC ??= new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+  const h = hash(id), scale = [0,2,4,7,9,12,14,16], base = 220 * Math.pow(2, (h % 7) / 12) * (BY[id].kind === 'boss' ? .5 : 1);
+  let t = AC.currentTime + .02;
+  for (let i = 0; i < 5; i++) {
+    const o = AC.createOscillator(), g = AC.createGain(), d = .05 + ((h >> (i*3)) % 4) * .02, f = base * Math.pow(2, scale[(h >> (i*2)) % 8] / 12);
+    o.type = i % 2 ? 'square' : 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * (i === 4 ? .7 : 1.08), t + d);
+    g.gain.setValueAtTime(.05, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .01); t += d * .9;
+  }
+}
+
+// ---------------------------------------------------------------- typewriter (only after the viewer moves; first paint is complete)
+let typer = null;
+function typeInto(el, text) {
+  clearInterval(typer); if (!el) return;
+  if (RM || !S.typeIt) { el.textContent = text; return; }
+  let i = 0; el.textContent = '';
+  typer = setInterval(() => { i += 2; el.textContent = text.slice(0, i); if (i >= text.length) clearInterval(typer); }, 28);
+}
+
+// ---------------------------------------------------------------- helpers
+const box = ([x,y,w,h]) => `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+const pageSVG = (w, h, notch, n = 12) => {
+  const b = 1.5, pts = notch ? [[b,b],[notch,b],[notch+n,n+b],[w-b,n+b],[w-b,h-b],[b,h-b]] : [[b,b],[w-b,b],[w-b,h-b],[b,h-b]];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true"><polygon points="${pts.map(p => p.join(',')).join(' ')}" fill="var(--paper)" stroke="var(--rule)" stroke-width="3"/></svg>`;
+};
+const textW9 = s => s.length * 6.4;
+function step(list, d) { const i = list.findIndex(m => m.id === S.sel); select(list[(i + d + list.length) % list.length].id, true); }
+function select(id, moved) { if (id !== S.sel) { S.sel = id; S.facing = 0; S.chainPick = 0; S.typeIt = !!moved; render(); S.typeIt = false; } }
+
+// ================================================================= 1 FIELD BINDER
+function binder(W, H, P) {
+  const m = cur(), s = st(m.id), known = s >= 1, own = s >= 2, c = counts();
+  const L = P ? {lp:[10,6,250,188], sp:[0,196,270,12], rp:[10,210,250,236], ix:[6,450,258,26]}
+              : {lp:[8,8,226,262], sp:[234,0,12,320], rp:[246,8,226,262], ix:[8,276,464,36]};
+  const [, , lw, lh] = L.lp, [, , rw, rh] = L.rp, notch = lw - 58;
+  const nm = known ? m.name.toUpperCase() : '???', big = textW9(nm) * 2 <= notch - 16;
+  const rings = P ? [40,100,170,230].map(x => `<i style="left:${x-6}px;top:2px;width:12px;height:8px"></i>`).join('')
+                  : [36,110,190,264].map(y => `<i style="left:2px;top:${y-6}px;width:8px;height:12px"></i>`).join('');
+  // left page: who it is
+  const pbox = P ? [9, 28, 72, 76] : [9, 28, 80, 88], spS = fitScale(m.id, pbox[2] - 12), idx = pbox[0] + pbox[2] + 8;
+  const hab = m.kind === 'fusion' ? 'FUSION ONLY' : m.when || 'WOODS/DESERT';
+  const wild = m.wild ? [['WILD HP', m.wild[0]],['SPEED', m.wild[1] ?? '--'],['SIZE', m.wild[2] ?? '--']] : [['PARTY HP', '+' + m.hp]];
+  const left = `
+    <div class="bd-name">${big ? `<span class="t18">${nm}</span>` : `<span>${nm}</span>`}</div>
+    <div class="portrait dbl" style="${box(pbox)}" data-act="turn" title="Click to turn">
+      <div class="ground"></div>${spr(m.id, spS, {facing:S.facing})}</div>
+    <div class="bd-id" style="left:${idx}px;top:26px;right:9px;gap:${P ? 1 : 3}px">
+      <div class="bd-line"><span>No.${m.no}</span>${own ? img(s === 3 ? 'sparkK' : 'ring') : ''}</div>
+      <div class="sp">${known ? m.sp : '?????'}</div>
+      <div>TYPE:</div><div>${known ? types(m) : '???'}</div>
+      <div class="bd-kv" style="margin-top:${P ? 0 : 2}px">${wild.map(([k,v]) => `<span>${k}</span><b>${known ? v : '???'}</b>`).join('')}</div>
+    </div>
+    <div class="bd-stats" style="left:9px;right:9px;top:${pbox[1] + pbox[3] + 8}px;grid-template-columns:repeat(${P ? 3 : 2},1fr)">
+      ${STATS.map(([k,c],i) => `<div class="st${own ? '' : ' q'}"><span>${k}:</span>${stars(m.s[i], c, own)}</div>`).join('')}
+    </div>`;
+  // right page: what it does
+  const recipes = m.kind === 'fusion' ? [m] : fusionsOf(m.id), r = recipes[S.chainPick % Math.max(1, recipes.length)];
+  const cb = id => `<div class="cbox dbl${id === m.id ? ' brk ink' : ''}" ${id && st(id) >= 1 ? `data-pick="${id}"` : ''} style="cursor:${id && st(id) >= 1 ? 'pointer' : 'default'}">
+      ${id ? face(id, 1) : '<span class="qbox">?</span>'}</div>`;
+  let chain, under = '';
+  if (isFoe(m)) chain = `<div class="chain" style="justify-content:center;height:44px"><span>CANNOT BE CAPTURED</span></div>`;
+  else if (!r) chain = `<div class="chain">${cb(m.id)}<span style="margin-left:8px">NO FUSION FOUND YET</span></div>`;
+  else { const [a, b] = r.from, rk = st(r.id) >= 2;
+    chain = `<div class="chain">${cb(st(a) >= 1 ? a : null)}<div class="clink"><span>+</span></div>${cb(st(b) >= 1 ? b : null)}<div class="clink"><span>=</span></div>${cb(rk ? r.id : null)}</div>`;
+    under = `<div class="bd-line" style="align-items:center"><span>${rk ? '+' + r.hp + ' HP. ' + r.bonus.toUpperCase() : ready(r) ? '<span class="ready">READY</span> MERGE THEM IN A RUN' : 'FIND BOTH PARENTS'}</span>
+        ${recipes.length > 1 ? `<button data-act="chain" style="display:flex;gap:2px;align-items:center">${S.chainPick % recipes.length + 1}/${recipes.length} ${img('tri')}</button>` : ''}</div>`;
+  }
+  const R = rec(m.id);
+  const right = `<div class="in" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px">
+    <div style="display:flex;flex-direction:column;gap:1px">
+      <div class="bd-line"><span>FOUND:</span><span>${known ? hab : '???'}</span></div>
+      <div class="bd-line"><span>ATTACK:</span><span>${own ? m.atk[0] : '???'}</span></div>
+      ${P || !own ? '' : `<div class="r">${m.atk[1].toUpperCase()}</div>`}
+      <div class="bd-line"><span>${isFoe(m) ? 'STATUS:' : 'DASH:'}</span><span>${isFoe(m) ? stateWord(m) : own ? m.dash : '???'}</span></div>
+    </div>
+    <fieldset class="fs" style="position:static;flex:1;min-height:0;overflow:hidden"><legend>DEX:</legend><div class="dex" id="dexText"></div></fieldset>
+    ${chain}${under}
+    ${s === 3 ? `<div style="display:flex;gap:6px;align-items:center">${img('sparkK')}<span>${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  MERGED ${R.merged}  BEST ${R.best}`}</span></div>` : ''}</div>`;
+  const dexText = !known ? 'No data. Find it in the field.' : !own ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.') : m.dex + (s === 3 ? '\n\nNOTE: ' + m.note : '');
+  // index strip
+  const strip = MON.map(e => `<button class="thumb ${e.kind === 'fusion' ? 'fusion' : isFoe(e) ? 'foe' : ''}${e.id === S.sel ? ' brk ink' : ''}" data-pick="${e.id}" aria-label="${st(e.id) ? e.name : 'Unknown'}">
+      <span class="clip">${st(e.id) ? spr(e.id, 1) : '<span class="qbox" style="font-size:9px">?</span>'}</span></button>`).join('');
+  const [ix, iy, iw, ih] = L.ix;
+  const nav = `<button class="bd-arrow" data-act="prev" style="left:${ix}px;top:${iy + (ih-20)/2}px" aria-label="Previous">${img('triL')}</button>
+    <div class="bd-strip" id="strip" style="left:${ix+24}px;top:${iy + (ih-26)/2}px;width:${iw - 48 - (P ? 0 : 74)}px;height:26px">${strip}</div>
+    ${P ? '' : `<div class="a ol" style="left:${ix+iw-70}px;top:${iy+6}px;width:44px;line-height:12px">SEEN ${c.seen}<br>OWN ${c.own}</div>`}
+    <button class="bd-arrow" data-act="next" style="left:${ix+iw-20}px;top:${iy + (ih-20)/2}px" aria-label="Next">${img('tri')}</button>`;
+  return {html:`<div class="grain"></div>
+    <div class="bd-spine ${P ? 'h' : ''}" style="${box(L.sp)}">${rings}</div>
+    <section class="pg" style="${box(L.lp)}">${pageSVG(lw, lh, notch)}<div class="in">${left}</div></section>
+    <section class="pg${S.typeIt && !RM ? ' flipin' + (P ? ' h' : '') : ''}" style="${box(L.rp)}">${pageSVG(rw, rh, 0)}${right}</section>
+    ${nav}`, after: () => { typeInto(document.getElementById('dexText'), dexText);
+      const strip = document.getElementById('strip'), on = strip?.querySelector('.brk');
+      if (on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + 9; }};
+}
+
+// ================================================================= 2 POCKET DEX
+function device(W, H, P) {
+  const G = P ? {shell:[4,4,262,472,'10px 10px 44px 10px'], bezel:[14,40,242,212], screen:[24,50,222,190], lens:[16,10], leds:[50,19], brand:[128,15],
+                 dpad:[24,300], a:[214,296], b:[176,320], sel:[84,412], start:[132,412], grille:[196,420]}
+              : {shell:[4,4,472,312,'26px'], bezel:[112,14,256,220], screen:[120,22,240,198], lens:[22,22], leds:[56,31], brand:[150,282],
+                 dpad:[30,124], a:[414,118], b:[378,142], sel:[190,248], start:[246,248], grille:[400,248]};
+  const [sx, sy, sw, sh] = G.screen;
+  const ctl = `
+    <div class="shell" style="${box(G.shell)};border-radius:${G.shell[4]}"></div>
+    <div class="lens" style="left:${G.lens[0]}px;top:${G.lens[1]}px"></div>
+    ${['#ff4d4d','#ffd34d','#5fdc5f'].map((c,i) => `<div class="led" style="left:${G.leds[0] + i*11}px;top:${G.leds[1]}px;background:${c}"></div>`).join('')}
+    <div class="a" style="left:${G.brand[0]}px;top:${G.brand[1]}px;color:var(--ink)"><span class="t18">SCROLL</span>DEX</div>
+    <div class="bezel" style="${box(G.bezel)};border-radius:${P ? '6px 6px 24px 6px' : '8px'}"></div>
+    <div class="a" style="left:${G.bezel[0] + 5}px;top:${G.bezel[1] + G.bezel[3]/2 - 3}px;width:6px;height:6px;border-radius:50%;background:${'#ff4d4d'};box-shadow:0 0 4px #ff4d4d"></div>
+    <div class="screen" id="screen" style="${box(G.screen)}"></div>
+    <div class="dpad" style="left:${G.dpad[0]}px;top:${G.dpad[1]}px">
+      <button class="u" data-key="up" aria-label="Up">${img('up','','left:7px;top:8px;width:7px;height:4px')}</button>
+      <button class="d" data-key="down" aria-label="Down">${img('dn','','left:7px;top:9px;width:7px;height:4px')}</button>
+      <button class="l" data-key="left" aria-label="Left">${img('lf','','left:8px;top:7px;width:4px;height:7px')}</button>
+      <button class="rr" data-key="right" aria-label="Right">${img('rt','','left:9px;top:7px;width:4px;height:7px')}</button><span class="c"></span></div>
+    <button class="abtn" data-key="a" style="left:${G.a[0]}px;top:${G.a[1]}px" aria-label="A"><span>A</span></button>
+    <button class="abtn" data-key="b" style="left:${G.b[0]}px;top:${G.b[1]}px" aria-label="B"><span>B</span></button>
+    <button class="pillbtn" data-key="select" style="left:${G.sel[0]}px;top:${G.sel[1]}px" aria-label="Select"><span>SELECT</span></button>
+    <button class="pillbtn" data-key="start" style="left:${G.start[0]}px;top:${G.start[1]}px" aria-label="Start"><span>START</span></button>
+    <div class="grille" style="left:${G.grille[0]}px;top:${G.grille[1]}px">${'<i></i>'.repeat(6)}</div>`;
+  return {html:ctl, after: () => { document.getElementById('screen').innerHTML = screen(sw, sh); typeInto(document.getElementById('devDex'), devDex()); }};
+}
+const DEV_TABS = ['INFO','STATS','FUSE','LOG'];
+const devDex = () => { const m = cur(), s = st(m.id); return s === 0 ? 'No data yet.' : s === 1 ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.') : m.dex; };
+function screen(w, h) {
+  const m = cur(), s = st(m.id), c = counts(), D = S.dev;
+  const head = `<div class="a" style="left:8px;right:8px;top:6px;display:flex;justify-content:space-between" >
+      <span class="ol gold">${D.mode === 'list' ? 'SCROLLDEX' : 'No.' + m.no}</span><span class="ol">SEEN <span class="teal">${c.seen}</span> OWN <span class="teal">${c.own}</span></span></div>`;
+  if (D.mode === 'list') {
+    const rowsN = Math.floor((h - 36) / 13), top = Math.min(Math.max(0, D.top), MON.length - rowsN);
+    const i = m.i; if (i < top) D.top = i; else if (i >= top + rowsN) D.top = i - rowsN + 1; else D.top = top;
+    const rows = MON.slice(D.top, D.top + rowsN).map(e => { const k = st(e.id), on = e.id === m.id;
+      return `<div class="row${on ? ' on' : ''}" data-pick="${e.id}">${on ? img('triG','cur') : '<span style="width:5px"></span>'}
+        <span class="mut">${e.no}</span><span class="ol${k ? '' : ' mut'}">${k ? label(e) : '-----'}</span>
+        <span style="margin-left:auto;padding-right:3px">${k >= 3 ? img('spark') : k === 2 ? img('ringW') : ''}</span></div>`; }).join('');
+    const lw = 86;
+    return `<div class="frame"></div>${head}
+      <div class="a" style="left:8px;top:20px;width:${lw}px">
+        <div class="slot" style="width:${lw}px;height:${lw}px">${face(m.id, 2, {dark:true})}</div>
+        <div class="ol" style="margin-top:4px;line-height:11px">${s ? m.sp : '?????'}</div>
+        <div style="margin-top:2px">${s ? types(m, true) : ''}</div></div>
+      <div class="a" style="left:${lw + 12}px;right:6px;top:20px">${rows}</div>
+      <div class="a mut" style="left:${lw + 16}px;bottom:7px;display:flex;gap:4px;align-items:center">
+        ${D.top > 0 ? img('up','','width:7px;height:4px') : ''}${D.top + rowsN < MON.length ? img('dn','','width:7px;height:4px') : ''}
+        <span>A OPEN  B CLOSE</span></div>`;
+  }
+  const own = s >= 2, sp = fitScale(m.id, 44);
+  let body = '';
+  const T = DEV_TABS[D.tab];
+  if (T === 'INFO') body = `<div class="ol dex" id="devDex" style="min-height:44px"></div>
+      <div style="margin-top:5px"><span class="mut">ATTACK </span><span class="ol">${own ? m.atk[0] : '???'}</span></div>
+      <div><span class="mut">${isFoe(m) ? 'FOUND ' : 'DASH '}</span><span class="ol">${isFoe(m) ? (s ? m.when : '???') : own ? m.dash : '???'}</span></div>`;
+  if (T === 'STATS') body = `<div style="display:grid;grid-template-columns:auto auto auto auto;gap:3px 5px;align-items:center;justify-content:start">
+      ${STATS.map(([k,col],i) => `<span class="mut">${k}</span><span class="bar">${[0,1,2,3,4].map(j => `<i style="${own && j < m.s[i] ? 'background:' + col : ''}"></i>`).join('')}</span>`).join('')}</div>
+      <div class="ol" style="margin-top:4px">${m.wild ? `WILD HP ${s ? m.wild[0] : '?'}  SPD ${s ? m.wild[1] ?? '--' : '?'}` : `PARTY HP +${own ? m.hp : '?'}`}</div>`;
+  if (T === 'FUSE') { const rs = m.kind === 'fusion' ? [m] : fusionsOf(m.id);
+    body = isFoe(m) ? '<div class="ol mut">Foes cannot be captured.</div>' : !rs.length ? '<div class="ol mut">No fusion found yet.</div>' :
+      rs.map(r => { const k = st(r.id) >= 2; return `<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">
+        <div class="slot" style="width:28px;height:28px">${spr(r.from[0], 1, {dark:true})}</div><span class="ol">+</span>
+        <div class="slot" style="width:28px;height:28px">${spr(r.from[1], 1, {dark:true})}</div><span class="ol">=</span>
+        <div class="slot" style="width:28px;height:28px">${k ? spr(r.id, 1, {dark:true}) : '<span class="mut">?</span>'}</div>
+        <span class="ol" style="margin-left:4px;line-height:11px">${k ? r.name.toUpperCase() + '<br><span class="gold">+' + r.hp + ' HP</span>' : ready(r) ? '<span class="gold blink">READY</span>' : '???'}</span></div>`; }).join(''); }
+  if (T === 'LOG') { const R = rec(m.id);
+    body = s < 3 ? `<div class="ol mut">${isFoe(m) ? 'Defeat 10 to unlock the log.' : 'Master it to unlock the log. Capture it 5 times.'}</div>`
+      : `<div class="ol">${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}   MERGED ${R.merged}<br>RUNS ${R.runs}   BEST ${R.best} DMG`}</div>
+         <div class="ol gold" style="margin-top:5px">NOTE: ${m.note}</div>`; }
+  return `<div class="frame"></div>${head}
+    <div class="a" style="left:8px;top:20px;display:flex;gap:8px;right:8px">
+      <div class="slot" style="width:60px;height:60px;flex:none" data-act="turn">${spr(m.id, sp, {dark:true, facing:S.facing})}</div>
+      <div style="min-width:0;display:flex;flex-direction:column;gap:3px">
+        <span class="ol ${s && textW9(m.name) * 2 < w - 90 ? 't18' : ''}">${s ? m.name.toUpperCase() : '???'}</span>
+        <span class="mut">${s ? m.sp : '?????'}</span><span>${s ? types(m, true) : ''}</span>
+        <span class="${s === 3 ? 'gold' : 'teal'}">${stateWord(m)}</span></div></div>
+    <div class="a tabsr" style="left:8px;top:84px">${DEV_TABS.map((t,i) => `<span class="${i === D.tab ? 'on ol' : ''}" data-tab="${i}" style="cursor:pointer">${t}</span>`).join('')}</div>
+    <div class="a" style="left:10px;right:10px;top:${84 + 15}px;bottom:16px;overflow:hidden">${body}</div>
+    <div class="a mut" style="left:10px;bottom:6px">${img('lf','','width:4px;height:7px')}${img('rt','','width:4px;height:7px;margin-left:2px')} TAB  A CRY  B LIST</div>`;
+}
+function devKey(k) {
+  const D = S.dev, list = MON;
+  if (k === 'up' || k === 'down') { step(list, k === 'up' ? -1 : 1); return true; }
+  if (D.mode === 'entry' && (k === 'left' || k === 'right')) { D.tab = (D.tab + (k === 'left' ? -1 : 1) + 4) % 4; S.typeIt = D.tab === 0; render(); S.typeIt = false; return true; }
+  if (k === 'a') { if (D.mode === 'list') { D.mode = 'entry'; D.tab = 0; S.typeIt = true; render(); S.typeIt = false; }
+    if (st(S.sel) >= 2) cry(S.sel); return true; }
+  if (k === 'b') { if (D.mode === 'entry') { D.mode = 'list'; render(); } return true; }
+  if (k === 'select') { D.tab = (D.tab + 1) % 4; if (D.mode === 'list') D.mode = 'entry'; render(); return true; }
+  if (k === 'start') { D.mode = D.mode === 'list' ? 'entry' : 'list'; render(); return true; }
+  return false;
+}
+
+// ================================================================= 3 CARD ALBUM
+function album(W, H, P) {
+  const A = S.album, c = counts();
+  const perPage = 9, pages = Math.ceil(MON.length / perPage);
+  const cardFront = (m, big) => { const s = st(m.id), tc = TYPES[m.t[0]][1];
+    if (s === 0) return `<div class="tcard back"><div class="emb">?</div></div>`;
+    const sc = big ? fitScale(m.id, 80) : fitScale(m.id, P ? 44 : 34);
+    return `<div class="tcard${s === 3 ? ' master' : ''}" style="--tc:${tc}">
+      <div class="band"><b class="ol${label(m).length > 9 ? ' long' : ''}">${label(m)}</b></div>
+      <div class="win">${big && s >= 2 && ART[m.id][0] ? face(m.id, 3) : spr(m.id, sc)}${s === 3 ? '<div class="holo"></div>' : ''}${s === 1 ? '<span class="stamp" style="color:#5a5470">SEEN</span>' : ''}</div>
+      <div class="ft"><span>${m.no}</span><span>${s === 3 ? img('sparkK') : ''}${m.t.map(t => img('type' + t)).join('')}${gem(m)}</span></div></div>`; };
+  let html = '';
+  const pageBlock = (p, [x,y,w,h], cw, ch, gap) => {
+    const items = MON.slice(p*perPage, p*perPage + perPage);
+    const got = items.filter(m => st(m.id) >= 2).length;
+    return `<div class="sheet" style="${box([x,y,w,h])}">
+      <div class="hd"><span class="ol">PAGE ${p+1}</span><span class="ol">${got}/${items.length}</span></div>
+      <div class="grid9" style="left:${(w - 3*cw - 2*gap)/2 - 2}px;top:18px;gap:${gap}px;grid-template-columns:repeat(3,${cw}px);grid-auto-rows:${ch}px">
+      ${items.map(m => `<div class="sleeve" data-open="${m.id}" title="${st(m.id) ? m.name : 'Unknown'}">${cardFront(m)}</div>`).join('')}</div></div>`; };
+  if (P) {
+    html += pageBlock(A.page, [8,8,254,388], 78, 118, 4);
+    html += `<div class="a" style="left:8px;right:8px;top:404px;display:flex;justify-content:space-between;align-items:center">
+      <button class="bd-arrow" data-act="apage-" style="position:static" aria-label="Previous page">${img('triL')}</button>
+      <span class="ol t18">${A.page + 1}/${pages}</span>
+      <button class="bd-arrow" data-act="apage+" style="position:static" aria-label="Next page">${img('tri')}</button></div>
+      <div class="a ol" style="left:10px;right:10px;top:434px;display:flex;justify-content:space-between"><span>CAUGHT ${c.own}/${c.total}</span><span class="gold">MASTERED ${c.master}</span><span>FOES ${c.foes}/3</span></div>
+      <div class="a" style="left:10px;right:10px;top:450px;height:6px;background:var(--ink);border:1px solid var(--ink)"><div style="height:100%;width:${c.own/c.total*100}%;background:var(--gold)"></div></div>
+      <div class="a ol" style="left:10px;top:462px;display:flex;gap:8px">${img('gemC')} BASE ${img('gemR')} FUSION ${img('gemL')} BOSS</div>`;
+  } else {
+    html += pageBlock(0, [8,8,226,288], 72, 86, 3) + pageBlock(1, [246,8,226,288], 72, 86, 3);
+    html += `<div class="bd-spine" style="left:234px;top:0;width:12px;height:320px"></div>
+      <div class="a ol" style="left:12px;right:12px;top:301px;display:flex;justify-content:space-between;align-items:center">
+        <span>CAUGHT ${c.own}/${c.total}</span><span style="display:flex;gap:6px;align-items:center">${img('gemC')} BASE ${img('gemR')} FUSION ${img('gemL')} BOSS</span>
+        <span class="gold">MASTERED ${c.master}</span><span>FOES ${c.foes}/3</span></div>`;
+  }
+  if (A.open) {
+    const m = BY[A.open], s = st(m.id), own = s >= 2, [bw, bh] = P ? [210, 300] : [190, 284];
+    const R = rec(m.id), rs = m.kind === 'fusion' ? [m] : fusionsOf(m.id);
+    const back = s === 0 ? `<div class="bk" style="justify-content:center;text-align:center"><span class="t18">???</span><span>${m.kind === 'fusion' ? 'Merge two creatures in a run to find this card.' : isFoe(m) ? 'Not met yet.' : 'Find it in a den.'}</span></div>`
+      : `<div class="bk">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="${textW9(m.name)*2 < bw - 60 ? 't18' : ''}">${m.name.toUpperCase()}</span><span>No.${m.no}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>${m.sp}</span>${gem(m)}</div>
+        <div>${types(m)}</div>
+        <div style="display:grid;grid-template-columns:auto auto;gap:2px 6px;justify-content:start">${STATS.map(([k,col],i) => `<span>${k}</span>${stars(m.s[i], col, own)}`).join('')}</div>
+        <div style="border-top:3px double var(--rule);padding-top:3px"><b style="font-weight:400">${own ? m.atk[0] : 'ATTACK ???'}</b><br>${own ? m.atk[1] : ''}</div>
+        <div class="dex" style="flex:1;min-height:0;overflow:hidden">${own ? m.dex : isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.'}</div>
+        ${!isFoe(m) && rs.length ? `<div style="display:flex;align-items:center;gap:2px">${rs.slice(0, 2).map(r => `${spr(r.from[0],1,{q:true})}<span>+</span>${spr(r.from[1],1)}<span>=</span>${st(r.id) >= 2 ? spr(r.id,1) : '<span>?</span>'}`).join('<span style="width:8px"></span>')}</div>` : ''}
+        <div style="border-top:3px double var(--rule);padding-top:3px">${s === 3 ? (isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  MERGED ${R.merged}  BEST ${R.best}`) : 'MASTER IT TO ADD RECORDS'}</div></div>`;
+    html += `<div class="overlay" data-act="aclose">
+      <div class="big pop${A.flipped ? ' flipped' : ''}" style="width:${bw}px;height:${bh}px" data-act="aflip">
+        <div class="face front">${cardFront(m, true)}</div><div class="face backside">${back}</div></div>
+      <div class="hint ol">${A.flipped ? 'TAP CARD TO FLIP BACK' : 'TAP CARD TO FLIP'}  ESC CLOSE</div></div>`;
+  }
+  return {html};
+}
+
+// ================================================================= 4 FUSION WEB
+// Positions in a 300x304 design space; scaled to the graph box.
+const WEB = {cat:[24,28],mollusc:[24,128],frog:[24,228],octopus:[104,78],axolotl:[104,178],owl:[276,28],storm:[276,98],salamander:[276,158],beast:[276,228],tengu:[196,63],reptile:[196,193],
+  mouse:[60,282],mole:[120,282],bear:[180,282],spider:[240,282]};
+function web(W, H, P) {
+  const g = P ? [6,6,258,262] : [6,6,302,308], pn = P ? [6,274,258,200] : [314,6,160,308];
+  const sx = (g[2] - 8) / 300, sy = (g[3] - 8) / 304, X = x => 4 + x*sx, Y = y => 4 + y*sy, m = cur();
+  const lines = [];
+  for (const f of CREATURES.filter(e => e.kind === 'fusion')) for (const p of f.from) {
+    const [fx, fy] = WEB[f.id], [px, py] = WEB[p], mid = (X(fx) + X(px)) / 2;
+    const hot = m.id === f.id || m.id === p, known = st(f.id) >= 2;
+    lines.push({d:`M${X(px)},${Y(py)} H${mid} V${Y(fy)} H${X(fx)}`, hot, known});
+  }
+  const path = l => `<path d="${l.d}" fill="none" stroke="${l.hot ? 'var(--gold)' : 'var(--ink)'}" stroke-width="5" stroke-linejoin="miter"/>
+    <path d="${l.d}" fill="none" stroke="${l.known ? 'var(--paper)' : '#ffffff59'}" stroke-width="1.5" ${l.known ? '' : 'stroke-dasharray="2 2"'} class="${l.hot && !RM ? 'edge-hot' : ''}"/>`;
+  const nodes = CREATURES.map(e => { const [x, y] = WEB[e.id], s = st(e.id), fz = e.kind === 'fusion', size = fz ? 40 : 30, rd = ready(e);
+    const dim = m.kind !== 'fusion' && !(fz ? e.from.includes(m.id) : e.id === m.id) && m.id !== e.id && fusionsOf(m.id).length && !fusionsOf(m.id).some(f => f.from.includes(e.id) || f.id === e.id);
+    return `<button class="node dbl${e.id === m.id ? ' brk' : ''}${dim ? ' dim' : ''}" data-pick="${e.id}" title="${s ? e.name : 'Unknown'}" style="left:${X(x)}px;top:${Y(y)}px;width:${size}px;height:${size}px;${fz && s >= 2 ? 'border-color:#b8860b' : ''}" aria-label="${s ? e.name : 'Unknown'}">
+      ${s ? spr(e.id, fitScale(e.id, size - 8)) : `<span class="qbox">?</span>`}${rd ? '<span class="tag blink">!</span>' : ''}</button>`; }).join('');
+  const lab = (t, x, y) => `<div class="web-lab ol" style="left:${X(x)}px;top:${Y(y)}px">${t}</div>`;
+  // side panel
+  const s = st(m.id), own = s >= 2, fz = m.kind === 'fusion', rs = fz ? [m] : fusionsOf(m.id);
+  const recipe = r => { const k = st(r.id) >= 2, a = r.from[0], b = r.from[1];
+    const cell = id => `<span class="dbl" style="width:28px;height:28px;display:grid;place-items:center;overflow:hidden">${st(id) ? spr(id, 1) : '?'}</span>`;
+    return `<div style="display:flex;align-items:center;gap:3px">${cell(a)}<span>+</span>${cell(b)}<span>=</span>${k ? cell(r.id) : `<span class="dbl" style="width:28px;height:28px;display:grid;place-items:center">?</span>`}</div>
+      <div>${k ? `+${r.hp} HP. ${r.bonus.toUpperCase()}.` : ready(r) ? `<span class="ready">READY</span> Capture ${BY[a].name} while ${BY[b].name} is in your party, or the reverse.` : `Find ${st(a) >= 2 ? '' : BY[a].name}${st(a) < 2 && st(b) < 2 ? ' and ' : ''}${st(b) >= 2 ? '' : BY[b].name} first.`}</div>`; };
+  const panel = `<div class="wpanel" style="${box(pn)}">
+    <div style="display:flex;gap:6px;align-items:center">
+      <div class="dbl" style="width:44px;height:44px;display:grid;place-items:center;flex:none;overflow:hidden" data-act="turn">${spr(m.id, fitScale(m.id, 40), {facing:S.facing})}</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span>No.${m.no}</span>
+        <span class="${s && textW9(m.name)*2 < pn[2] - 70 ? 't18' : ''}">${s ? m.name.toUpperCase() : '???'}</span><span>${s ? types(m) : ''}</span></div></div>
+    <div style="border-top:3px double var(--rule);padding-top:4px">${fz ? 'FUSION RECIPE' : 'FUSES INTO'}</div>
+    ${rs.length ? rs.map(recipe).join('<div style="height:2px"></div>') : '<div>No fusion found yet. New recipes may come in later updates.</div>'}
+    ${own ? `<div style="border-top:3px double var(--rule);padding-top:4px"><b style="font-weight:400">${m.atk[0]}</b><br>${m.atk[1]}</div>` : ''}
+    ${!P && own && rs.length < 2 ? `<div class="dex">${m.dex}</div>` : ''}</div>`;
+  const svg = `<svg style="left:${g[0]}px;top:${g[1]}px" width="${g[2]}" height="${g[3]}" viewBox="0 0 ${g[2]} ${g[3]}" shape-rendering="crispEdges" aria-hidden="true">${lines.filter(l => !l.hot).map(path).join('')}${lines.filter(l => l.hot).map(path).join('')}</svg>`;
+  return {html:`<div class="dots" style="${box(g)}"></div>${svg}
+    <div class="a" style="${box(g)}">${nodes}${lab('NO FUSION YET', 150, 254)}</div>${panel}`};
+}
+
+// ---------------------------------------------------------------- render
+const stage = document.getElementById('stage'), viewport = document.getElementById('viewport');
+const RENDER = {binder, device, album, web};
+function fit() {
+  const P = S.frame === 'phone', W = P ? 270 : 480, H = P ? 480 : 320;
+  const availW = viewport.clientWidth, availH = Math.max(360, innerHeight - 150);
+  let k = Math.min(availW / W, availH / H); k = k >= 2 ? Math.min(4, Math.floor(k)) : Math.max(.5, k);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px'; stage.style.zoom = k;
+  return {W, H, P};
+}
+function render() {
+  const {W, H, P} = fit();
+  stage.className = 'stage v-' + S.v;
+  const out = RENDER[S.v](W, H, P);
+  stage.innerHTML = out.html; out.after?.();
+  for (const b of document.querySelectorAll('#tabs button')) b.setAttribute('aria-pressed', b.dataset.v === S.v);
+  for (const b of document.querySelectorAll('#frameSeg button')) b.setAttribute('aria-pressed', b.dataset.frame === S.frame);
+  for (const b of document.querySelectorAll('#saveSeg button')) b.setAttribute('aria-pressed', b.dataset.save === S.save);
+  document.getElementById('vnote').innerHTML = NOTES[S.v];
+}
+const NOTES = {
+ binder:`<h2>1 · Field Binder</h2><h3>A book of field notes, closest to the reference</h3>
+  <p>The left page shows who the creature is: art, type, wild stats and star ratings. The right page shows what it does: where to find it, attack, dash, dex text and its fusion chain. The right page turns when you move.</p>
+  <dl><dt>TRY</dt><dd>Click the creature to turn it. Use the arrows or the icon strip. On Mollusc, the 1/2 button shows its second fusion.</dd>
+  <dt>GOOD</dt><dd>Much information in one view. The book suits a game about scrolls. Easy to port: the pages use the same double rule and bracket shapes as the reference.</dd>
+  <dt>RISK</dt><dd>Dense on a phone, where the pages stack. The icon strip gets long after about 40 entries; it would need a grid page.</dd></dl>`,
+ device:`<h2>2 · Pocket Dex</h2><h3>The game's DarkMode UI inside a red handheld</h3>
+  <p>A list screen like the Game Boy Color dex, with the selected face in a DarkMode slot. Open an entry for four short tabs: INFO, STATS, FUSE and LOG. A plays the creature's cry.</p>
+  <dl><dt>TRY</dt><dd>Use the D-pad or arrow keys. A or Enter opens. Left and right change tabs. B or Esc goes back. Desktop turns the device on its side.</dd>
+  <dt>GOOD</dt><dd>Fastest to browse a long list. Works with keys, touch and a controller. Reuses the panel, slot and pill art the game already ships.</dd>
+  <dt>RISK</dt><dd>The device frame takes space. Only one tab shows at a time, so the player cannot compare two facts at a glance.</dd></dl>`,
+ album:`<h2>3 · Card Album</h2><h3>Collect every creature as a card</h3>
+  <p>Each entry is a card in a binder sleeve. Unknown cards show their back. Seen cards show a silhouette. Mastered cards get a gold frame and a holo shine. Gem colours reuse the pack rarity colours: base, fusion and boss.</p>
+  <dl><dt>TRY</dt><dd>Click a card to pull it out. Click it again to flip it and read the back. Switch the save to see the album fill.</dd>
+  <dt>GOOD</dt><dd>Strongest pull to complete the set. Gaps are easy to see. Mastery gives a reason to capture a creature again.</dd>
+  <dt>RISK</dt><dd>The front of a card holds little information, so each detail needs a tap. It could feel like a separate card game.</dd></dl>`,
+ web:`<h2>4 · Fusion Web</h2><h3>A map of every merge recipe</h3>
+  <p>Lines join each fusion to its two parents. The selected creature lights up its lines. A gold <b>!</b> marks a fusion you can make now: you own both parents but have not merged them yet.</p>
+  <dl><dt>TRY</dt><dd>On the Mid game save, click the <b>!</b> node between Mollusc and Frog. Then click Mollusc to see both of its recipes.</dd>
+  <dt>GOOD</dt><dd>Shows the main hook of the game at a glance and helps the player plan the next run.</dd>
+  <dt>RISK</dt><dd>The layout is placed by hand and must change when new creatures come. It may work best as one tab inside variant 1 or 2.</dd></dl>`,
+};
+
+// Squash to zero width, swap faces, open again.
+function flipCard() {
+  const big = stage.querySelector('.big'); if (!big || big.classList.contains('squash')) return;
+  const swap = () => { S.album.flipped = !S.album.flipped; big.classList.toggle('flipped', S.album.flipped); big.classList.remove('squash');
+    const h = stage.querySelector('.hint'); if (h) h.textContent = S.album.flipped ? 'TAP CARD TO FLIP BACK  ESC CLOSE' : 'TAP CARD TO FLIP  ESC CLOSE'; };
+  if (RM) return swap();
+  big.classList.add('squash'); setTimeout(swap, 140);
+}
+// ---------------------------------------------------------------- input
+document.getElementById('tabs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return;
+  S.v = b.dataset.v; store.set('v', S.v); history.replaceState(null, '', '#' + S.v); S.album.open = null; render(); });
+document.getElementById('frameSeg').addEventListener('click', e => { const b = e.target.closest('[data-frame]'); if (!b) return; S.frame = b.dataset.frame; store.set('frame', S.frame); render(); });
+document.getElementById('saveSeg').addEventListener('click', e => { const b = e.target.closest('[data-save]'); if (!b) return; S.save = b.dataset.save; store.set('save', S.save); render(); });
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-key],[data-act],[data-pick],[data-open],[data-tab]'); if (!t) return;
+  stage.focus({preventScroll:true});
+  if (t.dataset.key) return void devKey(t.dataset.key);
+  if (t.dataset.tab) { S.dev.tab = +t.dataset.tab; render(); return; }
+  if (t.dataset.open) { S.album.open = t.dataset.open; S.album.flipped = false; S.sel = t.dataset.open; render(); return; }
+  if (t.dataset.pick) { if (S.v === 'device' && t.dataset.pick === S.sel) return void devKey('a'); select(t.dataset.pick, true); return; }
+  const act = t.dataset.act;
+  if (act === 'turn') { S.facing = [2,3,1,0][S.facing] ?? 0; if (st(S.sel) >= 2) cry(S.sel); render(); }
+  if (act === 'prev' || act === 'next') step(MON, act === 'prev' ? -1 : 1);
+  if (act === 'chain') { S.chainPick++; render(); }
+  if (act === 'apage-' || act === 'apage+') { S.album.page = (S.album.page + (act === 'apage-' ? -1 : 1) + 2) % 2; render(); }
+  if (act === 'aflip') { e.stopPropagation(); flipCard(); return; }
+  if (act === 'aclose' && e.target === t) { S.album.open = null; render(); }
+});
+stage.addEventListener('keydown', e => {
+  const k = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Enter:'a',' ':'a',z:'a',Escape:'b',x:'b',Backspace:'b'}[e.key]; if (!k) return;
+  e.preventDefault();
+  if (S.v === 'device') return void devKey(k);
+  if (S.v === 'album') {
+    if (S.album.open) { if (k === 'b') { S.album.open = null; render(); } else if (k === 'a') flipCard(); else { step(MON, k === 'left' || k === 'up' ? -1 : 1); S.album.open = S.sel; S.album.flipped = false; S.album.page = Math.floor(cur().i / 9); render(); } return; }
+    if (k === 'a') { S.album.open = S.sel; S.album.flipped = false; render(); return; }
+    const d = {left:-1,right:1,up:-3,down:3}[k]; if (d) { const i = Math.max(0, Math.min(MON.length - 1, cur().i + d)); S.album.page = Math.floor(i / 9); select(MON[i].id, true); }
+    return;
+  }
+  const list = S.v === 'web' ? CREATURES : MON;
+  if (k === 'left' || k === 'up') step(list, -1); else if (k === 'right' || k === 'down') step(list, 1);
+  else if (k === 'a') { S.facing = [2,3,1,0][S.facing]; if (st(S.sel) >= 2) cry(S.sel); render(); }
+});
+addEventListener('resize', () => fit());
+makeIcons();
+(document.fonts?.ready || Promise.resolve()).then(render);
+render();
+})();
+</script>
