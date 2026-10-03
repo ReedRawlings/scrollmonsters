@@ -98,24 +98,17 @@ kbd{font:400 9px/1 var(--pixel);background:var(--ink);border:1px solid var(--lin
 .v-binder{background:var(--cover)}
 .v-binder .grain{position:absolute;inset:0;background:radial-gradient(#0000 60%,#0000001a),repeating-linear-gradient(0deg,#ffffff08 0 1px,#0000 1px 3px)}
 .bd-spine{position:absolute;background:linear-gradient(90deg,var(--cover-d) 0 3px,var(--cover-dd) 3px 9px,var(--cover-d) 9px)}
-.bd-spine.h{background:linear-gradient(180deg,var(--cover-d) 0 2px,var(--cover-dd) 2px 8px,var(--cover-d) 8px)}
 .bd-spine i{position:absolute;background:var(--cover-d);border:1px solid var(--cover-dd)}
 .pg{position:absolute}
 .pg>svg{position:absolute;inset:0}
 .pg>.in{position:absolute;inset:0}
 .bd-name{position:absolute;left:10px;top:7px;display:flex;align-items:baseline;gap:6px;white-space:nowrap}
-.bd-no{position:absolute;top:18px;right:9px}
+.bd-no{position:absolute;top:17px;right:9px;display:flex;gap:2px;align-items:center}
 .portrait{position:absolute;display:grid;place-items:center;overflow:hidden;cursor:pointer;background:var(--paper)}
 .hop{animation:hop .3s steps(5)}
 @keyframes hop{40%{transform:translateY(-4px)}}
 .bd-id{position:absolute;display:flex;flex-direction:column;gap:3px}
 .bd-id .sp{line-height:10px}
-.bd-kv{display:grid;grid-template-columns:auto 1fr;gap:1px 6px}
-.bd-kv b{font-weight:400;text-align:right}
-.bd-stats{position:absolute;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}
-.st{border-left:3px double var(--rule);border-top:3px double var(--rule);padding:2px 0 0 3px;height:30px;display:flex;flex-direction:column;justify-content:space-between}
-.st .stars{align-self:flex-end;padding-right:4px}
-.st.q .stars{opacity:.35}
 .bd-line{display:flex;justify-content:space-between;gap:6px}
 .fs{position:absolute;border:3px double var(--rule);margin:0;padding:4px 6px 6px;background:var(--paper)}
 .fs legend{padding:0 3px;margin-left:2px}
@@ -130,13 +123,14 @@ kbd{font:400 9px/1 var(--pixel);background:var(--ink);border:1px solid var(--lin
 .bd-strip::-webkit-scrollbar{display:none}
 .thumb{width:18px;height:18px;flex:none;background:var(--paper);border:1px solid var(--rule);overflow:hidden;display:grid;place-items:center;position:relative}
 .thumb.brk{overflow:visible}
+.thumb.pair::after{right:-24px}
 .thumb .clip{width:16px;height:16px;overflow:hidden;display:grid;place-items:center}
 .thumb.foe{background:#ffe6c8}
 .thumb.fusion{background:#efe6ff}
 .flipin{animation:flipin .28s steps(6) both;transform-origin:0 50%}
-.flipin.h{transform-origin:50% 0;animation-name:flipinh}
+.flipin.l{transform-origin:100% 50%;animation-name:flipinl}
 @keyframes flipin{from{transform:perspective(500px) rotateY(-80deg);filter:brightness(.7)}to{transform:none}}
-@keyframes flipinh{from{transform:perspective(500px) rotateX(80deg);filter:brightness(.7)}to{transform:none}}
+@keyframes flipinl{from{transform:perspective(500px) rotateY(80deg);filter:brightness(.7)}to{transform:none}}
 
 /* ---------- 2 POCKET DEX ---------- */
 .v-device{background:#1b1424}
@@ -241,7 +235,7 @@ kbd{font:400 9px/1 var(--pixel);background:var(--ink);border:1px solid var(--lin
   </div>
 </header>
 <nav class="tabs" id="tabs" aria-label="Variants">
-  <button type="button" id="tab-binder" data-v="binder"><span class="n">1</span><span><b>FIELD BINDER</b><small>Two-page spread, closest to the reference</small></span></button>
+  <button type="button" id="tab-binder" data-v="binder"><span class="n">1</span><span><b>FIELD BINDER</b><small>One creature per page, closest to the reference</small></span></button>
   <button type="button" id="tab-device" data-v="device"><span class="n">2</span><span><b>POCKET DEX</b><small>DarkMode screen in a red handheld</small></span></button>
   <button type="button" id="tab-album" data-v="album"><span class="n">3</span><span><b>CARD ALBUM</b><small>Collect cards, flip for detail</small></span></button>
   <button type="button" id="tab-web" data-v="web"><span class="n">4</span><span><b>FUSION WEB</b><small>Map of every merge recipe</small></span></button>
@@ -357,7 +351,7 @@ const S = {
   v: VARIANTS.includes(hashV) ? hashV : (store.get('v') || 'binder'),
   frame: store.get('frame') || (innerWidth < 640 ? 'phone' : 'desktop'),
   save: store.get('save') || 'mid',
-  sel: 'cat', facing: 0, chainPick: 0, typeIt: false,
+  sel: 'cat', chainPicks: {}, bdKey: null, typeIt: false,
   dev: {mode:'list', tab:0, top:0},
   album: {page:0, open:null, flipped:false},
 };
@@ -482,11 +476,13 @@ function cry(id) {
 
 // ---------------------------------------------------------------- typewriter (only after the viewer moves; first paint is complete)
 let typer = null;
-function typeInto(el, text) {
-  clearInterval(typer); if (!el) return;
-  if (RM || !S.typeIt) { el.textContent = text; return; }
-  let i = 0; el.textContent = '';
-  typer = setInterval(() => { i += 2; el.textContent = text.slice(0, i); if (i >= text.length) clearInterval(typer); }, 28);
+function typeInto(jobs, animate = S.typeIt) {
+  clearInterval(typer); jobs = jobs.filter(([el]) => el);
+  if (RM || !animate) { for (const [el, text] of jobs) el.textContent = text; return; }
+  let i = 0; for (const [el] of jobs) el.textContent = '';
+  typer = setInterval(() => { i += 2; let done = true;
+    for (const [el, text] of jobs) { el.textContent = text.slice(0, i); if (i < text.length) done = false; }
+    if (done) clearInterval(typer); }, 28);
 }
 
 // ---------------------------------------------------------------- helpers
@@ -497,72 +493,72 @@ const pageSVG = (w, h, notch, n = 12) => {
 };
 const textW9 = s => s.length * 6.4;
 function step(list, d) { const i = list.findIndex(m => m.id === S.sel); select(list[(i + d + list.length) % list.length].id, true); }
-function select(id, moved) { if (id !== S.sel) { S.sel = id; S.facing = 0; S.chainPick = 0; S.typeIt = !!moved; render(); S.typeIt = false; } }
+function select(id, moved) { if (id !== S.sel) { S.sel = id; S.typeIt = !!moved; render(); S.typeIt = false; } }
 
 // ================================================================= 1 FIELD BINDER
-function binder(W, H, P) {
-  const m = cur(), s = st(m.id), known = s >= 1, own = s >= 2, c = counts();
-  const L = P ? {lp:[10,6,250,194], sp:[0,202,270,12], rp:[10,216,250,230], ix:[6,450,258,26]}
-              : {lp:[8,8,226,262], sp:[234,0,12,320], rp:[246,8,226,262], ix:[8,276,464,36]};
-  const [, , lw, lh] = L.lp, [, , rw, rh] = L.rp, notch = lw - 58;
+// One creature per page. On desktop the binder lies open (two creatures per spread); on a phone it shows one page.
+const spreadOf = i => Math.floor(i / 2);
+function binderStep(d) {
+  const P = S.frame === 'phone', i = cur().i, base = P ? i : i - i % 2;
+  select(MON[(base + d * (P ? 1 : 2) + MON.length) % MON.length].id, true);
+}
+function dexPage(m, [x, y, w, h], P, flip) {
+  const s = st(m.id), known = s >= 1, own = s >= 2, notch = w - 70;
   const nm = known ? m.name.toUpperCase() : '???', big = textW9(nm) * 2 <= notch - 16;
-  const rings = P ? [40,100,170,230].map(x => `<i style="left:${x-6}px;top:2px;width:12px;height:8px"></i>`).join('')
-                  : [36,110,190,264].map(y => `<i style="left:2px;top:${y-6}px;width:8px;height:12px"></i>`).join('');
-  // left page: who it is
-  const pbox = [9, 28, 84, 84], idx = pbox[0] + pbox[2] + 8;
-  const hab = m.kind === 'fusion' ? 'FUSION ONLY' : m.when || 'WOODS/DESERT';
-  const wild = m.wild ? [['WILD HP', m.wild[0]],['SPEED', m.wild[1] ?? '--'],['SIZE', m.wild[2] ?? '--']] : [['PARTY HP', '+' + m.hp]];
-  const left = `
-    <div class="bd-name">${big ? `<span class="t18">${nm}</span>` : `<span>${nm}</span>`}</div>
-    <div class="portrait dbl" style="${box(pbox)}" data-act="cry" title="Click to hear its cry">${face(m.id, 2)}</div>
-    <div class="bd-id" style="left:${idx}px;top:26px;right:9px;gap:${P ? 1 : 3}px">
-      <div class="bd-line"><span>No.${m.no}</span>${own ? img(s === 3 ? 'sparkK' : 'ring') : ''}</div>
-      <div class="sp">${known ? m.sp : '?????'}</div>
-      <div>TYPE:</div><div>${known ? types(m) : '???'}</div>
-      <div class="bd-kv" style="margin-top:${P ? 0 : 2}px">${wild.map(([k,v]) => `<span>${k}</span><b>${known ? v : '???'}</b>`).join('')}</div>
-    </div>
-    <div class="bd-stats" style="left:9px;right:9px;top:${pbox[1] + pbox[3] + 8}px;grid-template-columns:repeat(${P ? 3 : 2},1fr)">
-      ${STATS.map(([k,c],i) => `<div class="st${own ? '' : ' q'}"><span>${k}:</span>${stars(m.s[i], c, own)}</div>`).join('')}
-    </div>`;
-  // right page: what it does
-  const recipes = m.kind === 'fusion' ? [m] : fusionsOf(m.id), r = recipes[S.chainPick % Math.max(1, recipes.length)];
+  const ps = P ? 120 : 84, idx = 9 + ps + (P ? 6 : 8), line = 28 + ps + 7;
+  const hab = m.kind === 'fusion' ? 'FUSION ONLY' : m.when || 'WOODS/DESERT', hp = m.wild ? m.wild[0] : '+' + m.hp;
+  const recipes = m.kind === 'fusion' ? [m] : fusionsOf(m.id), pick = (S.chainPicks[m.id] || 0) % Math.max(1, recipes.length), r = recipes[pick];
   const cb = id => `<div class="cbox dbl${id === m.id ? ' brk ink' : ''}" ${id && st(id) >= 1 ? `data-pick="${id}"` : ''} style="cursor:${id && st(id) >= 1 ? 'pointer' : 'default'}">
       ${id ? face(id, 1) : '<span class="qbox">?</span>'}</div>`;
   let chain, under = '';
-  if (isFoe(m)) chain = `<div class="chain" style="justify-content:center;height:44px"><span>CANNOT BE CAPTURED</span></div>`;
+  if (!known) chain = `<div class="chain">${cb(null)}<span style="margin-left:8px">???</span></div>`;
+  else if (isFoe(m)) chain = `<div class="chain" style="justify-content:center;height:44px"><span>CANNOT BE CAPTURED</span></div>`;
   else if (!r) chain = `<div class="chain">${cb(m.id)}<span style="margin-left:8px">NO FUSION FOUND YET</span></div>`;
   else { const [a, b] = r.from, rk = st(r.id) >= 2;
     chain = `<div class="chain">${cb(st(a) >= 1 ? a : null)}<div class="clink"><span>+</span></div>${cb(st(b) >= 1 ? b : null)}<div class="clink"><span>=</span></div>${cb(rk ? r.id : null)}</div>`;
     under = `<div class="bd-line" style="align-items:center"><span>${rk ? '+' + r.hp + ' HP. ' + r.bonus.toUpperCase() : ready(r) ? '<span class="ready">READY</span> MERGE THEM IN A RUN' : 'FIND BOTH PARENTS'}</span>
-        ${recipes.length > 1 ? `<button data-act="chain" style="display:flex;gap:2px;align-items:center">${S.chainPick % recipes.length + 1}/${recipes.length} ${img('tri')}</button>` : ''}</div>`;
+        ${recipes.length > 1 ? `<button data-act="chain" data-id="${m.id}" style="display:flex;gap:2px;align-items:center">${pick + 1}/${recipes.length} ${img('tri')}</button>` : ''}</div>`;
   }
   const R = rec(m.id);
-  const right = `<div class="in" style="display:flex;flex-direction:column;gap:6px;padding:8px 10px">
-    <div style="display:flex;flex-direction:column;gap:1px">
-      <div class="bd-line"><span>FOUND:</span><span>${known ? hab : '???'}</span></div>
-      <div class="bd-line"><span>ATTACK:</span><span>${own ? m.atk[0] : '???'}</span></div>
-      ${P || !own ? '' : `<div class="r">${m.atk[1].toUpperCase()}</div>`}
-      <div class="bd-line"><span>${isFoe(m) ? 'STATUS:' : 'DASH:'}</span><span>${isFoe(m) ? stateWord(m) : own ? m.dash : '???'}</span></div>
+  // Desktop pages have no room for a records line; the phone page shows it under the chain.
+  const records = P && s === 3 ? `<div style="display:flex;gap:6px;align-items:center">${img('sparkK')}<span>${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  MERGED ${R.merged}  BEST ${R.best}`}</span></div>` : '';
+  const dexText = !known ? 'No data. Find it in the field.' : !own ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.')
+    : m.dex + (P ? '\n\nIN BATTLE: ' + m.atk[1] : '') + (s === 3 ? (P ? '\n\n' : '\n') + 'NOTE: ' + m.note : '');
+  const pair = (a, b) => `<div style="display:flex;flex-direction:column;gap:1px">${a}${b}</div>`;
+  return {dex:[m.id, dexText], html:`<section class="pg${flip}" style="${box([x, y, w, h])}">${pageSVG(w, h, notch)}<div class="in">
+    <div class="bd-name">${big ? `<span class="t18">${nm}</span>` : `<span>${nm}</span>`}</div>
+    <div class="bd-no">No.${m.no}${own ? img(s === 3 ? 'sparkK' : 'ring') : ''}</div>
+    <div class="portrait dbl" style="${box([9, 28, ps, ps])}" data-act="cry" data-id="${m.id}" title="Click to hear its cry">${face(m.id, P ? 3 : 2)}</div>
+    <div class="bd-id" style="left:${idx}px;top:28px;right:9px;height:${ps}px;justify-content:space-between">
+      <div class="sp">${known ? m.sp : '?????'}</div>
+      ${pair('<div>TYPE:</div>', `<div>${known ? types(m) : '???'}</div>`)}
+      ${pair('<div>ATTACK:</div>', `<div class="r">${own ? m.atk[0] : '???'}</div>`)}
+      ${pair(`<div>${isFoe(m) ? 'STATUS:' : 'DASH:'}</div>`, `<div class="r">${isFoe(m) ? stateWord(m) : own ? m.dash : '???'}</div>`)}
     </div>
-    <fieldset class="fs" style="position:static;flex:1;min-height:0;overflow:hidden"><legend>DEX:</legend><div class="dex" id="dexText"></div></fieldset>
-    ${chain}${under}
-    ${s === 3 ? `<div style="display:flex;gap:6px;align-items:center">${img('sparkK')}<span>${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  MERGED ${R.merged}  BEST ${R.best}`}</span></div>` : ''}</div>`;
-  const dexText = !known ? 'No data. Find it in the field.' : !own ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.') : m.dex + (s === 3 ? '\n\nNOTE: ' + m.note : '');
-  // index strip
-  const strip = MON.map(e => `<button class="thumb ${e.kind === 'fusion' ? 'fusion' : isFoe(e) ? 'foe' : ''}${e.id === S.sel ? ' brk ink' : ''}" data-pick="${e.id}" aria-label="${st(e.id) ? e.name : 'Unknown'}">
+    <div class="a bd-line" style="left:9px;right:9px;top:${line}px"><span>HP ${known ? hp : '???'}</span><span>FOUND: ${known ? hab : '???'}</span></div>
+    <div class="a" style="left:9px;right:9px;top:${line + 14}px;bottom:8px;display:flex;flex-direction:column;gap:4px">
+      <fieldset class="fs" style="position:static;flex:1;min-height:0;overflow:hidden;padding:2px 6px 4px"><legend>DEX:</legend><div class="dex" data-dex="${m.id}"></div></fieldset>
+      ${chain}${under}${records}
+    </div></div></section>`};
+}
+function binder(W, H, P) {
+  const c = counts(), i = cur().i, key = P ? i : spreadOf(i), turned = S.typeIt && !RM && key !== S.bdKey; S.bdKey = key;
+  const shown = P ? [cur()] : [MON[key * 2], MON[key * 2 + 1]];
+  const L = P ? {pages:[[18,6,246,438]], sp:[0,0,14,480], ix:[6,450,258,26]}
+              : {pages:[[8,8,226,276],[246,8,226,276]], sp:[234,0,12,320], ix:[8,290,464,26]};
+  const pages = shown.map((m, k) => dexPage(m, L.pages[k], P, turned ? ' flipin' + (!P && k === 0 ? ' l' : '') : ''));
+  const rings = (P ? [60,170,290,400] : [36,110,190,264]).map(y => `<i style="left:2px;top:${y-6}px;width:${P ? 10 : 8}px;height:12px"></i>`).join('');
+  const strip = MON.map(e => `<button class="thumb ${e.kind === 'fusion' ? 'fusion' : isFoe(e) ? 'foe' : ''}${e === shown[0] ? ' brk ink' + (P ? '' : ' pair') : ''}" data-pick="${e.id}" aria-label="${st(e.id) ? e.name : 'Unknown'}">
       <span class="clip">${st(e.id) ? spr(e.id, 1) : '<span class="qbox" style="font-size:9px">?</span>'}</span></button>`).join('');
   const [ix, iy, iw, ih] = L.ix;
-  const nav = `<button class="bd-arrow" data-act="prev" style="left:${ix}px;top:${iy + (ih-20)/2}px" aria-label="Previous">${img('triL')}</button>
+  const nav = `<button class="bd-arrow" data-act="prev" style="left:${ix}px;top:${iy + (ih-20)/2}px" aria-label="Previous page">${img('triL')}</button>
     <div class="bd-strip" id="strip" style="left:${ix+24}px;top:${iy + (ih-26)/2}px;width:${iw - 48 - (P ? 0 : 74)}px;height:26px">${strip}</div>
-    ${P ? '' : `<div class="a ol" style="left:${ix+iw-70}px;top:${iy+6}px;width:44px;line-height:12px">SEEN ${c.seen}<br>OWN ${c.own}</div>`}
-    <button class="bd-arrow" data-act="next" style="left:${ix+iw-20}px;top:${iy + (ih-20)/2}px" aria-label="Next">${img('tri')}</button>`;
-  return {html:`<div class="grain"></div>
-    <div class="bd-spine ${P ? 'h' : ''}" style="${box(L.sp)}">${rings}</div>
-    <section class="pg" style="${box(L.lp)}">${pageSVG(lw, lh, notch)}<div class="in">${left}</div></section>
-    <section class="pg${S.typeIt && !RM ? ' flipin' + (P ? ' h' : '') : ''}" style="${box(L.rp)}">${pageSVG(rw, rh, 0)}${right}</section>
-    ${nav}`, after: () => { typeInto(document.getElementById('dexText'), dexText);
+    ${P ? '' : `<div class="a ol" style="left:${ix+iw-70}px;top:${iy+1}px;width:44px;line-height:12px">SEEN ${c.seen}<br>OWN ${c.own}</div>`}
+    <button class="bd-arrow" data-act="next" style="left:${ix+iw-20}px;top:${iy + (ih-20)/2}px" aria-label="Next page">${img('tri')}</button>`;
+  return {html:`<div class="grain"></div><div class="bd-spine" style="${box(L.sp)}">${rings}</div>${pages.map(p => p.html).join('')}${nav}`,
+    after: () => { typeInto(pages.map(p => [stage.querySelector(`[data-dex="${p.dex[0]}"]`), p.dex[1]]), turned);
       const strip = document.getElementById('strip'), on = strip?.querySelector('.brk');
-      if (on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + 9; }};
+      if (on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + (P ? 9 : 19); }};
 }
 
 // ================================================================= 2 POCKET DEX
@@ -590,7 +586,7 @@ function device(W, H, P) {
     <button class="pillbtn" data-key="select" style="left:${G.sel[0]}px;top:${G.sel[1]}px" aria-label="Select"><span>SELECT</span></button>
     <button class="pillbtn" data-key="start" style="left:${G.start[0]}px;top:${G.start[1]}px" aria-label="Start"><span>START</span></button>
     <div class="grille" style="left:${G.grille[0]}px;top:${G.grille[1]}px">${'<i></i>'.repeat(6)}</div>`;
-  return {html:ctl, after: () => { document.getElementById('screen').innerHTML = screen(sw, sh); typeInto(document.getElementById('devDex'), devDex()); }};
+  return {html:ctl, after: () => { document.getElementById('screen').innerHTML = screen(sw, sh); typeInto([[document.getElementById('devDex'), devDex()]]); }};
 }
 const DEV_TABS = ['INFO','STATS','FUSE','LOG'];
 const devDex = () => { const m = cur(), s = st(m.id); return s === 0 ? 'No data yet.' : s === 1 ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.') : m.dex; };
@@ -775,11 +771,11 @@ function render() {
   document.getElementById('vnote').innerHTML = NOTES[S.v];
 }
 const NOTES = {
- binder:`<h2>1 · Field Binder</h2><h3>A book of field notes, closest to the reference</h3>
-  <p>The left page shows who the creature is: art, type, wild stats and star ratings. The right page shows what it does: where to find it, attack, dash, dex text and its fusion chain. The right page turns when you move.</p>
-  <dl><dt>TRY</dt><dd>Click the portrait to hear its cry. Use the arrows or the icon strip. On Mollusc, the 1/2 button shows its second fusion.</dd>
-  <dt>GOOD</dt><dd>Much information in one view. The book suits a game about scrolls. Easy to port: the pages use the same double rule and bracket shapes as the reference.</dd>
-  <dt>RISK</dt><dd>Dense on a phone, where the pages stack. The icon strip gets long after about 40 entries; it would need a grid page.</dd></dl>`,
+ binder:`<h2>1 · Field Binder</h2><h3>One creature per page, closest to the reference</h3>
+  <p>Each page holds one creature. The faceset sits at the top with its species, type, attack and dash. Below it are HP and where to find it, then the DEX box, then the fusion chain. On desktop the binder lies open, so you see two creatures at once. On a phone you see one page.</p>
+  <dl><dt>TRY</dt><dd>Click a portrait to hear its cry. Use the arrows or the icon strip to turn the page. On Mollusc, the 1/2 button shows its second fusion.</dd>
+  <dt>GOOD</dt><dd>Everything about one creature fits on one page. The book suits a game about scrolls. It keeps the double rule, notched tab and bracket shapes from the reference.</dd>
+  <dt>RISK</dt><dd>Desktop pages are tight: a mastered entry fills the DEX box, so the records line (caught, merged, best damage) shows only on the phone page. The icon strip gets long after about 40 entries; it would then need a grid page.</dd></dl>`,
  device:`<h2>2 · Pocket Dex</h2><h3>The game's DarkMode UI inside a red handheld</h3>
   <p>A list screen like the Game Boy Color dex, with the selected face in a DarkMode slot. Open an entry for four short tabs: INFO, STATS, FUSE and LOG. A plays the creature's cry.</p>
   <dl><dt>TRY</dt><dd>Use the D-pad or arrow keys. A or Enter opens. Left and right change tabs. B or Esc goes back. Desktop turns the device on its side.</dd>
@@ -798,9 +794,9 @@ const NOTES = {
 };
 
 // The portrait hops and the creature calls (only once it is caught).
-function hop() {
-  if (st(S.sel) >= 2) cry(S.sel);
-  const el = stage.querySelector('[data-act="cry"]'); if (!el || RM) return;
+function hop(id = S.sel, el = stage.querySelector(`[data-act="cry"][data-id="${id}"]`) || stage.querySelector('[data-act="cry"]')) {
+  if (st(id) >= 2) cry(id);
+  if (!el || RM) return;
   el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop');
 }
 // Squash to zero width, swap faces, open again.
@@ -824,9 +820,9 @@ stage.addEventListener('click', e => {
   if (t.dataset.open) { S.album.open = t.dataset.open; S.album.flipped = false; S.sel = t.dataset.open; render(); return; }
   if (t.dataset.pick) { if (S.v === 'device' && t.dataset.pick === S.sel) return void devKey('a'); select(t.dataset.pick, true); return; }
   const act = t.dataset.act;
-  if (act === 'cry') hop();
-  if (act === 'prev' || act === 'next') step(MON, act === 'prev' ? -1 : 1);
-  if (act === 'chain') { S.chainPick++; render(); }
+  if (act === 'cry') hop(t.dataset.id || S.sel, t);
+  if (act === 'prev' || act === 'next') binderStep(act === 'prev' ? -1 : 1);
+  if (act === 'chain') { S.chainPicks[t.dataset.id] = (S.chainPicks[t.dataset.id] || 0) + 1; render(); }
   if (act === 'apage-' || act === 'apage+') { S.album.page = (S.album.page + (act === 'apage-' ? -1 : 1) + 2) % 2; render(); }
   if (act === 'aflip') { e.stopPropagation(); flipCard(); return; }
   if (act === 'aclose' && e.target === t) { S.album.open = null; render(); }
@@ -841,6 +837,7 @@ stage.addEventListener('keydown', e => {
     const d = {left:-1,right:1,up:-3,down:3}[k]; if (d) { const i = Math.max(0, Math.min(MON.length - 1, cur().i + d)); S.album.page = Math.floor(i / 9); select(MON[i].id, true); }
     return;
   }
+  if (S.v === 'binder' && k !== 'a' && k !== 'b') return void binderStep(k === 'left' || k === 'up' ? -1 : 1);
   const list = S.v === 'web' ? CREATURES : MON;
   if (k === 'left' || k === 'up') step(list, -1); else if (k === 'right' || k === 'down') step(list, 1);
   else if (k === 'a') hop();
