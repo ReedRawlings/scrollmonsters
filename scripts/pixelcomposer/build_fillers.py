@@ -1,4 +1,4 @@
-"""Placeholder ("filler") pixel art for VFX_REQUESTS.md items that need hand-drawn art:
+"""Placeholder pixel art for effects that need hand-drawn art:
 packs, card backs and three upgrade icons. Correct sizes, frame counts and JSON so code can
 integrate now; replace the PNGs with final art later (keep the same size/frames and the JSON stays valid).
 Palette: Toasted40 + pure white.

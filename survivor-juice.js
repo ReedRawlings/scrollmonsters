@@ -2,7 +2,7 @@
   'use strict';
   const GEM_PICKUP = 38, MAX_FX = 60, PARTY_WIDE = ['partyDamage', 'partySpeed'];
   // Each creature's element colour, matching the hit bursts the sim already uses for it.
-  const ELEMENT_TINT = {cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff,mollusc:0xc8a6ff,octopus:0xccafff,reptile:0xffb066,tengu:0x9ce9ff,axolotl:0xa1dbef};
+  const ELEMENT_TINT = {...SurvivorEvolutionRoster.tints,cat:0xb5fff0,owl:0xa9f5ff,beast:0xffa080,frog:0x83d9ff,mouse:0xb0ffff,mole:0xbaffcb,bear:0xbaffcb,salamander:0xff8a3d,spider:0xb5faff,storm:0x9beaff,mollusc:0xc8a6ff,octopus:0xccafff,reptile:0xffb066,tengu:0x9ce9ff,axolotl:0xa1dbef};
   const SETTINGS_KEY = 'scrollmonsters-survivor-settings-v1';
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   // Presentation only: reads scene state, never writes simulation state. Never call scene.rand(), Math.random(),
@@ -192,7 +192,7 @@
     }
     updateWorld(now){
       for(const r of Object.values(this.rings))r.seen=false;
-      if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc']){
+      if(this.enabled)for(const type of ['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc','bamboo']){
         const b=this.s.expedition.captureBody(type);if(b?.state!=='ready')continue;this.ring(type,b.x,b.y,b.progress/2.5,{scale:6});
         // The creature trembles harder each quarter of the charge (drawn offset only; the sim position is untouched).
         const sp=this.captureSprite(type,b),q=Math.floor(clamp(b.progress/2.5,0,.999)*4);if(sp&&q&&!this.reduced){const a=q*.75;sp.setPosition(sp.x+(this.rand()*2-1)*a,sp.y+(this.rand()*2-1)*a);}}

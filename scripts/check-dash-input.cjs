@@ -20,7 +20,7 @@ run('150 enemies, automatic creature dash and keyboard/swipe input',async(page,b
  assert(!(await listControls(page)).some(c=>c.label.startsWith('Dash')));
  await page.keyboard.press('Shift');assert.equal(await page.evaluate(()=>__survivorTest.scene.expansion.cooldown),0);
  await page.keyboard.press('Space');assert.equal(await page.evaluate(()=>__survivorTest.scene.expansion.cooldown),3);
- const moved=await page.evaluate(()=>{const s=__survivorTest.scene,x=s.player.x;advanceTime(200);return s.player.x-x;});assert(moved>100);
+ const moved=await page.evaluate(()=>{const s=__survivorTest.scene,x=s.player.x;advanceTime(400);return s.player.x-x;});assert(moved>100);
  const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const errors=[];mobile.on('pageerror',e=>errors.push(e.message));
  await mobile.addInitScript(()=>window.__vt_pending=true);await mobile.goto(gameURL('survivors.html?test'));await mobile.waitForFunction(()=>window.__phaserReady);
  await mobile.evaluate(()=>{const s=__survivorTest.scene;s.start();s.obstacles=[];s.spawnTimer=999;s.draw();});

@@ -45,7 +45,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       s.packs.close(); out.after = s.mode; out.revealAfter = s.packs.reveal;
       return out; });
     assert.deepEqual(r.outside, [], 'Cards come only from the active team pool');
-    assert.deepEqual(r.mode, 'pack'); assert.deepEqual(r.granted, [2, 1, 16], 'Every card applies on pickup, hide twice (+16 max HP)');
+    assert.deepEqual(r.mode, 'pack'); assert.deepEqual(r.granted, [2, 1, 160], 'Every card applies on pickup, hide twice (+160 max HP)');
     assert.equal(r.left, 0); assert.deepEqual(r.reveal, ['hide', 'feet', 'hide']);
     assert.equal(r.paused, true, 'mode=pack pauses the sim'); assert.deepEqual(r.events, [['hide', 'feet', 'hide']]);
     assert.equal(r.after, 'playing'); assert.equal(r.revealAfter, null);

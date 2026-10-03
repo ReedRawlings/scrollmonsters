@@ -15,7 +15,7 @@
     mushroomFlat: [[64, 368, 16, 16]], twig: [[80, 368, 16, 16]], tulipOrange: [[96, 368, 16, 16]], blossomPink: [[112, 368, 16, 16]],
     twigCurl: [[128, 368, 16, 16]], flowerOrange: [[128, 336, 16, 16]], vineShort: [[240, 336, 16, 16]]
   };
-  const DROPS = ['haste', 'shield', 'cleanse', 'magnet', 'heal', 'xp'], DROP_CHANCE = .15, PROP_HP = 6;
+  const DROPS = ['haste', 'shield', 'cleanse', 'magnet', 'heal', 'xp'], DROP_CHANCE = .15, PROP_HP = 60;
   // Landmarks drawn at double the ground scale.
   const BIG = new Set(['wheelbarrow', 'wheel', 'slab', 'bigChest']);
 

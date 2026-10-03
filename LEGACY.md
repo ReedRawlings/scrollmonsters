@@ -2,11 +2,11 @@
 
 A portrait browser rail shooter built on Phaser 4.2.1, with a southbound route, monster companions, and permanent upgrades.
 
-See [ABILITIES.md](ABILITIES.md) for shared attack radii, creature ability assignments, and pending ability decisions.
+See [legacy ability notes](docs/legacy/ABILITIES.md) for shared attack radii, creature ability assignments, and pending ability decisions.
 
-## Survivor experiment
+## Survivor game
 
-Open `/survivors.html` on the local server for **Woodland Expedition**, a five-minute survivor prototype with collectible starters, up to three companions, nest choices, a support Frog, and a boss finale. The title screen also offers the short trial. Use WASD/arrows or touch drag; attacks fire automatically. See [SURVIVORS.md](SURVIVORS.md) for scope and the party-first creature design direction.
+Open `/survivors.html` on the local server for **Woodland Expedition**, the current survivor game with collectible starters, up to three companions, nest choices, a support Frog, and a boss finale. The ten-minute demo opens from `demo.html`; the two-minute trial uses `survivors.html?trial`. Use WASD/arrows or touch drag; attacks fire automatically. See [SURVIVORS.md](SURVIVORS.md) for scope and the party-first creature design direction.
 
 ## Play locally or on a phone
 
@@ -31,7 +31,7 @@ node scripts/check-opening-browser.cjs
 
 The browser check requires Playwright and Chromium installed, plus a running server on port 5173. Set `GAME_URL` to test a different server address.
 
-Design: [GDD](GDD.md). Tuning: [Balance](BALANCE.md). Menu styling and future-model guidance: [UI style guide](UI_STYLE_GUIDE.md). Work log: [progress](progress.md).
+Design: [GDD](docs/legacy/GDD.md). Tuning: [Balance](docs/legacy/BALANCE.md). Menu styling and future-model guidance: [UI style guide](UI_STYLE_GUIDE.md). Work log: [progress](progress.md).
 
 ## Reset for testing
 

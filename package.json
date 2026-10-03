@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build-music.cjs",
+    "build:demo": "node scripts/build-itch-demo.cjs",
     "dev": "python3 scripts/serve.py",
     "test:phaser": "node scripts/check-phaser.cjs",
     "test:ui": "node scripts/check-native-ui.cjs",

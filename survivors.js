@@ -1,13 +1,16 @@
 (() => {
   'use strict';
-  // Survivor history uses its own storage key; campaign saves are untouched.
-  const WORLD = 4500, DURATION = new URLSearchParams(location.search).has('trial')?120:1200, STEP = 1 / 60, MAX_HP = 40;
+  const MODE = new URLSearchParams(location.search);
+  const DEMO = MODE.has('demo') || window.SCROLLMONSTERS_DEMO === true;
+  const DEMO_ROSTER = ['cat','owl','frog','storm','mollusc'];
+  const MUSIC = window.GAME_MUSIC||{};
+  const WORLD = 4500, DURATION = DEMO?600:MODE.has('trial')?120:1200, STEP = 1 / 60, MAX_HP = 400;
   const RUN_HISTORY_KEY = 'scrollmonsters-survivor-runs-v1', RUN_HISTORY_BYTES = 2 * 1024 * 1024;
   const A = 'assets/Ninja Adventure - Asset Pack/';
   const MUSIC_KEY = 'scrollmonsters-survivor-music-v1';
-  const musicTracks = [...(window.GAME_MUSIC?.combat || []), ...(window.GAME_MUSIC?.menu || [])];
+  const musicTracks = [...(MUSIC.combat || []), ...(MUSIC.menu || [])];
   // Survivors UI is laid out in logical space and drawn at uiScale(): 2x (portrait, desktop Normal) or 3x (desktop Large).
-  const FACESETS = {walker:'Characters/EggBoy',cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
+  const FACESETS = {cat:'Animals/CatCyclop',owl:'Monsters/Arcane/Tier1/Owl',beast:'Monsters/Feral/Tier1/Beast',frog:'Animals/Frog',mouse:'Monsters/Arcane/Tier1/MouseBlack',mole:'Monsters/Bloom/Tier1/Mole',bear:'Monsters/Feral/Tier2/Bear',salamander:'Monsters/Feral/Tier1/Lizard',spider:'Monsters/Feral/Tier2/SpiderRed',storm:'Monsters/Feral/Tier1/Lizard2'};
   const RELIC_IDS = ['boots','stone','ricochet','repulsion','slipstream','bloodroot','pack','resonance','echo','drum','hunter','spite','veil','afterimage','stormglass'];
   const RELIC_FILES = {afterimage:'afterimage.svg',stormglass:'stormglass.svg'};
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
@@ -16,7 +19,7 @@
   class WoodlandTrial extends Phaser.Scene {
     constructor(){super('WoodlandTrial');}
     preload(){
-      musicTracks.forEach((track,i)=>this.load.audio(`music:${i}`,`assets/music/${track.split('/').map(encodeURIComponent).join('/')}`));
+      if(!DEMO)musicTracks.forEach((track,i)=>this.load.audio(`music:${i}`,`assets/music/${track.split('/').map(encodeURIComponent).join('/')}`));
       SurvivorEnemies.preload(this);SurvivorEvolution.preload(this);
       for(const [key,pack,file] of [['fxHit','Combat','impact_hit_1'],['fxWhirl','Combat','slash_whirlwind'],['fxEarth','Earth','impact_earth_3'],['fxWater','Water','impact_water'],['fxDust','Combat','impact_dust_dash']])this.load.spritesheet(key,`assets/SoggySocks ${pack} FX/PNG/${file}_sheet.png`,{frameWidth:100,frameHeight:100});
       this.load.spritesheet('xpChest',A+'Items/Treasure/LittleTreasureChest.png',{frameWidth:16,frameHeight:16});
@@ -24,7 +27,7 @@
       this.load.image('nestBone',A+'Items/Weapons/Bone/Sprite.png');
       this.load.spritesheet('guardianBlast',A+'FX/Elemental/Explosion/SpriteSheet.png',{frameWidth:40,frameHeight:40});
       this.load.spritesheet('guardianFire',A+'FX/Projectile/Fireball.png',{frameWidth:16,frameHeight:16});
-      this.load.image('desert',A+'Backgrounds/Tilesets/TilesetDesert.png');
+      if(!DEMO)this.load.image('desert',A+'Backgrounds/Tilesets/TilesetDesert.png');
       this.load.spritesheet('mouse',A+'Actor/Monsters/Arcane/Tier1/MouseBlack/SpriteSheet.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('bear',A+'Actor/Monsters/Feral/Tier2/Bear/SpriteSheet.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('mole',A+'Actor/Monsters/Bloom/Tier1/Mole/Mole.png',{frameWidth:16,frameHeight:16});
@@ -36,7 +39,7 @@
       this.load.spritesheet('frog',A+'Actor/Animals/Frog/SpriteSheet.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('ancientGuardian',A+'Actor/Boss/DemonCyclop2/Walk.png',{frameWidth:50,frameHeight:50});
       this.load.spritesheet('guardian',A+'Actor/Boss/DemonCyclop/Walk.png',{frameWidth:50,frameHeight:50});
-      this.load.spritesheet('walker',A+'Actor/Characters/EggBoy/SeparateAnim/Walk.png',{frameWidth:16,frameHeight:16});
+      SurvivorPlayer.preload(this);
       this.load.spritesheet('cat',A+'Actor/Animals/CatCyclop/SpriteSheet.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('bat',A+'Actor/Monsters/Feral/Tier1/Bat/SpriteSheet.png',{frameWidth:16,frameHeight:16});
       this.load.spritesheet('beast',A+'Actor/Monsters/Feral/Tier1/Beast/Beast.png',{frameWidth:16,frameHeight:16});
@@ -61,7 +64,7 @@
     }
     create(){
       try{this.musicEnabled=localStorage.getItem(MUSIC_KEY)!=='off';}catch{this.musicEnabled=true;}this.music=null;this.musicTrack=null;this.musicGroup=null;this.musicIndex=0;this.musicPlaylistEnded=false;this.audioUnlocked=false;
-      document.getElementById('fallback').hidden=true;this.field=new URLSearchParams(location.search).get('field')==='desert'?'desert':'woods';this.isExpedition=DURATION===1200;this.unlocked=Expedition.readUnlocks();this.starter='cat';this.catActive=true;
+      document.getElementById('fallback').hidden=true;this.field=!DEMO&&MODE.get('field')==='desert'?'desert':'woods';this.isDemo=DEMO;this.duration=DURATION;this.demoRoster=DEMO_ROSTER;this.demoRecipes=['octopus','tengu','axolotl'];this.isExpedition=DURATION!==120;this.unlocked=DEMO?Expedition.readDemoUnlocks():Expedition.readUnlocks();this.starter='cat';this.catActive=true;
       this.seed=this.runSeed();this.rng=this.seed;this.mode='title';this.accumulator=0;this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.obstacles=[];
       this.enemyPool=[];this.shotPool=[];this.effectPool=[];this.pickupPool=[];
       this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
@@ -72,7 +75,7 @@
       const icon=this.make.graphics({x:0,y:0,add:false});icon.lineStyle(6,0x9beaff).beginPath().moveTo(7,4).lineTo(7,18).arc(16,18,9,Math.PI,0,true).lineTo(25,4).strokePath();icon.generateTexture('magnetPickup',32,32);icon.clear();icon.lineStyle(3,0xbfffd5).strokeCircle(16,16,13).lineBetween(16,6,16,26).lineBetween(6,16,26,16);icon.generateTexture('cleansePickup',32,32);icon.destroy();
       this.player={x:800,y:800,r:12,dir:0,hp:MAX_HP,inv:0,fire:0};
       this.cat={x:754,y:810,r:10,dir:0,attack:0};
-      this.playerSprite=this.add.sprite(800,800,'walker').setScale(3);
+      this.playerSprite=this.add.sprite(800,800,'player_front_idle').setScale(3).setOrigin(.5,.5625);
       this.owlSprite=this.add.sprite(800,800,'owl').setScale(3).setVisible(false);
       this.catSprite=this.add.sprite(754,810,'cat').setScale(3);
       this.playerShadow=this.add.ellipse(800,815,29,12,0x243b2c,.3);
@@ -117,7 +120,7 @@
     runSeed(){const q=new URLSearchParams(location.search);if(q.has('seed'))return Number(q.get('seed'))>>>0;if(q.has('test'))return 9137;return crypto.getRandomValues(new Uint32Array(1))[0];}
     rand(){this.rng=(1664525*this.rng+1013904223)>>>0;return this.rng/4294967296;}
     makeMap(){
-      const floor=this.textures.get('floor');floor.add('grass',0,0,192,16,16);floor.add('sand',0,16,16,16,16);this.textures.get('desert').add('palm',0,160,160,32,32);
+      const floor=this.textures.get('floor');floor.add('grass',0,0,192,16,16);floor.add('sand',0,16,16,16,16);if(!DEMO)this.textures.get('desert').add('palm',0,160,160,32,32);
       const nature=this.textures.get('nature');
       nature.add('tree',0,64,32,64,48);nature.add('bush',0,0,0,32,32);nature.add('rock',0,240,160,32,32);nature.add('flower',0,0,160,16,16);
       // The woods field is the procedural Greens map, rebuilt each run in resetState().
@@ -143,8 +146,8 @@
       this.enemies=[];this.shots=[];this.effects=[];this.pickups=[];this.trail=[];this.elapsed=0;SurvivorEnemies.reset(this);this.spawnTimer=.25;this.recycleTimer=0;this.kills=0;this.spawned=0;this.peakEnemies=0;this.spawnCapSeconds=0;this.catKills=0;this.playerDamage=0;this.catDamage=0;this.damageTaken=0;this.accumulator=0;this.joy=null;
       this.aim={x:0,y:1};this.mouseAim=null;
       Object.assign(this.player,{x:WORLD/2,y:WORLD/2,hp:MAX_HP,inv:0,fire:.1,dir:0});Object.assign(this.cat,{x:WORLD/2-42,y:WORLD/2+30,attack:0});
-      this.owl=null;this.owlAppeared=false;this.owlDamage=0;this.haste=0;this.chorusTime=0;this.shield=false;this.notice='';this.noticeTime=0;this.nextHealAt=30;this.supplyAt=35;this.supplyIndex=0;this.level=1;this.xp=0;this.choices=[];this.upgrades={partyDamage:0,partySpeed:0,mousePower:0,mouseCount:0,mouseSpeed:0,mouseJump:0,molePower:0,moleArea:0,moleSpeed:0,moleEcho:0,moleSlow:0,bearPower:0,bearArea:0,bearSpeed:0,bearStun:0,bearGuard:0,claws:0,sweep:0,cast:0,feather:0,hide:0,feet:0,pull:0,split:0,slam:0,owlPower:0,owlSpeed:0,beastPower:0,beastSpeed:0,bubble:0,frogPower:0,chorus:0,marks:0};this.maxHp=40;this.stronger=false;
-      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm',...(this.isExpedition?['mollusc']:[])].map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.packs?.destroy();this.packs=new SurvivorPacks(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
+      this.owl=null;this.owlAppeared=false;this.owlDamage=0;this.haste=0;this.chorusTime=0;this.shield=false;this.notice='';this.noticeTime=0;this.nextHealAt=30;this.supplyAt=35;this.supplyIndex=0;this.level=1;this.xp=0;this.choices=[];this.upgrades={partyDamage:0,partySpeed:0,mousePower:0,mouseCount:0,mouseSpeed:0,mouseJump:0,molePower:0,moleArea:0,moleSpeed:0,moleEcho:0,moleSlow:0,bearPower:0,bearArea:0,bearSpeed:0,bearStun:0,bearGuard:0,claws:0,sweep:0,cast:0,feather:0,hide:0,feet:0,pull:0,split:0,slam:0,owlPower:0,owlSpeed:0,beastPower:0,beastSpeed:0,bubble:0,frogPower:0,chorus:0,marks:0};this.maxHp=MAX_HP;this.stronger=false;
+      this.creatures?.destroy();this.creatures=new SurvivorCreatures(this);this.nestDeck=this.nestDeckOverride?[...this.nestDeckOverride]:(DEMO?DEMO_ROSTER:['owl','beast','cat','mouse','bear','mole','salamander','spider','storm',...(this.isExpedition?['mollusc','bamboo']:[])]).filter(type=>!DEMO||type!==this.starter).map(type=>({type,sort:this.rand()})).sort((a,b)=>a.sort-b.sort).map(e=>e.type);this.relics?.destroy();this.relics=new SurvivorRelics(this);this.packs?.destroy();this.packs=new SurvivorPacks(this);this.expedition?.destroy();this.encounters?.destroy();this.encounters=new SurvivorEncounters(this);this.expedition=new Expedition(this);this.expedition.initStarter();
       this.trail.push({x:this.cat.x,y:this.cat.y},{x:this.player.x,y:this.player.y});
     }
     chooseMergeIndex(index){const ev=this.creatures.evolution,p=ev.preview();if(!p||this.juice.now()-ev.pending.openedAt<370)return;const ids=[...p.options.map(o=>o.id),...(p.canRecruit?['recruit']:[])];if(ids[index])ev.choose(ids[index]);}
@@ -155,12 +158,12 @@
     openBestiary(){if(this.mode!=='title')return;this.bestiaryOpen=true;this.draw();}
     closeBestiary(){this.bestiaryOpen=false;this.bestiaryClosedFrame=this.game.loop.frame;this.draw();}
     // Title presentation state (starterFrom/starterAt/lockedTap) only drives the menu's flip and hints.
-    chooseStarter(id){if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
+    chooseStarter(id){if(DEMO){if(!DEMO_ROSTER.includes(id))return;const previous=this.demoPreview||this.starter;this.demoPreview=id;if(id!==previous){this.starterFrom=previous;this.starterAt=this.juice.now();}}if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(!DEMO&&id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
     unlockAudio(){if(!this.audioUnlocked){this.audioUnlocked=true;this.sound.unlock();}this.syncMusic();}
     toggleMusic(){this.musicEnabled=!this.musicEnabled;try{localStorage.setItem(MUSIC_KEY,this.musicEnabled?'on':'off');}catch{}if(this.musicEnabled&&this.musicPlaylistEnded){this.music?.destroy();this.music=null;this.musicPlaylistEnded=false;}this.syncMusic();this.draw();}
-    playMusicTrack(){const tracks=(window.GAME_MUSIC||{})[this.musicGroup]||[],track=tracks[this.musicIndex];if(!track)return;this.music?.destroy();this.musicTrack=track;const assetIndex=musicTracks.indexOf(track);if(assetIndex<0)return;const sound=this.music=this.sound.add(`music:${assetIndex}`,{loop:false,volume:.3});sound.once('complete',()=>{if(this.music!==sound)return;const inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost';if(this.musicGroup==='menu'&&inRun){this.musicGroup='combat';const combat=(window.GAME_MUSIC||{}).combat||[];if(!combat.length){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.run?.seed||0)%combat.length;this.playMusicTrack();return;}if(this.musicGroup==='menu'&&this.musicIndex>=tracks.length-1){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.musicIndex+1)%tracks.length;this.playMusicTrack();});sound.play();}
-    syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=window.GAME_MUSIC||{},inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',wanted=inRun?'combat':'menu';if(!this.musicEnabled){this.music?.pause();return;}if(this.musicPlaylistEnded){if(this.musicGroup==='menu'&&wanted==='combat'){const tracks=list.combat||[];if(!tracks.length)return;this.musicGroup='combat';this.musicIndex=(this.run?.seed||0)%tracks.length;this.musicPlaylistEnded=false;this.playMusicTrack();}return;}if(!this.music){const tracks=list[wanted]||[];if(!tracks.length)return;this.musicGroup=wanted;this.musicIndex=wanted==='combat'?(this.run?.seed||0)%tracks.length:0;this.playMusicTrack();return;}if(this.music.isPaused)this.music.resume();}
-    start(){this.unlockAudio();this.lockedTap=null;this.bestiaryOpen=false;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:'evolution-prototype-v43',field:this.field,runMode:this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
+    playMusicTrack(){const tracks=MUSIC[this.musicGroup]||[],track=tracks[this.musicIndex];if(!track)return;const assetIndex=musicTracks.indexOf(track);if(assetIndex<0)return;const key=`music:${assetIndex}`;if(DEMO&&!this.cache.audio.exists(key)){if(this.musicLoading===key)return;this.musicLoading=key;this.load.once('complete',()=>{this.musicLoading=null;if(this.musicEnabled&&this.cache.audio.exists(key))this.playMusicTrack();});this.load.audio(key,`assets/music/${track.split('/').map(encodeURIComponent).join('/')}`);this.load.start();return;}this.music?.destroy();this.musicTrack=track;const sound=this.music=this.sound.add(key,{loop:false,volume:.3});sound.once('complete',()=>{if(this.music!==sound)return;const inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost';if(this.musicGroup==='menu'&&inRun){this.musicGroup='combat';const combat=MUSIC.combat||[];if(!combat.length){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.run?.seed||0)%combat.length;this.playMusicTrack();return;}if(this.musicGroup==='menu'&&this.musicIndex>=tracks.length-1){this.musicPlaylistEnded=true;return;}this.musicIndex=(this.musicIndex+1)%tracks.length;this.playMusicTrack();});sound.play();}
+    syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=MUSIC,inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',wanted=inRun?'combat':'menu';if(!this.musicEnabled){this.music?.pause();return;}if(this.musicPlaylistEnded){if(this.musicGroup==='menu'&&wanted==='combat'){const tracks=list.combat||[];if(!tracks.length)return;this.musicGroup='combat';this.musicIndex=(this.run?.seed||0)%tracks.length;this.musicPlaylistEnded=false;this.playMusicTrack();}return;}if(!this.music){const tracks=list[wanted]||[];if(!tracks.length)return;this.musicGroup=wanted;this.musicIndex=wanted==='combat'?(this.run?.seed||0)%tracks.length:0;this.playMusicTrack();return;}if(this.music.isPaused)this.music.resume();}
+    start(){this.unlockAudio();this.lockedTap=null;this.bestiaryOpen=false;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:DEMO?'evolution-demo-v2':'expedition-combat-v55',field:this.field,runMode:DEMO?'demo':this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
     logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
     runSummary(){return {field:this.field,greens:this.greens?.summary()||null,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
@@ -261,7 +264,7 @@
       if(this.enemies.filter(e=>e.hp>0).length>=this.enemyCap)return;
       const placedSpawn=x!==undefined;
       if(!placedSpawn){const point=this.enemySpawnPoint();if(!point)return;x=point.x;y=point.y;}
-      const beast=type==='beast',def=SurvivorEnemies.stats[type]||{cat:{hp:7,speed:72,r:11,scale:3},frog:{hp:6,speed:42,r:10,scale:3},mouse:{hp:2,speed:95,r:8,scale:2},mollusc:{hp:12,speed:38,r:12,scale:3},salamander:{hp:12,speed:42,r:12,scale:3},spider:{hp:10,speed:45,r:12,scale:3},storm:{hp:12,speed:42,r:12,scale:3},bear:{hp:28,speed:32,r:20,scale:4},mole:{hp:12,speed:40,r:12,scale:3}}[type];const e={type,x,y,placedSpawn,r:beast?16:11,hp:beast?9:type==='owl'?6:4,maxHp:beast?9:type==='owl'?6:4,speed:beast?47:68,phase:'seek',clock:1.5+this.rand(),dx:0,dy:0,flash:0,sprite:this.pooled(this.enemyPool,SurvivorEnemies.textureFor(type),beast?3.5:2.5)};if(def){e.hp=e.maxHp=def.hp;e.speed=def.speed;e.r=def.r;e.sprite.setScale(def.scale);if(type==='mouse')e.contactDamage=4;}SurvivorEnemies.decorate(this,e);if(this.stronger)this.strengthen(e);if(this.expedition.lateStrength)this.expedition.strengthen(e);if(this.isExpedition&&this.elapsed>=300){const tier=1+Math.floor((this.elapsed-300)/60);e.hp*=1+.3*tier;e.maxHp=e.hp;e.speed*=1+.035*tier;}this.enemies.push(e);if(type in this.creatures.waveCounts)this.creatures.waveCounts[type]++;this.spawned++;this.peakEnemies=Math.max(this.peakEnemies,this.enemies.length);return e;
+      const beast=type==='beast',def=SurvivorEnemies.stats[type]||{cat:{hp:70,speed:72,r:11,scale:3},frog:{hp:60,speed:42,r:10,scale:3},mouse:{hp:20,speed:95,r:8,scale:2},bamboo:{hp:120,speed:35,r:12,scale:3},mollusc:{hp:120,speed:38,r:12,scale:3},salamander:{hp:120,speed:42,r:12,scale:3},spider:{hp:100,speed:45,r:12,scale:3},storm:{hp:120,speed:42,r:12,scale:3},bear:{hp:280,speed:32,r:20,scale:4},mole:{hp:120,speed:40,r:12,scale:3}}[type];const e={type,x,y,placedSpawn,r:beast?16:11,hp:beast?90:type==='owl'?60:40,maxHp:beast?90:type==='owl'?60:40,speed:beast?47:68,phase:'seek',clock:1.5+this.rand(),dx:0,dy:0,flash:0,sprite:this.pooled(this.enemyPool,SurvivorEnemies.textureFor(type),beast?3.5:2.5)};if(def){e.hp=e.maxHp=def.hp;e.speed=def.speed;e.r=def.r;e.sprite.setScale(def.scale);if(type==='mouse')e.contactDamage=40;}SurvivorEnemies.decorate(this,e);if(this.stronger)this.strengthen(e);if(this.expedition.lateStrength)this.expedition.strengthen(e);if(this.isExpedition&&this.elapsed>=300){const tier=1+Math.floor((this.elapsed-300)/60);e.hp*=1+.3*tier;e.maxHp=e.hp;e.speed*=1+.035*tier;}this.enemies.push(e);if(type in this.creatures.waveCounts)this.creatures.waveCounts[type]++;this.spawned++;this.peakEnemies=Math.max(this.peakEnemies,this.enemies.length);return e;
     }
     burst(key,x,y,scale=1,life=.4,tint=0xffffff,a=0){
       // Cosmetic only: pooled, bounded, and advanced by the combat clock so pauses freeze FX.
@@ -276,11 +279,11 @@
     // Impact loops use this so attacks that land on breakables smash them; aiming still uses combatTargets().
     hitTargets(){return this.greens?[...this.combatTargets(),...this.greens.targets()]:this.combatTargets();}
     target(from,range,anchor=from){let result=null,best=range;for(const e of this.combatTargets()){const d=distance(e,from);if(e.hp>0&&d<best&&distance(e,anchor)<range+50){best=d;result=e;}}return result;}
-    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}let boost=1;if(!relicEffect){amount*=(1+.08*this.upgrades.partyDamage)*this.creatures.evolution.partyDamage(e);const before=amount;amount=this.relics.modifyHit(e,amount,source);if(before>0)boost=amount/before;}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(source))amount+=this.frogStats().damageBonus;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl'){amount*=1.25;boost*=1.25;}if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed){const web=1+this.creatures.elements.stats('spider').vulnerability;amount*=web;boost*=web;}if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;this.juice.damage(e,amount,boost);if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
+    hit(e,amount,source,from,relicEffect=false){if(e.hp<=0)return;if(e.kind==='prop'){this.greens.damage(e,amount);return;}if(e.enemyShield){e.enemyShield=false;this.burst('fxWater',e.x,e.y,1.8,.3,0xffbc88);return;}let boost=1;if(!relicEffect){amount*=(1+.08*this.upgrades.partyDamage)*this.creatures.evolution.partyDamage(e);const before=amount;amount=this.relics.modifyHit(e,amount,source);if(before>0)boost=amount/before;}if(!relicEffect&&['player','cat','owl','beast','mouse','mole','bear','salamander','spider','storm',...SurvivorEvolution.types].includes(source))amount+=this.frogStats().damageBonus;if(!relicEffect&&e.markUntil>this.elapsed&&source!=='owl'){amount*=1.25;boost*=1.25;}if(!relicEffect&&source!=='player'&&e.webUntil>this.elapsed){const web=1+Math.max(this.creatures.elements.stats('spider').vulnerability,e.evolutionWeakness||0);amount*=web;boost*=web;}if(!relicEffect)this.relics.queueEcho(e,amount,source);const applied=Math.min(e.hp,amount);e.hp-=amount;e.flash=.1;this.juice.damage(e,amount,boost);if(source==='player'||source==='owl')this.burst(source==='player'?'fxEarth':'fxHit',e.x,e.y,source==='player'?1.4:1.6,.32,source==='owl'?0xa9f5ff:0xffffff);
       if(source==='cat')this.catDamage+=applied;else if(source==='owl')this.owlDamage+=applied;else if(source==='beast')this.encounters.beastDamage+=applied;else if(source in this.creatures.damage)this.creatures.damage[source]+=applied;else this.playerDamage+=applied;
       if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);this.creatures.evolution.killed(e,source);}}if(this.encounters.hitSpecial(e))return;
       if(e===this.owl&&e.hp<=0){e.state='ready';e.progress=0;this.logEvent('owl_weakened');this.announce('Owl weakened! Stay inside its ring to capture.');return;}
-      const dx=e.x-from.x,dy=e.y-from.y,d=Math.hypot(dx,dy)||1;if(!this.unstoppable(e)){if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.move(e,dx/d*12,dy/d*12);}
+      if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.effectKnockback(e,from);
       if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
     }
     // Map callouts are off by design (playtest 2026-09-29); only headline() shows a header.
@@ -290,26 +293,26 @@
     summonOwl(){
       this.logEvent('owl_appeared');this.owlAppeared=true;const p=this.player;let x=p.x,y=p.y;
       for(let n=0;n<24;n++){const a=n*Math.PI/12;x=p.x+Math.cos(a)*220;y=p.y+Math.sin(a)*220;if(!this.blocked(x,y,70))break;}
-      this.owl={x,y,r:12,hp:18,maxHp:18,state:'wild',progress:0,attack:0,flash:0};
+      this.owl={x,y,r:12,hp:180,maxHp:180,state:'wild',progress:0,attack:0,flash:0};
       this.announce('Wild Owl appeared! Weaken it to recruit.');
     }
     xpGainMultiplier(){return 1.5+.05*Math.min(10,Math.floor(this.elapsed/60));}
     gainXP(amount,scale=true){const earned=amount*(scale?this.xpGainMultiplier():1)+this.xpRemainder,whole=Math.floor(earned+1e-9);this.xpRemainder=Math.max(0,earned-whole);this.xp+=whole;this.totalXp+=whole;return whole;}
     xpNeeded(){return 10+(this.level-1)*6;}
-    frogStats(){const inherited=this.creatures.evolution.frogSupport(),active=this.expedition?.frog?.state==='ally'||!!inherited,u=inherited||this.upgrades;return {active,damageBonus:active?1:0,shieldInterval:10/(1+.2*u.bubble),chorusBonus:u.chorus?.5+.15*(u.chorus-1):0};}
+    frogStats(){const inherited=this.creatures.evolution.frogSupport(),active=this.expedition?.frog?.state==='ally'||!!inherited,u=inherited||this.upgrades;return {active,damageBonus:active?10:0,shieldInterval:10/(1+.2*u.bubble),chorusBonus:u.chorus?.5+.15*(u.chorus-1):0};}
     attackRate(){return 1+this.creatures.evolution.tempo()+.06*this.upgrades.partySpeed+(this.relics?.drum>0?.3:0)+(this.haste>0?.5:0)+(this.chorusTime>0&&this.frogStats().active?this.frogStats().chorusBonus:0);}
-    companionStats(){const u=this.upgrades;return {owl:{damage:3.2+u.owlPower,interval:1.1/(1+.2*u.owlSpeed)},beast:{damage:4.8+2*u.beastPower,shockwave:3.2+u.beastPower,interval:2/(1+.2*u.beastSpeed)}};}
+    companionStats(){const u=this.upgrades;return {owl:{damage:32+10*u.owlPower,interval:1.1/(1+.2*u.owlSpeed)},beast:{damage:48+20*u.beastPower,shockwave:32+10*u.beastPower,interval:2/(1+.2*u.beastSpeed)}};}
     upgradePool(){const stats=this.companionStats(),u=this.upgrades;return [
       ...this.creatures.upgrades(),
       {id:'partyDamage',name:'Party Power',detail:`All damage +${8*u.partyDamage}% → +${8*(u.partyDamage+1)}%`},
       {id:'partySpeed',name:'Party Tempo',detail:`All attack speed +${6*u.partySpeed}% → +${6*(u.partySpeed+1)}%`},
-      ...(this.catActive?[{id:'claws',name:'Sharpened Claws',detail:'Cat damage +1'},{id:'sweep',name:'Wide Sweep',detail:'Cat reach +20% and wider arc'}]:[]),
+      ...(this.catActive?[{id:'claws',name:'Sharpened Claws',detail:'Cat damage +10'},{id:'sweep',name:'Wide Sweep',detail:'Cat reach +20% and wider arc'}]:[]),
       {id:'cast',name:'Quick Cast',detail:'Basic attack speed +20%'},
-      {id:'hide',name:'Tough Hide',detail:'+8 maximum HP and heal 8'},
+      {id:'hide',name:'Tough Hide',detail:'+80 maximum HP and heal 80'},
       {id:'feet',name:'Fleet Feet',detail:'Movement speed +10%'},
       ...(this.catActive&&!this.upgrades.pull?[{id:'pull',name:'Repelling Sweep',detail:'Swipes knock foes away from you and stagger them'}]:[]),
-      ...(this.owl?.state==='ally'?[...(!u.marks?[{id:'marks',name:'Hunter Marks',detail:'Owl marks: other party attacks deal +25%'}]:[]),{id:'owlPower',name:'Razor Feathers',detail:`Feather damage ${stats.owl.damage} → ${stats.owl.damage+1}`},{id:'owlSpeed',name:'Rapid Volley',detail:`Volley interval ${stats.owl.interval.toFixed(2)}s → ${(1.1/(1+.2*(u.owlSpeed+1))).toFixed(2)}s`},{id:'feather',name:'Extra Feather',detail:'Owl fires +1 piercing projectile'},...(!this.upgrades.split?[{id:'split',name:'Splinter Feathers',detail:'Two splinters on hit, each at 33% damage'}]:[])]:[]),
-      ...(this.encounters.beast?.state==='ally'?[{id:'beastPower',name:'Crushing Force',detail:`Charge ${stats.beast.damage} → ${stats.beast.damage+2}; quake ${stats.beast.shockwave} → ${stats.beast.shockwave+1}`},{id:'beastSpeed',name:'Relentless Charge',detail:`Charge interval ${stats.beast.interval.toFixed(2)}s → ${(2/(1+.2*(u.beastSpeed+1))).toFixed(2)}s`},...(!this.upgrades.slam?[{id:'slam',name:'Quake Charge',detail:'Beast charge ends in a damaging shockwave'}]:[])]:[])
+      ...(this.owl?.state==='ally'?[...(!u.marks?[{id:'marks',name:'Hunter Marks',detail:'Owl marks: other party attacks deal +25%'}]:[]),{id:'owlPower',name:'Razor Feathers',detail:`Feather damage ${stats.owl.damage} → ${stats.owl.damage+10}`},{id:'owlSpeed',name:'Rapid Volley',detail:`Volley interval ${stats.owl.interval.toFixed(2)}s → ${(1.1/(1+.2*(u.owlSpeed+1))).toFixed(2)}s`},{id:'feather',name:'Extra Feather',detail:'Owl fires +1 projectile'},{id:'owlPierce',name:'Piercing Feathers',detail:'Each rank lets feathers pierce one additional enemy'},...(!this.upgrades.split?[{id:'split',name:'Splinter Feathers',detail:'Two splinters on hit, each at 33% damage'}]:[])]:[]),
+      ...(this.encounters.beast?.state==='ally'?[{id:'beastPower',name:'Crushing Force',detail:`Charge ${stats.beast.damage} → ${stats.beast.damage+20}; quake ${stats.beast.shockwave} → ${stats.beast.shockwave+10}`},{id:'beastSpeed',name:'Relentless Charge',detail:`Charge interval ${stats.beast.interval.toFixed(2)}s → ${(2/(1+.2*(u.beastSpeed+1))).toFixed(2)}s`},...(!this.upgrades.slam?[{id:'slam',name:'Quake Charge',detail:'Beast charge ends in a damaging shockwave'}]:[])]:[])
       ,...(this.expedition.frog?.state==='ally'?[{id:'bubble',name:'Bubble Rhythm',detail:'Frog shields 20% faster per rank'},{id:'chorus',name:'Rallying Chorus',detail:`Shield pulse: 3s attack speed +${u.chorus?50+15*(u.chorus-1):0}% → +${50+15*u.chorus}%`}]:[])
     ].filter(choice=>!['claws','cast','owlPower','owlSpeed','beastPower','beastSpeed','mousePower','mouseSpeed','molePower','moleSpeed','bearSpeed','firePower','fireSpeed','webPower','webSpeed','stormPower','stormSpeed'].includes(choice.id));}
     checkLevel(){
@@ -320,7 +323,7 @@
       while(this.choices.length<3)this.choices.push(pool.splice(Math.floor(this.rand()*pool.length),1)[0]);
       this.logEvent('level_up',{level:this.level,offered:this.choices.map(c=>c.id)});this.reward('levelup',{level:this.level});this.saveRun();this.mode='upgrade';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;
     }
-    grantUpgrade(id){this.upgrades[id]++;if(id==='hide'){this.maxHp+=8;const hp=this.player.hp;this.player.hp=Math.min(this.maxHp,hp+8);this.juice.heal(this.player.hp-hp);}}
+    grantUpgrade(id){this.upgrades[id]++;if(id==='hide'){this.maxHp+=80;const hp=this.player.hp;this.player.hp=Math.min(this.maxHp,hp+80);this.juice.heal(this.player.hp-hp);}}
     chooseUpgrade(index){
       if(this.mode!=='upgrade'||!this.choices[index])return;
       const id=this.choices[index].id;this.grantUpgrade(id);this.logEvent('upgrade_chosen',{upgrade:id,rank:this.upgrades[id]});
@@ -345,6 +348,17 @@
       }
     }
     unstoppable(e){return !!e.elite||e.kind==='boss'||(e.type==='beast'&&e.phase==='charge');}
+    effectKnockback(e,from){
+      if(e.kind||this.unstoppable(e))return;
+      // Projectiles push along their flight; fields and melee push away from their origin.
+      let dx=from?.dx??0,dy=from?.dy??0;
+      if(Math.hypot(dx,dy)<.001){dx=e.x-(from?.x??this.player.x);dy=e.y-(from?.y??this.player.y);}
+      // Centered strikes still move their target, even if it overlaps the player.
+      if(Math.hypot(dx,dy)<.001){dx=e.x-this.player.x;dy=e.y-this.player.y;}
+      if(Math.hypot(dx,dy)<.001){dx=this.aim.x;dy=this.aim.y;}
+      const d=Math.hypot(dx,dy)||1;
+      for(let i=0;i<4;i++){const x=e.x+dx/d*4,y=e.y+dy/d*4;if(this.blocked(x,y,e.r))break;e.x=x;e.y=y;}
+    }
     knockbackEnemy(e){
       if(e.hp<=0||e.kind||this.unstoppable(e))return;const p=this.player,dx=e.x-p.x,dy=e.y-p.y,d=Math.hypot(dx,dy)||1;
       // Push away from the player in short solid steps; never teleport through a trunk.
@@ -369,8 +383,9 @@
     updateSupplies(){if(this.elapsed<this.supplyAt)return;this.supplyAt=this.elapsed+45;if(this.pickups.filter(p=>['magnet','haste','cleanse'].includes(p.type)&&p.life>0).length>=3)return;
       for(let i=0;i<50;i++){const a=this.rand()*Math.PI*2,r=260+this.rand()*220,x=this.player.x+Math.cos(a)*r,y=this.player.y+Math.sin(a)*r;if(this.blocked(x,y,35)||this.encounters.nests.some(n=>distance(n,{x,y})<90))continue;const type=['magnet','haste','cleanse'][this.supplyIndex++%3];this.drop(type,x,y);this.pickups[this.pickups.length-1].life=90;this.logEvent('supply_spawned',{pickup:type,x,y});break;}}
     earlySpawnRate(){return .75+.25*Math.max(0,Math.min(1,(this.elapsed-120)/120));}
-    enemyDamageBonus(){return Math.max(0,Math.floor((this.elapsed-120)/120));}
-    spawnInterval(){if(this.isExpedition){const fill=this.enemies.filter(e=>e.hp>0).length/this.enemyCap;return Math.max(.08,this.expedition.interval()/this.earlySpawnRate()*(.6+.4*fill));}return this.elapsed<60?.8-this.elapsed*.005:Math.max(.25,.5-(this.elapsed-60)/240);}
+    enemyDamageBonus(){return 10*Math.max(0,Math.floor((this.elapsed-120)/120));}
+    enemyHitDamage(base){return (base*.8+this.enemyDamageBonus())*this.creatures.protection();}
+    spawnInterval(){if(this.isExpedition){if(DEMO&&this.elapsed>=570)return 2.4+(this.elapsed-570)*.12;const fill=this.enemies.filter(e=>e.hp>0).length/this.enemyCap;return Math.max(.08,this.expedition.interval()/this.earlySpawnRate()*(.6+.4*fill));}return this.elapsed<60?.8-this.elapsed*.005:Math.max(.25,.5-(this.elapsed-60)/240);}
     tick(dt){
       if(this.mode!=='playing')return;
       SurvivorWorld.sync(this);
@@ -395,7 +410,7 @@
       const aimLength=Math.hypot(aimX,aimY);if(aimLength>.001)this.aim={x:aimX/aimLength,y:aimY/aimLength};
       p.dir=direction(this.aim.x,this.aim.y);
       if(p.fire<=0){const sprite=this.pooled(this.shotPool,'nature',.5).setFrame('rock');this.shots.push({...this.relics.shot(),x:p.x,y:p.y,dx:this.aim.x,dy:this.aim.y,life:1.2,sprite});p.fire=.52/(1+.2*this.upgrades.cast);}
-      if(this.catActive&&c.attack<=0){const target=this.target(c,115*(1+.2*this.upgrades.sweep),p);if(target){const a=Math.atan2(target.y-c.y,target.x-c.x);const sprite=this.pooled(this.effectPool,'slash',2.5*(1+.2*this.upgrades.sweep));if(this.upgrades.pull)this.burst('fxWhirl',c.x,c.y,2.5*(1+.2*this.upgrades.sweep),.4,0xb5fff0);this.effects.push({x:c.x+Math.cos(a)*35,y:c.y+Math.sin(a)*35,a,life:.26,sprite});for(const e of this.hitTargets()){const ea=Math.atan2(e.y-c.y,e.x-c.x),delta=Math.atan2(Math.sin(ea-a),Math.cos(ea-a));if(distance(e,c)<120*(1+.2*this.upgrades.sweep)&&Math.abs(delta)<Math.min(Math.PI,1.4+.2*this.upgrades.sweep))this.hit(e,2.4+this.upgrades.claws,'cat',c);}this.creatures.elements.catSwipe(c,a,120*(1+.2*this.upgrades.sweep),Math.min(Math.PI,1.4+.2*this.upgrades.sweep));c.attack=.85;}}
+      if(this.catActive&&c.attack<=0){const target=this.target(c,115*(1+.2*this.upgrades.sweep),p);if(target){const a=Math.atan2(target.y-c.y,target.x-c.x);const sprite=this.pooled(this.effectPool,'slash',2.5*(1+.2*this.upgrades.sweep));if(this.upgrades.pull)this.burst('fxWhirl',c.x,c.y,2.5*(1+.2*this.upgrades.sweep),.4,0xb5fff0);this.effects.push({x:c.x+Math.cos(a)*35,y:c.y+Math.sin(a)*35,a,life:.26,sprite});for(const e of this.hitTargets()){const ea=Math.atan2(e.y-c.y,e.x-c.x),delta=Math.atan2(Math.sin(ea-a),Math.cos(ea-a));if(distance(e,c)<120*(1+.2*this.upgrades.sweep)&&Math.abs(delta)<Math.min(Math.PI,1.4+.2*this.upgrades.sweep))this.hit(e,24+10*this.upgrades.claws,'cat',c);}this.creatures.elements.catSwipe(c,a,120*(1+.2*this.upgrades.sweep),Math.min(Math.PI,1.4+.2*this.upgrades.sweep));c.attack=.85;}}
       this.recycleDistantEnemies(dt);
       this.spawnTimer-=dt;if(this.enemies.length>=this.enemyCap)this.spawnCapSeconds+=dt;if(this.spawnTimer<=0&&this.enemies.length<this.enemyCap&&(!this.isExpedition||this.elapsed<DURATION)){this.spawn(this.isExpedition?this.expedition.enemyType():this.elapsed>18&&this.rand()<.27?'beast':'bat');this.spawnTimer=this.spawnInterval();}
       for(const e of this.enemies){if(e.hp<=0)continue;e.flash=Math.max(0,e.flash-dt);const x=p.x-e.x,y=p.y-e.y,d=Math.hypot(x,y)||1;e.clock-=dt;if(e.stun>0){e.stun=Math.max(0,e.stun-dt);continue;}if(SurvivorEnemies.update(this,e,dt*(e.slowUntil>this.elapsed?.5:1)))continue;if(e.type==='owl'){this.encounters.updateShooter(e,dt*(e.slowUntil>this.elapsed?.5:1));continue;}if(this.creatures.enemy(e,dt*(e.slowUntil>this.elapsed?.5:1)))continue;
@@ -403,15 +418,15 @@
         if(e.phase==='windup'){if(e.clock<=0){e.phase='charge';e.clock=.62;}}
         else if(e.phase==='charge'){this.move(e,e.dx*(e.chargeSpeed||280)*dt,e.dy*(e.chargeSpeed||280)*dt);if(e.clock<=0){e.phase='seek';e.clock=2.8;}}
         else this.move(e,x/d*e.speed*dt*(e.slowUntil>this.elapsed?.5:1),y/d*e.speed*dt*(e.slowUntil>this.elapsed?.5:1));
-        if(distance(e,p)<e.r+p.r&&p.inv<=0){if(this.shield){this.expedition.shieldBlocked();this.shield=false;p.inv=.25;this.announce('Shield blocked a hit!');continue;}const amount=((e.contactDamage||(e.type==='beast'?12:7))+this.enemyDamageBonus())*this.creatures.protection();p.hp=Math.max(0,p.hp-amount);this.damageTaken+=amount;this.juice.hurt(amount);this.logEvent('damage_taken',{enemy:SurvivorEnemies.identity(e),amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});p.inv=.25;this.move(p,-x/d*15,-y/d*15);}
+        if(distance(e,p)<e.r+p.r&&p.inv<=0){if(this.shield){this.expedition.shieldBlocked();this.shield=false;p.inv=.25;this.announce('Shield blocked a hit!');continue;}const amount=this.enemyHitDamage(e.contactDamage||(e.type==='beast'?120:70));p.hp=Math.max(0,p.hp-amount);this.damageTaken+=amount;this.juice.hurt(amount);this.logEvent('damage_taken',{enemy:SurvivorEnemies.identity(e),amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});p.inv=.25;this.move(p,-x/d*15,-y/d*15);}
       }
       this.separateEnemies(dt);
       for(const s of [...this.shots]){s.x+=s.dx*380*dt;s.y+=s.dy*380*dt;s.life-=dt;if(this.blocked(s.x,s.y,3,true))s.life=0;
-        if(s.life>0)for(const e of this.hitTargets()){if(e.hp>0&&!s.hits?.has(e)&&distance(e,s)<e.r+6){this.hit(e,s.source==='owl'?this.companionStats().owl.damage*(s.split ? 0.33 : 1):(s.damage||2),s.source||'player',s);if(s.source==='owl'){if(this.upgrades.marks)e.markUntil=this.elapsed+3;s.hits.add(e);this.encounters.splitShot(s);if(s.hits.size>=3){s.life=0;break;}}else{this.relics.impact(s,e);if(s.life<=0)break;}}}}
+        if(s.life>0)for(const e of this.hitTargets()){if(e.hp>0&&!s.hits?.has(e)&&distance(e,s)<e.r+6){this.hit(e,s.source==='owl'?this.companionStats().owl.damage*(s.split ? 0.33 : 1):(s.damage||20),s.source||'player',s);if(s.source==='owl'){if(this.upgrades.marks)e.markUntil=this.elapsed+3;s.hits.add(e);this.encounters.splitShot(s);if(s.hits.size>=1+(this.upgrades.owlPierce||0)){s.life=0;break;}}else{this.relics.impact(s,e);if(s.life<=0)break;}}}}
       for(const fx of this.effects)fx.life-=dt;
       for(const item of this.pickups){if(item.life<=0)continue;item.life-=dt;if(item.type==='xp'&&(item.magnetized||distance(item,p)<100)){const d=distance(item,p)||1;item.x+=(p.x-item.x)/d*Math.min(d,(item.magnetized?900:320)*dt);item.y+=(p.y-item.y)/d*Math.min(d,(item.magnetized?900:320)*dt);}if(distance(item,p)<38){
         if(item.type==='xp'){this.gainXP(1);item.life=0;this.reward('gem',{x:item.x,y:item.y});}
-        if(item.type==='heal'&&(p.hp<this.maxHp||this.relics.has('bloodroot'))){const healed=Math.min(8,this.maxHp-p.hp);p.hp=Math.min(this.maxHp,p.hp+8);this.juice.heal(healed);p.inv=Math.max(p.inv,.25);this.logEvent('healed',{amount:healed,hp:p.hp});this.relics.heal(healed);item.life=0;this.announce('+'+healed+' health');}
+        if(item.type==='heal'&&(p.hp<this.maxHp||this.relics.has('bloodroot'))){const healed=Math.min(80,this.maxHp-p.hp);p.hp=Math.min(this.maxHp,p.hp+80);this.juice.heal(healed);p.inv=Math.max(p.inv,.25);this.logEvent('healed',{amount:healed,hp:p.hp});this.relics.heal(healed);item.life=0;this.announce('+'+healed+' health');}
         if(item.type==='magnet'){for(const xp of this.pickups)if(xp.type==='xp'&&xp.life>0)xp.magnetized=true;item.life=0;this.announce('XP magnet!');this.logEvent('supply_collected',{pickup:'magnet'});}
         if(item.type==='cleanse'){const el=this.creatures.elements;for(const z of [...el.zones])if(z.hostile&&distance(z,p)<300)el.removeZone(z);el.casts=el.casts.filter(c=>!c.hostile||distance(c,p)>=300);this.creatures.strikes=this.creatures.strikes.filter(c=>!c.hostile||distance(c,p)>=300);el.slow=0;this.burst('fxWater',p.x,p.y,8,.6,0xbfffd5);item.life=0;this.announce('Nearby hazards cleared!');this.logEvent('supply_collected',{pickup:'cleanse'});}
         if(item.type==='haste'){this.logEvent('supply_collected',{pickup:'haste'});this.haste=12;item.life=0;this.announce('Frenzy! Party attacks 50% faster for 12s.');}
@@ -419,7 +434,7 @@
       }}
       const retain=(items,condition)=>items.filter(e=>{if(condition(e))return true;e.sprite.setVisible(false).setActive(false);return false;});
       this.enemies=retain(this.enemies,e=>e.hp>0);if(this.enemyCap>150&&!this.enemies.some(e=>e.guardianSwarm))this.enemyCap=150;this.shots=retain(this.shots,e=>e.life>0);this.effects=retain(this.effects,e=>e.life>0);this.pickups=retain(this.pickups,e=>e.life>0);
-      if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if((this.isExpedition?this.encounters.finalDefeated:this.elapsed>=DURATION&&this.encounters.boss?.hp<=0)){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
+      if(p.hp<=0){this.mode='lost';this.joy=null;this.finishRun('lost');}else if(this.isExpedition?this.encounters.finalDefeated:this.elapsed>=DURATION&&this.encounters.boss?.hp<=0){this.mode='won';this.joy=null;this.finishRun('won');}else this.checkLevel();
       if(!this.run?.finished)this.sampleRun();
     }
     update(time,delta){
@@ -433,7 +448,7 @@
       this.draw();
     }
     draw(){if(!this.ui)return;this.syncMusic();SurvivorWorld.sync(this);this.juice.observe();this.packs?.drawWorld();const p=this.player,c=this.cat,frame=Math.floor(this.elapsed*8)%4;
-      this.playerSprite.setPosition(p.x,p.y).setFrame((this.moving?frame:0)*4+p.dir).setDepth(p.y+20).setAlpha(p.inv>0&&Math.floor(p.inv*16)%2?.45:1);
+      SurvivorPlayer.draw(this);
       this.catSprite.setVisible(this.catActive||!!this.expedition.catCapture).setPosition(c.x,c.y).setFrame(Math.floor(this.elapsed*6)%2).setFlipX(c.dir===2).setDepth(c.y+20);
       this.playerShadow.setPosition(p.x,p.y+15).setDepth(p.y-1);this.catShadow.setVisible(this.catActive).setPosition(c.x,c.y+13).setDepth(c.y-1);
       this.fx.clear();
@@ -459,7 +474,7 @@
       this.ui.endGroup();
       this.ui.end();this.juice.update();this.joyGraphic.clear();if(this.joy){const j=this.joy,len=Math.max(48,Math.hypot(j.dx,j.dy));this.joyGraphic.fillStyle(0x30221a,.3).fillCircle(j.x,j.y,48).lineStyle(2,0xfff0b0,.6).strokeCircle(j.x,j.y,48).fillStyle(0xfff0b0,.6).fillCircle(j.x+j.dx/len*35,j.y+j.dy/len*35,15);}
     }
-    snapshot(){return {enemyDamageBonus:this.enemyDamageBonus(),field:this.field,greens:this.greens?.summary()||null,enemyCap:this.enemyCap,enemyCount:this.enemies.filter(e=>e.hp>0).length,dash:{style:this.creatures.elements.dashStyle,cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; x right, y down; coordinates continue across repeating 4500-unit tiles',world:{width:WORLD,height:WORLD,looping:true},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0,invulnerabilitySeconds:this.player.inv,aim:{...this.aim}},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles.map(({x,y,r})=>({x,y,r})),enemies:this.enemies.slice(0,40).map(e=>({type:e.type,appearance:SurvivorEnemies.identity(e),summonedBy:e.summonedBy||null,aimLocked:!!e.aimLocked,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:e.contactDamage||(e.type==='beast'?12:7)})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,appearance:SurvivorEnemies.identity(e),summonedBy:e.summonedBy||null,aimLocked:!!e.aimLocked,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows to move; mouse to aim; touch drag to move and aim; Space or quick directional swipe to dash; automatic fire; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
+    snapshot(){return {demo:DEMO,enemyDamageBonus:this.enemyDamageBonus(),field:this.field,greens:this.greens?.summary()||null,enemyCap:this.enemyCap,enemyCount:this.enemies.filter(e=>e.hp>0).length,dash:{style:this.creatures.elements.dashStyle,cooldown:this.expansion.cooldown,active:this.expansion.dashTime>0},creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),unlockedStarters:this.unlocked,companionStats:this.companionStats(),encounters:this.encounters.snapshot(),mode:this.mode,coordinates:'World pixels; x right, y down; coordinates continue across repeating 4500-unit tiles',world:{width:WORLD,height:WORLD,looping:true},elapsed:+this.elapsed.toFixed(2),duration:DURATION,player:{x:Math.round(this.player.x),y:Math.round(this.player.y),hp:this.player.hp,maxHp:this.maxHp,invulnerable:this.player.inv>0,invulnerabilitySeconds:this.player.inv,aim:{...this.aim}},cat:{x:Math.round(this.cat.x),y:Math.round(this.cat.y),attackCooldown:+this.cat.attack.toFixed(2),damage:this.catDamage,kills:this.catKills},owl:this.owl?{x:Math.round(this.owl.x),y:Math.round(this.owl.y),state:this.owl.state,hp:this.owl.hp,captureSeconds:+this.owl.progress.toFixed(2),damage:this.owlDamage}:null,buffs:{partyDamageMultiplier:1+.08*this.upgrades.partyDamage,partyAttackSpeedBonus:.06*this.upgrades.partySpeed,frog:this.frogStats(),chorusSeconds:this.chorusTime,attackRate:this.attackRate(),hasteSeconds:+this.haste.toFixed(2),shield:this.shield},notice:this.noticeTime>0?this.notice:null,kills:this.kills,playerDamage:this.playerDamage,obstacles:this.obstacles.map(({x,y,r})=>({x,y,r})),enemies:this.enemies.slice(0,40).map(e=>({type:e.type,appearance:SurvivorEnemies.identity(e),summonedBy:e.summonedBy||null,aimLocked:!!e.aimLocked,x:Math.round(e.x),y:Math.round(e.y),hp:e.hp,maxHp:e.maxHp,speed:e.speed,phase:e.phase,strong:!!e.strong,elite:!!e.elite,shrineTier:e.shrineTier||null,contactDamage:.8*(e.contactDamage||(e.type==='beast'?120:70))})),spawned:this.spawned,peakEnemies:this.peakEnemies,level:this.level,xp:this.xp,xpNeeded:this.xpNeeded(),xpGainMultiplier:this.xpGainMultiplier(),upgrades:this.upgrades,choices:this.choices,strongerEnemies:this.stronger,projectiles:this.shots.length,pickups:this.pickups.map(e=>({type:e.type,appearance:SurvivorEnemies.identity(e),summonedBy:e.summonedBy||null,aimLocked:!!e.aimLocked,x:Math.round(e.x),y:Math.round(e.y),secondsLeft:+e.life.toFixed(1)})),controls:'WASD/arrows to move; mouse to aim; touch drag to move and aim; Space or quick directional swipe to dash; automatic fire; P/Escape pause; R restart; F fullscreen; Enter start/resume'};}
   }
   const portrait=window.innerWidth/window.innerHeight<.85;
   new Phaser.Game({type:Phaser.WEBGL,parent:'game',width:portrait?540:1440,height:960,backgroundColor:'#5c9855',pixelArt:true,roundPixels:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:WoodlandTrial,audio:{disableWebAudio:true}});

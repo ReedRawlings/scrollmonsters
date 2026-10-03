@@ -6,8 +6,8 @@
       if(!scene.textures.exists('hostileOrb')){const g=scene.make.graphics({x:0,y:0,add:false});g.fillStyle(0xff792f).fillCircle(8,8,6).lineStyle(2,0xffecc0).strokeCircle(8,8,6);g.generateTexture('hostileOrb',16,16);g.destroy();}
       this.s=scene;this.chosen=null;this.stageChoices={};this.beast=null;this.beastDamage=0;this.boss=null;this.bossAppeared=false;this.finalAppeared=false;this.finalDefeated=false;this.guardianSwarmStarted=false;this.bossRestUntil=0;this.bullets=[];this.bulletPool=[];this.pulses=[];this.shotsFired=0;this.nestsActive=false;this.trails=[];this.nestSprites=[];
       const choices=scene.nestDeck.filter(t=>t!==scene.starter),first=choices.slice(0,2),elemental=choices.find(t=>['salamander','spider','storm'].includes(t));
-      if(!scene.nestDeckOverride&&elemental&&!first.some(t=>['salamander','spider','storm'].includes(t)))first[1]=elemental;
-      const placed=[];this.nests=(scene.isExpedition?first:['owl','beast']).map((type,i)=>{const spot=this.denPosition(placed);placed.push(spot);return {kind:'nest',type,stage:0,activeAt:30,...spot,r:35,hp:50,maxHp:50,clock:1+i,spawnCount:0,destroyed:false};});
+      if(!scene.isDemo&&!scene.nestDeckOverride&&elemental&&!first.some(t=>['salamander','spider','storm'].includes(t)))first[1]=elemental;
+      const placed=[];this.nests=(scene.isExpedition?first:['owl','beast']).map((type,i)=>{const spot=this.denPosition(placed);placed.push(spot);return {kind:'nest',type,stage:0,activeAt:scene.isDemo?60:30,...spot,r:35,hp:500,maxHp:500,clock:1+i,spawnCount:0,destroyed:false};});
       this.beastSprite=scene.add.sprite(0,0,'beast').setScale(3.5).setVisible(false);
       this.bossSprite=scene.add.sprite(0,0,'guardian').setScale(2.2).setVisible(false);
     }
@@ -17,28 +17,28 @@
       for(let y=140;y<s.worldSize-140;y+=120)for(let x=140;x<s.worldSize-140;x+=120)if(valid({x,y}))return SurvivorWorld.near(s,{x,y});if(required)throw new Error('No clear den location');return null;
     }
     destroy(){for(const n of this.nestSprites){n.base.destroy();n.token.destroy();}for(const b of this.bulletPool)b.destroy();this.beastSprite.destroy();this.bossSprite.destroy();}
-    targets(){return [...this.nests.filter(n=>this.nestsActive&&this.s.elapsed>=(n.activeAt||30)&&!n.destroyed),...(this.boss?.hp>0?[this.boss]:[])];}
+    targets(){return [...this.nests.filter(n=>this.nestsActive&&this.s.elapsed>=n.activeAt&&!n.destroyed),...(this.boss?.hp>0?[this.boss]:[])];}
     hitSpecial(e){
       const s=this.s;
-      if(e.kind==='nest'){if(!this.nestsActive||s.elapsed<(e.activeAt||30)){e.hp=e.maxHp;return true;}
+      if(e.kind==='nest'){if(!this.nestsActive||s.elapsed<e.activeAt){e.hp=e.maxHp;return true;}
         if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);const stage=e.stage||0,partyFull=s.isExpedition&&s.expedition.party().length>=3,eligible=!s.expedition.has(e.type)&&(partyFull||(!this.stageChoices[stage]&&Object.keys(this.stageChoices).length<(s.isExpedition?7:1)));s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
           if(eligible){s.expedition.release(e.type,e.x,e.y,false,stage);s.announce(e.type.toUpperCase()+' freed! Hold its ring to choose.');}
           else s.announce('Nest cleared. This recruitment choice is locked.');
           s.saveRun();
         }return true;
       }
-      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':'Guardian defeated. The expedition continues.');if(!e.final&&s.isExpedition)this.guardianSwarm();s.saveRun();}return true;}return false;
+      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final||s.isDemo)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':s.isDemo?'Guardian defeated!':'Guardian defeated. The expedition continues.');if(!e.final&&!s.isDemo&&s.isExpedition)this.guardianSwarm();s.saveRun();}return true;}return false;
     }
     guardianSwarm(){const s=this.s,count=64;if(this.guardianSwarmStarted)return;this.guardianSwarmStarted=true;s.enemyCap+=count;const view=s.spawnView(),halfW=(view.right-view.left)/2+90,halfH=(view.bottom-view.top)/2+90,p=s.player;let spawned=0;
       for(let i=0;i<count;i++){const a=Math.PI*2*i/count,dx=Math.cos(a),dy=Math.sin(a),edge=Math.min(halfW/Math.max(.001,Math.abs(dx)),halfH/Math.max(.001,Math.abs(dy))),d=edge+(i%4)*24,wrap=n=>((n%s.worldSize)+s.worldSize)%s.worldSize,x=wrap(p.x+dx*d),y=wrap(p.y+dy*d),e=s.spawn(s.expedition.enemyType(),x,y);if(e){e.guardianSwarm=true;spawned++;}}
       s.spawnTimer=0;s.logEvent('guardian_swarm_appeared',{count:spawned});s.headline('A massive horde closes in from every direction!');}
-    damage(amount,source){const s=this.s,p=s.player;if(p.inv>0||p.hp<=0)return;if(s.shield){s.expedition.shieldBlocked();s.shield=false;p.inv=.25;return;}amount=(amount+s.enemyDamageBonus())*s.creatures.protection();p.hp=Math.max(0,p.hp-amount);p.inv=.25;s.juice.hurt(amount);s.damageTaken+=amount;s.logEvent('damage_taken',{enemy:source,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});}
+    damage(amount,source){const s=this.s,p=s.player;if(p.inv>0||p.hp<=0)return;if(s.shield){s.expedition.shieldBlocked();s.shield=false;p.inv=.25;return;}amount=s.enemyHitDamage(amount);p.hp=Math.max(0,p.hp-amount);p.inv=.25;s.juice.hurt(amount);s.damageTaken+=amount;s.logEvent('damage_taken',{enemy:source,amount,hp:p.hp,x:Math.round(p.x),y:Math.round(p.y)});}
     shoot(from,angle,speed=150,source='mage_orb'){
       this.shotsFired++;const sprite=this.s.pooled(this.bulletPool,source==='hunter_arrow'?'hunterArrow':source==='mage_orb'?'mageOrb':source==='owl_feather'?'feather':'guardianFire',source==='mage_orb'?1.5:source==='owl_feather'?1.6:1.5).setTint(source==='owl_feather'?0xff8877:0xffc05c);
       this.bullets.push({x:from.x,y:from.y,dx:Math.cos(angle),dy:Math.sin(angle),speed,life:5,source,sprite});
     }
     updateNest(n,dt){
-      if(!this.nestsActive||this.s.elapsed<(n.activeAt||30)||n.destroyed)return;const s=this.s;n.clock-=dt*(s.isExpedition&&this.bossPressure()?.15:1);
+      if(!this.nestsActive||this.s.elapsed<n.activeAt||n.destroyed||(this.s.isDemo&&this.s.elapsed>=600))return;const s=this.s;n.clock-=dt*(s.isExpedition&&this.bossPressure()?.15:1);
       const own=s.enemies.filter(e=>e.nest===n.type&&e.hp>0).length;
       if(n.clock<=0&&own<6&&s.enemies.length<s.enemyCap){
         // Keep defenders out of tree trunks and stagger arrivals around the nest.
@@ -55,27 +55,27 @@
         else if(d<150)s.move(e,(e.x-p.x)/d*35*dt,(e.y-p.y)/d*35*dt,false);
         if(e.clock<=0&&d<520){e.phase='shoot';e.aim=Math.atan2(p.y-e.y,p.x-e.x);e.clock=.75;}
       }
-      if(d<25)this.damage(7,'mage_contact');
+      if(d<25)this.damage(70,'mage_contact');
     }
-    bossPressure(){const s=this.s;return !!(this.boss?.hp>0)||s.elapsed<this.bossRestUntil||(s.isExpedition&&((s.elapsed>=570&&!this.bossAppeared)||s.elapsed>=1140));}
+    bossPressure(){const s=this.s;return !!(this.boss?.hp>0)||s.elapsed<this.bossRestUntil||(s.isExpedition&&((s.elapsed>=570&&!this.bossAppeared)||(!s.isDemo&&s.elapsed>=1140)));}
     spawnBoss(final=false){
       const s=this.s,p=s.player;this.bossAppeared=true;if(final)this.finalAppeared=true;
       let x=p.x+190,y=p.y;for(let i=0;i<24;i++){const a=i*Math.PI/12;x=p.x+Math.cos(a)*190;y=p.y+Math.sin(a)*190;if(!s.blocked(x,y,75))break;}
-      this.boss={kind:'boss',x,y,r:35,final,hp:s.isExpedition?(final?4000:1200):200,maxHp:s.isExpedition?(final?4000:1200):200,phase:'seek',clock:1,volleys:0,aim:0};
+      this.boss={kind:'boss',x,y,r:35,final,hp:s.isExpedition?(final?40000:12000):2000,maxHp:s.isExpedition?(final?40000:12000):2000,phase:'seek',clock:1,volleys:0,aim:0};
       if(s.isExpedition)s.spawnTimer=Math.max(s.spawnTimer,2.4);s.logEvent('boss_appeared',{final});s.headline(final?'Ancient Guardian approaches!':'Guardian approaches!');
     }
     updateBoss(dt){
-      const s=this.s;if(!this.bossAppeared&&s.elapsed>=(s.isExpedition?570:90))this.spawnBoss();if(s.isExpedition&&s.elapsed>=1140&&!this.finalAppeared){if(this.boss?.hp>0)s.logEvent('miniboss_retreated');s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.spawnBoss(true);}const b=this.boss;if(!b||b.hp<=0)return;
+      const s=this.s;if(!this.bossAppeared&&s.elapsed>=(s.isExpedition?570:90))this.spawnBoss();if(s.isExpedition&&!s.isDemo&&s.elapsed>=1140&&!this.finalAppeared){if(this.boss?.hp>0)s.logEvent('miniboss_retreated');s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.spawnBoss(true);}const b=this.boss;if(!b||b.hp<=0)return;
       const d=dist(b,s.player)||1;b.clock-=dt*(b.final?2.3:2);
       if(b.phase==='seek'){
         if(d>230)s.move(b,(s.player.x-b.x)/d*85*dt,(s.player.y-b.y)/d*85*dt,true);
-        if(b.clock<=0){b.volleys++;b.phase=b.volleys%4===0?'eruption':b.volleys%3===0?'ring':'aimed';if(b.phase==='eruption'&&s.creatures.elements.hostileCount()>1)b.phase='aimed';b.aim=Math.atan2(s.player.y-b.y,s.player.x-b.x);b.clock=b.phase==='ring'?.9:.65;s.burst('guardianBlast',b.x,b.y,2,.45);if(b.phase==='eruption'){for(const off of [-90,0,90])s.creatures.strikes.push({x:s.player.x+off,y:s.player.y,r:52,time:.575,total:.575,hostile:true,source:'guardian_eruption',damage:12});}}
+        if(b.clock<=0){b.volleys++;b.phase=b.volleys%4===0?'eruption':b.volleys%3===0?'ring':'aimed';if(b.phase==='eruption'&&s.creatures.elements.hostileCount()>1)b.phase='aimed';b.aim=Math.atan2(s.player.y-b.y,s.player.x-b.x);b.clock=b.phase==='ring'?.9:.65;s.burst('guardianBlast',b.x,b.y,2,.45);if(b.phase==='eruption'){for(const off of [-90,0,90])s.creatures.strikes.push({x:s.player.x+off,y:s.player.y,r:52,time:.575,total:.575,hostile:true,source:'guardian_eruption',damage:120});}}
       }else if(b.clock<=0){
         if(b.phase==='ring'){const count=b.final?20:16;for(let i=0;i<count;i++)this.shoot(b,i*Math.PI*2/count+b.volleys*.12,b.final?185:165,'boss_ring');}
         else if(b.phase==='aimed')for(const offset of (b.final?[-.24,-.12,0,.12,.24]:[-.12,0,.12]))this.shoot(b,b.aim+offset,245,'boss_aimed');
         s.logEvent('boss_volley',{pattern:b.phase});s.burst('guardianBlast',b.x,b.y,2.5,.4);b.phase='seek';b.clock=1.15;
       }
-      if(d<b.r+s.player.r)this.damage(12,'boss_contact');
+      if(d<b.r+s.player.r)this.damage(120,'boss_contact');
     }
     planBeastCharge(){
       const b=this.beast,s=this.s,maxLength=430*.55;
@@ -118,9 +118,9 @@
       }
     }
     update(dt){
-      if(!this.nestsActive&&this.s.elapsed>=30){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A Den Appears');}
+      if(!this.nestsActive&&this.s.elapsed>=(this.s.isDemo?60:30)){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A Den Appears');}
       for(const n of this.nests)this.updateNest(n,dt);this.updateBeast(dt);if(this.s.mode!=='playing')return;this.updateBoss(dt);
-      for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='hunter_arrow'?10:['owl_feather','mage_orb'].includes(b.source)?6:8,b.source);b.life=0;}this.s.relics.nearShot(b);}
+      for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='hunter_arrow'?100:['owl_feather','mage_orb'].includes(b.source)?60:80,b.source);b.life=0;}this.s.relics.nearShot(b);}
       this.bullets=this.bullets.filter(b=>{if(b.life>0)return true;b.sprite.setVisible(false);return false;});
       for(const t of this.trails)t.life-=dt;this.trails=this.trails.filter(t=>t.life>0);
       for(const p of this.pulses)p.life-=dt;this.pulses=this.pulses.filter(p=>p.life>0);
@@ -133,7 +133,7 @@
       const s=this.s,g=s.fx;
       for(const [i,n] of this.nests.entries()){
         if(!this.nestSprites[i])this.nestSprites[i]={base:s.greens?s.add.sprite(n.x,n.y+32,'greensDen').setOrigin(.5,1).setScale(4):s.add.sprite(n.x,n.y,'nature',n.type==='bear'?'rock':'nestStump').setScale(3),token:s.add.sprite(n.x,n.y-12,n.type==='owl'?'feather':n.type==='beast'?'nestBone':n.type==='frog'?'frog':n.type).setScale(n.type==='owl'||n.type==='beast'?1.6:1.2)};
-        const art=this.nestSprites[i],visible=this.nestsActive&&s.elapsed>=(n.activeAt||30);art.base.setVisible(visible).setDepth(n.y-1).setTint(n.destroyed?0x77716a:0xffffff);art.token.setVisible(visible&&!n.destroyed).setDepth(n.y+1);if(!visible)continue;if(['mouse','mole','bear'].includes(n.type))g.fillStyle(0x30251d,n.destroyed?.35:.85).fillEllipse(n.x,n.y+15,n.type==='bear'?35:25,14);
+        const art=this.nestSprites[i],visible=this.nestsActive&&s.elapsed>=n.activeAt;art.base.setVisible(visible).setDepth(n.y-1).setTint(n.destroyed?0x77716a:0xffffff);art.token.setVisible(visible&&!n.destroyed).setDepth(n.y+1);if(!visible)continue;if(['mouse','mole','bear'].includes(n.type))g.fillStyle(0x30251d,n.destroyed?.35:.85).fillEllipse(n.x,n.y+15,n.type==='bear'?35:25,14);
         if(!n.destroyed){const bar=s.greens?n.y-104:n.y-49;g.fillStyle(0x30221a).fillRect(n.x-35,bar,70,6);g.fillStyle(0xffd36b).fillRect(n.x-35,bar,70*Math.max(0,n.hp)/n.maxHp,6);}
       }
       for(const e of s.enemies)if(e.type==='owl'&&e.phase==='shoot')for(const offset of(e.variant==='mageBlack'?[-.22,0,.22]:[0]))g.lineStyle(2,0xff8070,.8).lineBetween(e.x,e.y,e.x+Math.cos(e.aim+offset)*200,e.y+Math.sin(e.aim+offset)*200);

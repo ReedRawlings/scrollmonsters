@@ -15,7 +15,7 @@ const {gameURL,launchOptions}=require('./survivor-test-utils.cjs');
    const prepare=(type,positions=[])=>{
     s.starter=type;s.start();s.obstacles=[];s.spawnTimer=999;s.enemies=[];s.player.x=960;s.player.y=960;s.expansion.facing={x:1,y:0};s.shield=false;
     const enemies=positions.map(x=>{const e=s.spawn('bat',x,960);e.hp=e.maxHp=100;return e;});
-    s.expansion.dash();s.expansion.move(.18,1,0);
+    s.expansion.dash();s.expansion.move(.35,1,0);
     return enemies;
    };
    let enemies=prepare('cat',[1110]);out.cat={style:s.creatures.elements.dashStyle,hp:enemies[0].hp,inv:s.player.inv};
@@ -39,7 +39,7 @@ const {gameURL,launchOptions}=require('./survivor-test-utils.cjs');
   assert(results.bear.hp<100&&results.bear.stun>=.5);
   assert(results.salamander.zones>0&&results.spider.zones>0&&results.storm.links>0);
   assert.equal(results.recruit,'bear');
-  await page.evaluate(()=>{const s=__survivorTest.scene;s.starter='bear';s.start();s.obstacles=[];s.player.x=960;s.player.y=960;s.expansion.facing={x:1,y:0};s.spawn('bat',1100,960);s.expansion.dash();s.expansion.move(.18,1,0);s.draw();});
+  await page.evaluate(()=>{const s=__survivorTest.scene;s.starter='bear';s.start();s.obstacles=[];s.player.x=960;s.player.y=960;s.expansion.facing={x:1,y:0};s.spawn('bat',1100,960);s.expansion.dash();s.expansion.move(.35,1,0);s.draw();});
   fs.mkdirSync('output/dash-abilities',{recursive:true});await page.screenshot({path:'output/dash-abilities/bear.png'});
   assert.deepEqual(errors,[]);
   console.log('PASS',results);

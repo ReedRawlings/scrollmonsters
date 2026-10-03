@@ -29,6 +29,16 @@ def palette(name="Toasted40"):
     return [abgr("#" + l.strip().lstrip("#")) for l in open(path) if l.strip()]
 
 
+def write_meta(name, W, H, FR, fps, loop, anchor, pal, notes="", extra_meta=None):
+    """Sheet JSON next to the PNG: the output contract the game loads."""
+    meta = {"image": name + ".png", "frame_width": W, "frame_height": H, "frame_count": FR,
+            "layout": "horizontal strip, no spacing", "fps": fps, "duration_s": round(FR / fps, 3), "loop": loop,
+            "anchor": {"x": anchor[0], "y": anchor[1], "from": "top-left of each frame"}, "palette": pal,
+            "notes": notes, "smoothing": "none (nearest neighbor)"}
+    meta.update(extra_meta or {})
+    json.dump(meta, open(SHEETS + name + ".json", "w"), indent=2)
+
+
 def key(f, v):
     return [[0, f], v, [0, 1], [0, 0], 0, 0, True, 0, 16777215]
 
@@ -130,11 +140,6 @@ class Project:
         bad = [(n["name"], k) for n in j2["nodes"] for k, i in enumerate(n["inputs"])
                if isinstance(i, dict) and "from_node" in i and i["from_node"] not in ids]
         print(f"{name:16s} {s.W}x{s.H} {s.FR}f | {len(ids)} nodes | dangling links: {bad}")
-        ax, ay = anchor or (s.W // 2, s.H // 2)
-        meta = {"image": name + ".png", "frame_width": s.W, "frame_height": s.H, "frame_count": s.FR,
-                "layout": "horizontal strip, no spacing", "fps": s.fps, "duration_s": round(s.FR / s.fps, 3), "loop": loop,
-                "anchor": {"x": ax, "y": ay, "from": "top-left of each frame"}, "palette": "Toasted40 + white" if s.pal == "Toasted40W" else s.pal,
-                "notes": notes, "smoothing": "none (nearest neighbor)"}
-        meta.update(extra_meta or {})
-        json.dump(meta, open(SHEETS + name + ".json", "w"), indent=2)
+        write_meta(name, s.W, s.H, s.FR, s.fps, loop, anchor or (s.W // 2, s.H // 2),
+                   "Toasted40 + white" if s.pal == "Toasted40W" else s.pal, notes, extra_meta)
         return out

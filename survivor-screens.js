@@ -2,10 +2,16 @@
   'use strict';
   const D = () => ScrollUI.DARK;
   const SEEN_KEY = 'scrollmonsters-seen-starters-v1', SEEN_EVO_KEY = 'scrollmonsters-seen-evolutions-v1';
-  const pretty = id => id==='storm'?'Storm Lizard':id[0].toUpperCase()+id.slice(1);
+  const pretty = id => SurvivorEvolution.recipes.find(r=>r.id===id)?.name || (id==='storm'?'Storm Lizard':id[0].toUpperCase()+id.slice(1));
   // Card-length summaries of each evolution: [role bonus, ability].
-  const EVO_SHORT = {octopus:['+15% vs slowed foes','Tentacle sweeps spread ink.'],reptile:['+6% party damage','Fire charge and heavy bite.'],
-    tengu:['+6% attack speed','Feathers chain lightning.'],axolotl:['10% less damage taken','Shield breaks spread ink.']};
+  const EVO_SHORT = {
+    octopus:['+15% vs slowed foes','Tentacle sweeps spread ink.'],reptile:['+6% party damage','Fire charge and heavy bite.'],
+    tengu:['+6% attack speed','Feathers chain lightning.'],axolotl:['10% less damage taken','Shield breaks spread ink.'],
+    cyclope:['+10% vs webbed foes','Binding silk and a heavy cleave.'],heartbloom:['8% less damage taken','Guardians block shots and strike.'],
+    spirit:['+6% attack speed','Homing wisps pierce enemy groups.'],kappa:['8% less damage taken','Burning lightning and storm rings.'],
+    monkeyboxer:['+6% party damage','Charge into a ground slam.'],panda:['10% less damage taken','Tremors grow bamboo spike rows.'],
+    mushroom:['+10% vs infected foes','Eruptions leave spore patches.'],trapdoor:['+10% vs webbed foes','Eruptions leave pulling webs.']
+  };
   const SILHOUETTE = 0x2a2238;
   class SurvivorScreens {
     constructor(s){this.s=s;this.layout={faces:[]};}
@@ -26,9 +32,9 @@
     button(label,x,y,w,h,action,id){return this.s.ui.card(label,x,y,w,h,action,{align:'center',id});}
     dim(w,h){const ui=this.s.ui;ui.rect(0,0,w,h,'#0b0710b0');ui.hitArea(0,0,w,h,()=>{},'modal-blocker');}
     title(w,h){
-      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,sel=s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
+      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=s.isDemo?SurvivorExpansion.roster.filter(([id])=>s.demoRoster.includes(id)):SurvivorExpansion.roster,sel=s.isDemo?(s.demoPreview||s.starter):s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
       if(s.bestiaryOpen)return this.bestiary(w,h);
-      this.dim(w,h);this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
+      this.dim(w,h);if(!s.isDemo||s.unlocked.includes(sel))this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
       // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
       const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2)+32;/* +32: the frame's content spans y 10..246, so this centres it */if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
       const L=portrait
@@ -39,17 +45,17 @@
       // Logo: slams in at 350ms (1.6x to 1x over 200ms), then bobs 2px.
       const lk=tt<350?0:Math.min(1,(tt-350)/200);fx.logo=red?(tt<350?0:1):tt<350?0:1.6-.6*(1-Math.pow(1-lk,3));fx.logoAlpha=red?lk:1;fx.bob=red||tt<550?0:Math.round(2*Math.sin((tt-550)/600*Math.PI));
       if(fx.logo>0){const [bx0,by0]=L.banner;ui.beginGroup('titlelogo',{x:bx0*(1-fx.logo),y:(by0+16)*(1-fx.logo)+fx.bob,scale:fx.logo}).setAlpha(fx.logoAlpha);ui.banner('SCROLL MONSTERS',bx0,by0);ui.endGroup();}
-      // Hero flip (prototype menu): squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
+      // Squash the old face for 80ms, then open the new one to 1.1x with an 8px lift over 220ms.
       const [hx,hy]=L.hero,t=s.starterAt==null?Infinity:now-s.starterAt;ui.panel('dk_slot',hx,hy,96,96,5,2);
       const old=!red&&t<80,k=red||t>=300?1:old?1-t/80:(t-80)/220,sx=red||t>=300?1:old?k:k<.5?2.2*k:1.1-.2*(k-.5),lift=old||red||t>=300?0:8*Math.sin(Math.PI*k),key='face_'+(old?s.starterFrom:sel);
-      const face=ui.image(key,hx+48,hy+48-lift,Math.max(1,76*sx),76,{center:true});this.layout.hero={scaleX:Math.round(sx*1000)/1000,key};
+      const face=ui.image(key,hx+48,hy+48-lift,Math.max(1,76*sx),76,{center:true});if(s.isDemo&&!s.unlocked.includes(sel))face?.setTint(SILHOUETTE);this.layout.hero={scaleX:Math.round(sx*1000)/1000,key};
       if(!red&&t>=80&&t<400&&this.sparkAt!==s.starterAt){this.sparkAt=s.starterAt;for(let i=0;i<8;i++){const a=i*Math.PI/4+j.rand()*.5,r=30+j.rand()*24;j.play('Reward_Trail',ox+hx+48+Math.cos(a)*r,oy+hy+48+Math.sin(a)*r,{ui:true,scale:1});}}
-      const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
+      const step=d=>{const ids=roster.map(([id])=>id),n=ids.length;let i=ids.indexOf(sel);for(let c=0;c<n;c++){i=(i+d+n)%n;if(s.isDemo||s.unlocked.includes(ids[i]))return s.chooseStarter(ids[i]);}};
       ui.pill('<',hx-41,hy+34,30,28,()=>step(-1),{id:'prev'});ui.pill('>',hx+107,hy+34,30,28,()=>step(1),{id:'next'});
       // Name and description slide up as they fade in; a locked tap shows how to unlock instead.
-      const lock=s.lockedTap&&now-s.lockedTap.at<1500?s.lockedTap:null,info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
-      ui.darkText(lock?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
-      ui.darkText(lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
+      const lock=s.lockedTap&&now-s.lockedTap.at<1500?s.lockedTap:null,hidden=s.isDemo&&!s.unlocked.includes(sel),info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
+      ui.darkText(lock||hidden?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
+      ui.darkText(hidden?'Find this monster by breaking a den.':lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
       const pos=i=>({x:L.grid[0]+(i%6)*38,y:L.grid[1]+Math.floor(i/6)*46}),ids=roster.map(([id])=>id);
       roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
         if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
@@ -69,27 +75,27 @@
       ui.pill('Bestiary',best.x,best.y,best.w,best.h,()=>s.openBestiary(),{id:'bestiary'});this.layout.bestiaryButton=[best.x+ox,best.y+oy,best.w,best.h];
       const fresh=this.unseenEvolutions().length;this.layout.bestiaryNew=fresh;if(fresh)ui.darkText('NEW',best.x+best.w-2,best.y-3,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));
       const other=s.field==='desert'?'woods':'desert';
-      ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
+      if(!s.isDemo)ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
       if(!portrait)ui.endGroup();
       // Wake: fade up from black over the first 350ms.
       fx.wake=tt<350?1-tt/350:0;if(fx.wake>0)ui.rect(0,0,W,H,'#000000'+Math.round(fx.wake*255).toString(16).padStart(2,'0'));
     }
     // Starters the player has already picked at least once; a first visit counts every current unlock as seen.
-    seenSet(){if(this.seen)return this.seen;let list=null;try{list=JSON.parse(localStorage.getItem(SEEN_KEY)||'null');}catch{}
-      if(!Array.isArray(list)){list=[...this.s.unlocked];try{localStorage.setItem(SEEN_KEY,JSON.stringify(list));}catch{}}return this.seen=new Set(list);}
-    markSeen(id){const set=this.seenSet();if(!id||set.has(id))return;set.add(id);try{localStorage.setItem(SEEN_KEY,JSON.stringify([...set]));}catch{}}
+    seenSet(){if(this.seen)return this.seen;const key=this.s.isDemo?'scrollmonsters-demo-seen-starters-v1':SEEN_KEY;let list=null;try{list=JSON.parse(localStorage.getItem(key)||'null');}catch{}
+      if(!Array.isArray(list)){list=[...this.s.unlocked];try{localStorage.setItem(key,JSON.stringify(list));}catch{}}return this.seen=new Set(list);}
+    markSeen(id){const set=this.seenSet();if(!id||set.has(id))return;set.add(id);try{localStorage.setItem(this.s.isDemo?'scrollmonsters-demo-seen-starters-v1':SEEN_KEY,JSON.stringify([...set]));}catch{}}
     // Evolutions viewed in the bestiary. Unlike starters, a first visit marks nothing seen: every discovery starts out NEW.
-    seenEvos(){if(this.seenEvo)return this.seenEvo;let list=[];try{list=JSON.parse(localStorage.getItem(SEEN_EVO_KEY)||'[]');}catch{}return this.seenEvo=new Set(Array.isArray(list)?list:[]);}
-    markEvoSeen(id){const set=this.seenEvos();if(set.has(id))return;set.add(id);try{localStorage.setItem(SEEN_EVO_KEY,JSON.stringify([...set]));}catch{}}
-    unseenEvolutions(){const seen=this.seenEvos();return this.s.creatures.evolution.discovered.filter(id=>!seen.has(id));}
+    seenEvos(){if(this.seenEvo)return this.seenEvo;let list=[];try{list=JSON.parse(localStorage.getItem(this.s.isDemo?'scrollmonsters-demo-seen-evolutions-v1':SEEN_EVO_KEY)||'[]');}catch{}return this.seenEvo=new Set(Array.isArray(list)?list:[]);}
+    markEvoSeen(id){const set=this.seenEvos();if(set.has(id))return;set.add(id);try{localStorage.setItem(this.s.isDemo?'scrollmonsters-demo-seen-evolutions-v1':SEEN_EVO_KEY,JSON.stringify([...set]));}catch{}}
+    unseenEvolutions(){const seen=this.seenEvos();return this.s.creatures.evolution.discovered.filter(id=>(!this.s.isDemo||this.s.demoRecipes.includes(id))&&!seen.has(id));}
     // Bestiary (from the title; drawn instead of it). Base creatures unlock by capture; evolutions stay ? + ? = ? until merged once.
     bestiary(w,h){
-      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=SurvivorExpansion.roster,recipes=SurvivorEvolution.recipes,found=s.creatures.evolution.discovered,seen=this.seenEvos(),now=j.now();
+      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=s.isDemo?SurvivorExpansion.roster.filter(([id])=>s.demoRoster.includes(id)):SurvivorExpansion.roster,recipes=s.isDemo?SurvivorEvolution.recipes.filter(r=>s.demoRecipes.includes(r.id)):SurvivorEvolution.recipes,found=s.creatures.evolution.discovered.filter(id=>!s.isDemo||s.demoRecipes.includes(id)),seen=this.seenEvos(),now=j.now();
       // Darker than other modals: the title field keeps moving behind it and would compete with the small faces.
       this.dim(w,h);ui.rect(0,0,w,h,'#0b0710a0');const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('bestiaryframe',{x:ox,y:oy});w=480;h=320;}
-      const L=portrait?{banner:14,grid:[24,62],evo:[24,180,36,222],detail:[12,330,w-24,102],back:[w/2-50,442,100,26]}
-        :{banner:2,grid:[12,56],evo:[12,170,34,230],detail:[256,48,212,214],back:[312,272,100,26]};
+      const L=portrait?{banner:14,grid:[24,62],evo:[24,170,28,222],detail:[12,286,w-24,146],back:[w/2-50,442,100,26]}
+        :{banner:2,grid:[12,56],evo:[12,170,29,230],detail:[256,48,212,214],back:[312,272,100,26]};
       const sel=this.bsel??={kind:'base',id:s.starter};this.layout.bestiary={sel:{...sel},faces:[],evolutions:[]};
       const pick=v=>{this.bsel=v;if(v.kind==='evo'&&found.includes(v.id))this.markEvoSeen(v.id);s.draw();};
       const bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
@@ -101,12 +107,14 @@
         if(f){if(on)f.clearTint();else f.setTint(SILHOUETTE);}ui.hitArea(x,y,38,38,()=>pick({kind:'base',id}),'bface-'+id);
         this.layout.bestiary.faces.push({id,known:on,x:x+ox,y:y+oy});if(sel.kind==='base'&&sel.id===id)bracket(x,y,38,38);});
       const [ex,ey,pitch,rowW]=L.evo;ui.darkText('EVOLUTIONS '+found.length+'/'+recipes.length,ex,ey-10,{color:D().gold});
-      recipes.forEach((r,i)=>{const y=ey+i*pitch,on=found.includes(r.id),cell=(k,x)=>{if(on)ui.image('face_'+k,x,y,28,28);else{ui.panel('dk_slot',x,y,28,28,5,2);ui.darkText('?',x+14,y+14,{align:'center',color:D().muted});}};
+      const pageSize=portrait?3:4,pages=Math.ceil(recipes.length/pageSize),page=Math.min(this.bpage||0,pages-1);this.layout.bestiary.page=page;this.layout.bestiary.pages=pages;
+      recipes.slice(page*pageSize,page*pageSize+pageSize).forEach((r,i)=>{const y=ey+i*pitch,on=found.includes(r.id),cell=(k,x)=>{if(on)ui.image('face_'+k,x,y,28,28);else{ui.panel('dk_slot',x,y,28,28,5,2);ui.darkText('?',x+14,y+14,{align:'center',color:D().muted});}};
         cell(r.parents[0],ex);ui.darkText('+',ex+37,y+14,{align:'center'});cell(r.parents[1],ex+46);ui.darkText('=',ex+83,y+14,{align:'center'});cell(r.id,ex+92);
-        ui.darkText(on?r.name.toUpperCase():'???',ex+128,y+14,{color:on?D().text:D().muted});
-        const fresh=on&&!seen.has(r.id);if(fresh)ui.darkText('NEW',ex+rowW-4,y+8,{align:'right',color:D().gold}).setAlpha(j.reduced?1:.65+.35*Math.sin(now/160));
+        const fresh=on&&!seen.has(r.id);ui.darkText(on?r.name.toUpperCase():'???',ex+128,y+(fresh?20:14),{color:on?D().text:D().muted});
+        if(fresh)ui.darkText('NEW',ex+128,y+4,{size:9,color:D().gold}).setAlpha(j.reduced?1:.65+.35*Math.sin(now/160));
         ui.hitArea(ex-2,y-2,rowW,32,()=>pick({kind:'evo',id:r.id}),'bevo-'+r.id);this.layout.bestiary.evolutions.push({id:r.id,known:on,fresh,x:ex+ox,y:y+oy});
         if(sel.kind==='evo'&&sel.id===r.id)bracket(ex-2,y-2,rowW,32);});
+      if(pages>1){const ny=portrait?259:291;ui.pill('<',ex,ny,30,18,()=>{this.bpage=(page+pages-1)%pages;s.draw();},{id:'bestiary-prev'});ui.darkText((page+1)+' / '+pages,ex+rowW/2,ny+9,{align:'center',color:D().muted});ui.pill('>',ex+rowW-30,ny,30,18,()=>{this.bpage=(page+1)%pages;s.draw();},{id:'bestiary-next'});}
       // Detail for the selected entry.
       const [dx,dy,dw,dh]=L.detail,wrap=dw-16;ui.darkPanel(dx,dy,dw,dh);let ty=dy+14;const line=(t,o={})=>{const tx=ui.darkText(t,dx+8,ty,{wrap,...o}).setOrigin(0,0);ty+=tx.height+4;return tx;};ty-=6;
       if(sel.kind==='base'){const on=s.unlocked.includes(sel.id),info=roster.find(([id])=>id===sel.id);
@@ -116,7 +124,7 @@
       else{const r=recipes.find(v=>v.id===sel.id),on=found.includes(r.id);
         if(!on){line('???',{size:18});line('Merge two creatures in an expedition to discover this evolution.',{color:D().muted});}
         else{const cat=s.creatures.evolution.catalog().find(v=>v.id===r.id);line(r.name.toUpperCase(),{size:18});line(pretty(r.parents[0])+' + '+pretty(r.parents[1]),{color:D().teal});
-          line('+'+r.hp+' party HP · '+r.bonus,{color:D().gold});line(r.ability,{color:D().muted});if(cat)line('Upgrades: '+cat.upgrades.map(u=>u.name).join(', '),{color:D().muted});}}
+          line('+'+r.hp+' party HP · '+(portrait?EVO_SHORT[r.id][0]:r.bonus),{color:D().gold});line(r.ability,{color:D().muted});if(cat)line('Upgrades: '+cat.upgrades.map(u=>u.name).join(', '),{color:D().muted});}}
       ui.pill('Back',...L.back,()=>s.closeBestiary(),{id:'bestiary-back'});
       if(!portrait)ui.endGroup();
     }
@@ -153,7 +161,7 @@
       const ally=Math.round(s.owlDamage+s.encounters.beastDamage+Object.values(s.creatures.damage).reduce((a,b)=>a+b,0));
       const lines=['Survived '+Math.floor(s.elapsed)+' seconds · '+s.kills+' defeated','Your damage: '+Math.round(s.playerDamage),'Cat: '+Math.round(s.catDamage)+' · Ally: '+ally,'Damage taken: '+s.damageTaken];
       const pw=Math.min(w-24,254),ph=196,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner(won?'COMPLETE':'FAILED',w/2,py-16);
-      ui.darkText(won?'Expedition complete':'Expedition failed',w/2,py+28,{align:'center',color:won?D().gold:D().danger});
+      ui.darkText(won?(s.isDemo?'Demo complete':'Expedition complete'):(s.isDemo?'Demo ended':'Expedition failed'),w/2,py+28,{align:'center',color:won?D().gold:D().danger});
       lines.forEach((t,i)=>ui.darkText(t,w/2,py+50+i*16,{align:'center',color:D().muted}));
       this.button('Choose starter / play again',px+16,py+ph-68,pw-32,24,()=>{s.mode='title';s.draw();},'again');
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
@@ -232,7 +240,7 @@
         this.layout.cards.push({x,y,w:pw-16,h:cardH});
       });
     }
-    // Upgrade pack reveal (prototype Moment 5). Cards are 120x170 logical: Pack_CardBack at 2x face down,
+    // Upgrade pack reveal. Cards are 120x170 logical: Pack_CardBack at 2x face down,
     // a DarkMode panel with the rarity strip, spinning icon, name, detail and owner face up.
     // Centre y of the reveal card; the juice aims the pickup flight here before the first draw.
     packCardY(w,h){return this.packTop(w,h)+44+85;}
@@ -302,7 +310,7 @@
         ui.endGroup();});
       this.button('Leave reward',w/2-50,py+ph-28,100,20,()=>r.skip(),'skip');
     }
-    // Starter unlock (prototype): the panel scales in over 200ms, the silhouette fills with a white flash and element sparks,
+    // Starter unlock: the panel scales in over 200ms, the silhouette fills with a white flash and element sparks,
     // NEW STARTER stamps down at 1050ms with a 150ms panel shake, the name fades in, and Continue waits until 1750ms.
     unlock(w,h){
       const s=this.s,ui=s.ui,j=s.juice,type=s.unlockType,t=j.since('unlock'),cx=w/2,cy=h/2-10,red=j.reduced,STAMP=1050,CONT=1750;

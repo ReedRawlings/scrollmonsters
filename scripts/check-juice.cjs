@@ -117,10 +117,11 @@ async function expeditionEvents(browser, juiceOn) {
     await wait(420); p = await controlPoint(lvl, label);
     await lvl.screenshot({path: 'output/juice/levelup.png'});
     await lvl.touchscreen.tap(p.x, p.y);
-    const after = await state(lvl, id => { const s = __survivorTest.scene, f = s.juice.flights[0], owner = s.juice.ownerOf(id), slot = s.hud.layout.slots.find(v => v.type === owner) || s.hud.layout.slots[0];
-      return {mode: s.mode, flights: s.juice.flights.length, frozen: s.juice.frozen(), to: f && [Math.round(f.to.x), Math.round(f.to.y)], slot: [slot.x + 24, slot.y + 26]}; }, pick);
-    assert.equal(after.mode, 'playing'); assert.equal(after.flights, 1, 'The picked icon flies'); assert.equal(after.frozen, true, '260ms hold after the pick');
-    assert.deepEqual(after.to, after.slot, "It flies to the owner's party slot");
+    const after = await state(lvl, id => { const s = __survivorTest.scene, flights = s.juice.flights.filter(f => f.key === 'upgrade_'+id), owner = s.juice.ownerOf(id), slots = s.hud.layout.slots;
+      const destinations = id === 'hide' ? [[s.hud.layout.hp.x+s.hud.layout.hp.w/2,s.hud.layout.hp.y+s.hud.layout.hp.h/2]] : (['partyDamage','partySpeed'].includes(id) ? slots.filter(v=>v.type) : [slots.find(v=>v.type===owner)||slots[0]]).map(v=>[v.x+24,v.y+26]);
+      return {mode:s.mode,frozen:s.juice.frozen(),to:flights.map(f=>[Math.round(f.to.x),Math.round(f.to.y)]),destinations:destinations.map(p=>p.map(Math.round))}; }, pick);
+    assert.equal(after.mode, 'playing'); assert.equal(after.frozen, true, '260ms hold after the pick');
+    assert.deepEqual(after.to, after.destinations, 'The picked icon visits each affected party slot, or HP for Tough Hide');
     await wait(700);
     assert(await state(lvl, () => __survivorTest.scene.juice.played.includes('Slot_PowerUp')), 'The slot powers up when the icon lands');
     assert.deepEqual(lvl.errors, []);

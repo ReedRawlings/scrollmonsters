@@ -21,7 +21,7 @@
     status(ui){
       const s=this.s,p=s.player,hp=clamp(p.hp/s.maxHp,0,1),xp=clamp(s.xp/s.xpNeeded(),0,1);
       const g=ui.graphics();
-      // HP: dark trough, then three red bands; XP: three teal bands. Right ends are slanted like the prototype.
+      // HP: dark trough, then three red bands; XP: three teal bands. Right ends are slanted.
       const bar=(x,y,w,hh,slant,fill,bands)=>{g.fillStyle(0x130306).beginPath().moveTo(x,y).lineTo(x+w,y).lineTo(x+w-slant,y+hh).lineTo(x,y+hh).closePath().fillPath();
         let yy=y;for(const [c,f] of bands){const bh=Math.round(hh*f);g.fillStyle(c).fillRect(x,yy,Math.max(0,(w-slant)*fill),bh);yy+=bh;}};
       bar(56,32,96,10,8,hp,[[0x6c192b,.2],[0xaf2424,.4],[0x4d0c1e,.4]]);
@@ -36,7 +36,7 @@
       ui.darkText(String(s.kills),188,51);
     }
     timer(ui,w){
-      const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${s.isExpedition?'20:00':'2:00'}`;
+      const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${Math.floor(s.duration/60)}:00`;
       // The drawn pill stays small; a thumb-sized zone behind it catches near misses.
       if(s.mode==='playing'){ui.hitArea(w-40,0,40,34,()=>s.pause(),'pause-target');ui.pill('II',w-26,8,20,16,()=>s.pause(),{id:'pause'});}
       ui.darkText(t,w-32,17,{align:'right',color:D().gold});
@@ -56,7 +56,7 @@
       for(let i=0;i<4;i++){const x=x0+i*(SLOT_W+SLOT_GAP),type=members[i]||null;this.layout.slots.push({type,x,y,w:SLOT_W,h:SLOT_H});
         ui.image('dk_zslot',x,y,SLOT_W,SLOT_H);
         // A merged result's face appears when its portrait lands (juice.slotFace).
-        if(type){const fa=s.juice.slotFace(type);this.layout.slots[i].face=fa;if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:[3,3,32,32],alpha:fa});
+        if(type){const fa=s.juice.slotFace(type);this.layout.slots[i].face=fa;if(s.textures.exists('face_'+type))ui.image('face_'+type,x+8,y+10,32,32,{frame:type==='walker'?[22,25,20,22]:[3,3,32,32],alpha:fa});
           else if(s.textures.exists(type))ui.image(type,x+8,y+10,32,32,{frame:[0,0,16,16]});
           // Player charge is the dash cooldown; creature timers arrive with Phase 2.
           const charge=this.chargeOf(type)*s.juice.slotFill(type),bh=Math.round(34*charge);this.layout.slots[i].charge=charge;

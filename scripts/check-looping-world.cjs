@@ -11,7 +11,7 @@ run('looping 4500 world, event placement, timings and den spacing',async(page,br
   s.player.x=2;s.move(s.player,-10,0);SurvivorWorld.sync(s);const left=s.player.x;
   s.player.y=size-3;s.move(s.player,0,10);SurvivorWorld.sync(s);const bottom=s.player.y;
   s.player.y=2;s.move(s.player,0,-10);SurvivorWorld.sync(s);const top=s.player.y;
-  s.player.x=size-4;s.player.y=2000;s.expansion.facing={x:1,y:0};s.expansion.dash();s.expansion.move(.18,1,0);const dash=s.player.x;
+  s.player.x=size-4;s.player.y=2000;s.expansion.facing={x:1,y:0};s.expansion.dash();s.expansion.move(.35,1,0);const dash=s.player.x;
   s.obstacles=[{x:5,y:2000,r:20}];s.player.x=size-30;s.player.y=2000;const seamBlocked=s.blocked(size+5,2000,12);s.move(s.player,25,0);const seamCollision=s.player.x<size;
   s.obstacles=[];const stored=s.encounters.nests[0];stored.hp=17;const original={x:stored.x,y:stored.y};s.player.x=original.x+size;s.player.y=original.y;SurvivorWorld.sync(s);const persistent=stored.hp===17&&Math.abs(stored.x-s.player.x)<.001;
   s.start();s.obstacles=[];s.player.x=size-10;s.player.y=size-10;SurvivorWorld.sync(s);s.elapsed=60;s.expedition.chestClock=0;s.expedition.updateChests(0);s.relics.update(0);

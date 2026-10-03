@@ -26,7 +26,7 @@ Pixel-art effects made in Pixel Composer (v1.22.10). **Game palette: Toasted40**
 `Dust_Trail.pxc` is the side-view original that `build_trail_dir.py` builds the directional trails from.
 Rebuilding with a script overwrites the `.pxc`, so hand edits made in Pixel Composer are lost unless they're also made in the script.
 
-## Reward juice pass (from `VFX_REQUESTS.md`)
+## Reward presentation effects
 
 Pixel Composer effects: open the `.pxc`, press **F5** then **F6** to write the PNG into `sheets/`. JSON is already there.
 
@@ -67,7 +67,7 @@ Shared by all four evolutions (white, tinted in code with the element colour, ex
 
 ## Evolution abilities (2026-10-01, Phase B)
 
-Built by `build_abilities.py`; wiring is in `docs/evolution-vfx-integration.md`. Every JSON carries `visible_w` so code can scale to the gameplay radius. Ink and fire are palette-coloured (no tint); the others are white, tinted in code.
+Built by `build_abilities.py`; runtime wiring is in `survivor-evolution-fx.js`. Every JSON carries `visible_w` so code can scale to the gameplay radius. Ink and fire are palette-coloured (no tint); the others are white, tinted in code.
 
 | Effect | Source | Size | Frames @fps | Loop |
 |---|---|---|---|---|
@@ -127,3 +127,17 @@ Hand-placed pixel pieces (PNG + JSON written straight to `sheets/`, no `.pxc`), 
 | Hushwisp | `Hushwisp_Note_A` / `_B` | 16×16 | 8 @10 loop | single / beamed note, pick at random |
 | Grindle | `Grindle_Step_Left` / `_Right` | 24×20 | 9 @15 | alternate along the line; `hit_frame` 0 |
 | Ratiot | `Ratiot_Bite` | 48×56 | 8 @20 | anchor = target center; `hit_frame` 3 |
+
+## Rich head-on ability FX (2026-10-02, work in progress)
+
+Detailed, Pokémon/Dragon Quest-style move animations for a **head-on battle view** (not the top-down map, so the 3:2 ground rule doesn't apply). **Apollo palette** (`scripts/pixelcomposer/palettes/Apollo.hex`, 46 colours); Toasted40 has too few cool colours for ice, lightning, water or void. New effects are **new graphs** built by `richlib.py` from the techniques in `/Applications/PixelComposerExamples/Complex` (noise → displace → envelope gradient → threshold → colorize ramp, particles); anchor bottom-centre, motion along the screen axes. `Frost_Spikes` is only a recolour of `Icicle` made with `retarget.py`, which drops the example's baked-in background (transparent sheet), remaps every colour to Apollo, and adds the Render Spritesheet / Export nodes. Size, frames and fps are the example's own. Run `python3 scripts/pixelcomposer/build_rich.py flame thunder web void [frost]`.
+
+| Effect | Source | Size | Frames @fps | Loop | Built from |
+|---|---|---|---|---|---|
+| Flame Burst (fire erupts under the target, engulfs it, lifts into embers + smoke) | `Flame_Burst.pxc` | 64×64 | 32 @30 | no | new graph (`richlib`), approved |
+| Thunder Strike (sky flicker, jagged bolt + forks at f5, sparks, crackling impact glow; anchor = strike point, `hit_frame` 5) | `Thunder_Strike.pxc` | 64×64 | 28 @30 | no | new graph |
+| Web Snare (threads fly in, spiral spins in, web snaps tight at f21; anchor = web centre on the body) | `Web_Snare.pxc` | 64×64 | 30 @30 | no | new graph |
+| Void Orb (dark orb swirls + pulls debris in, collapses at f25 into flash + ring; anchor = orb centre) | `Void_Orb.pxc` | 64×64 | 32 @30 | no | new graph |
+| Frost Spikes (recolour only, not a new effect) | `Frost_Spikes.pxc` | 64×64 | 40 @30 | no | `Icicle` |
+
+**Not yet rendered:** open `Thunder_Strike` / `Web_Snare` / `Void_Orb` / `Frost_Spikes.pxc`, play it through, then **F5** and **F6** to write `sheets/Frost_Spikes.png`. The JSON has a provisional anchor and no `hit_frame` / `visible_w` yet; set them from the first export. The Icicle ground pad is still the example's isometric ellipse; decide whether to flatten or remove it once you've seen the render.

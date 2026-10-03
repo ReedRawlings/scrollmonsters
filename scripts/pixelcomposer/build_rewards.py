@@ -1,4 +1,4 @@
-"""Reward-juice effects from assets/fx/VFX_REQUESTS.md (Pixel Composer, Toasted40 + white).
+"""Reward presentation effects (Pixel Composer, Toasted40 + white).
 White effects (sheen, flip, trail) are meant to be tinted in code.
 Run: python3 build_rewards.py [sheen] [flip] [trail] [slot] [crit] [rays] [unlockfill]"""
 import sys, os, math

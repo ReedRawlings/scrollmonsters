@@ -1,0 +1,1404 @@
+{
+  "baseHP": 40,
+  "creatures": {
+    "mouse0": {
+      "stats": {
+        "damage": 2,
+        "count": 3,
+        "interval": 2.8
+      },
+      "attack": [
+        2,
+        2,
+        2,
+        0,
+        0
+      ],
+      "dash": [
+        5.3,
+        3.3,
+        2,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "mole0": {
+      "stats": {
+        "damage": 8,
+        "radius": 65,
+        "interval": 2.8
+      },
+      "attack": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "dash": [
+        11.25,
+        11.25,
+        8,
+        8,
+        8
+      ],
+      "maxHP": 40
+    },
+    "bear0": {
+      "stats": {
+        "damage": 10,
+        "radius": 180,
+        "width": 28,
+        "interval": 2.1
+      },
+      "attack": [
+        8.7083333,
+        8.0682458,
+        7.4861111,
+        6.8572725,
+        6.2638889
+      ],
+      "dash": [
+        19.4111111,
+        18.0892188,
+        16,
+        14.7297413,
+        13.5555556
+      ],
+      "maxHP": 40
+    },
+    "salamander0": {
+      "stats": {
+        "damage": 3,
+        "interval": 2.6,
+        "radius": 36,
+        "life": 3
+      },
+      "attack": [
+        9,
+        9,
+        3,
+        0,
+        0
+      ],
+      "dash": [
+        16.95,
+        9,
+        3,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "spider0": {
+      "stats": {
+        "damage": 4,
+        "tickDamage": 1,
+        "tickInterval": 1,
+        "vulnerability": 0.2,
+        "interval": 3.4,
+        "radius": 42,
+        "count": 2
+      },
+      "attack": [
+        2.4,
+        2.4,
+        2.4,
+        0,
+        0
+      ],
+      "dash": [
+        4.38,
+        3.6,
+        2.4,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "storm0": {
+      "stats": {
+        "damage": 4,
+        "interval": 2,
+        "jumps": 3,
+        "range": 130
+      },
+      "attack": [
+        4,
+        4,
+        4,
+        0,
+        0
+      ],
+      "dash": [
+        10.6,
+        10.6,
+        8,
+        2.6,
+        0
+      ],
+      "maxHP": 40
+    },
+    "bamboo0": {
+      "stats": {
+        "damage": 2,
+        "radius": 75,
+        "width": 24,
+        "life": 3,
+        "interval": 2.6
+      },
+      "attack": [
+        4,
+        4,
+        4,
+        4,
+        2
+      ],
+      "dash": [
+        9.3,
+        6,
+        7.3,
+        6,
+        2
+      ],
+      "maxHP": 40
+    },
+    "cyclope0": {
+      "stats": {
+        "damage": 6,
+        "radius": 135,
+        "interval": 1.4,
+        "fieldRadius": 42,
+        "fieldDamage": 1,
+        "life": 4,
+        "count": 2,
+        "weakness": 0.2,
+        "pull": false,
+        "echo": false,
+        "burst": false
+      },
+      "attack": [
+        19.8,
+        19.8,
+        9.24,
+        6,
+        6
+      ],
+      "dash": [
+        28.446,
+        28.446,
+        13.14,
+        9.9,
+        9.9
+      ],
+      "maxHP": 40
+    },
+    "monkeyboxer0": {
+      "stats": {
+        "damage": 12,
+        "radius": 160,
+        "width": 50,
+        "interval": 2.6,
+        "stun": 0.35,
+        "echo": false,
+        "slam": false,
+        "guard": false
+      },
+      "attack": [
+        12.72,
+        12.72,
+        12.72,
+        12.72,
+        12.72
+      ],
+      "dash": [
+        20.988,
+        20.988,
+        20.988,
+        20.988,
+        20.988
+      ],
+      "maxHP": 40
+    },
+    "kappa0": {
+      "stats": {
+        "damage": 4,
+        "fireDamage": 3,
+        "radius": 36,
+        "life": 3,
+        "interval": 2.2,
+        "jumps": 3,
+        "range": 130,
+        "ring": 120,
+        "detonate": false,
+        "spread": false,
+        "strike": false
+      },
+      "attack": [
+        22,
+        19,
+        19,
+        9,
+        6
+      ],
+      "dash": [
+        38.5,
+        19,
+        19,
+        9,
+        6
+      ],
+      "maxHP": 40
+    },
+    "heartbloom0": {
+      "stats": {
+        "damage": 3,
+        "radius": 55,
+        "interval": 3,
+        "count": 3,
+        "life": 2.5,
+        "shieldInterval": 8,
+        "chorus": 0,
+        "retaliate": false,
+        "jump": false
+      },
+      "attack": [
+        4,
+        4,
+        4,
+        0,
+        0
+      ],
+      "dash": [
+        6.95,
+        6.95,
+        6.95,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "spirit0": {
+      "stats": {
+        "damage": 3,
+        "interval": 2.8,
+        "count": 2,
+        "pierce": 2,
+        "life": 2.4,
+        "marks": false,
+        "split": false,
+        "extend": false,
+        "jump": false
+      },
+      "attack": [
+        6,
+        6,
+        0,
+        0,
+        0
+      ],
+      "dash": [
+        12.9,
+        9.9,
+        0,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "panda0": {
+      "stats": {
+        "rootDamage": 2,
+        "rootLife": 3,
+        "damage": 10,
+        "radius": 170,
+        "width": 32,
+        "life": 3,
+        "interval": 2.6,
+        "stun": 0.35,
+        "guard": false,
+        "shatter": false
+      },
+      "attack": [
+        14,
+        14,
+        14,
+        14,
+        14
+      ],
+      "dash": [
+        23.8,
+        23.8,
+        23.8,
+        23.8,
+        21.8
+      ],
+      "maxHP": 40
+    },
+    "mushroom0": {
+      "stats": {
+        "rootDamage": 2,
+        "rootLife": 3,
+        "damage": 8,
+        "radius": 60,
+        "life": 3,
+        "interval": 2.8,
+        "echo": false,
+        "slow": false
+      },
+      "attack": [
+        12.4,
+        12.4,
+        12.4,
+        8,
+        0
+      ],
+      "dash": [
+        21.75,
+        20.32,
+        12.4,
+        8,
+        0
+      ],
+      "maxHP": 40
+    },
+    "trapdoor0": {
+      "stats": {
+        "damage": 8,
+        "radius": 60,
+        "interval": 3,
+        "life": 4,
+        "count": 2,
+        "weakness": 0.2,
+        "echo": false,
+        "pull": false,
+        "burst": false
+      },
+      "attack": [
+        10.64,
+        10.64,
+        10.64,
+        8,
+        0
+      ],
+      "dash": [
+        19.682,
+        18.824,
+        10.64,
+        8,
+        0
+      ],
+      "maxHP": 40
+    },
+    "mollusc0": {
+      "stats": {
+        "damage": 2,
+        "interval": 2.6,
+        "radius": 44,
+        "life": 3
+      },
+      "attack": [
+        4,
+        4,
+        4,
+        0,
+        0
+      ],
+      "dash": [
+        9.3,
+        8,
+        6,
+        2,
+        0
+      ],
+      "maxHP": 40
+    },
+    "octopus0": {
+      "stats": {
+        "damage": 5,
+        "interval": 0.85,
+        "radius": 140,
+        "inkDamage": 2,
+        "inkRadius": 48,
+        "life": 3,
+        "rear": false,
+        "pull": false,
+        "crush": 0
+      },
+      "attack": [
+        28,
+        23.4,
+        15.35,
+        9.6,
+        7.3
+      ],
+      "dash": [
+        35.5325,
+        29.4375,
+        20.5825,
+        12.85,
+        7.3
+      ],
+      "maxHP": 40
+    },
+    "reptile0": {
+      "stats": {
+        "damage": 7,
+        "bite": 8,
+        "interval": 2,
+        "fireDamage": 3,
+        "radius": 30,
+        "life": 3,
+        "slam": false,
+        "spread": false,
+        "rush": false,
+        "explode": false
+      },
+      "attack": [
+        28.62,
+        19.08,
+        19.08,
+        8.48,
+        8.48
+      ],
+      "dash": [
+        44.52,
+        47.7,
+        38.16,
+        27.56,
+        24.38
+      ],
+      "maxHP": 40
+    },
+    "tengu0": {
+      "stats": {
+        "damage": 4,
+        "lightning": 3,
+        "interval": 1.5,
+        "count": 1,
+        "jumps": 2,
+        "range": 130,
+        "marks": false,
+        "split": false,
+        "strike": false
+      },
+      "attack": [
+        11,
+        6,
+        10,
+        6,
+        7
+      ],
+      "dash": [
+        12.95,
+        10,
+        11.95,
+        9,
+        10
+      ],
+      "maxHP": 40
+    },
+    "axolotl0": {
+      "stats": {
+        "damage": 2,
+        "interval": 2.6,
+        "radius": 48,
+        "life": 3,
+        "shieldInterval": 8,
+        "ring": 100,
+        "chorus": 0
+      },
+      "attack": [
+        6,
+        6,
+        6,
+        0,
+        0
+      ],
+      "dash": [
+        14.3,
+        12,
+        9,
+        3,
+        0
+      ],
+      "maxHP": 40
+    },
+    "mouse2": {
+      "stats": {
+        "damage": 4,
+        "count": 5,
+        "interval": 2
+      },
+      "attack": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "dash": [
+        10.6,
+        10.6,
+        8,
+        8,
+        8
+      ],
+      "maxHP": 40
+    },
+    "mole2": {
+      "stats": {
+        "damage": 12,
+        "radius": 89,
+        "interval": 2
+      },
+      "attack": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ],
+      "dash": [
+        39.25,
+        36,
+        36,
+        36,
+        36
+      ],
+      "maxHP": 40
+    },
+    "bear2": {
+      "stats": {
+        "damage": 14,
+        "radius": 240,
+        "width": 28,
+        "interval": 1.5000000000000002
+      },
+      "attack": [
+        26.3666667,
+        24.9702063,
+        23.8,
+        22.4662284,
+        21.2333333
+      ],
+      "dash": [
+        27.6666667,
+        24.9702063,
+        23.8,
+        22.4662284,
+        21.2333333
+      ],
+      "maxHP": 40
+    },
+    "salamander2": {
+      "stats": {
+        "damage": 5,
+        "interval": 1.8571428571428574,
+        "radius": 48,
+        "life": 4
+      },
+      "attack": [
+        15,
+        15,
+        10,
+        0,
+        0
+      ],
+      "dash": [
+        38.25,
+        20,
+        10,
+        0,
+        0
+      ],
+      "maxHP": 40
+    },
+    "spider2": {
+      "stats": {
+        "damage": 6,
+        "tickDamage": 1,
+        "tickInterval": 1,
+        "vulnerability": 0.30000000000000004,
+        "interval": 2.428571428571429,
+        "radius": 52,
+        "count": 4
+      },
+      "attack": [
+        9.1,
+        9.1,
+        9.1,
+        1.3,
+        0
+      ],
+      "dash": [
+        19.045,
+        18.2,
+        10.4,
+        2.6,
+        0
+      ],
+      "maxHP": 40
+    },
+    "storm2": {
+      "stats": {
+        "damage": 6,
+        "interval": 1.4285714285714286,
+        "jumps": 5,
+        "range": 170
+      },
+      "attack": [
+        24,
+        24,
+        24,
+        24,
+        24
+      ],
+      "dash": [
+        57.9,
+        45.9,
+        69.9,
+        33.9,
+        45.9
+      ],
+      "maxHP": 40
+    },
+    "bamboo2": {
+      "stats": {
+        "damage": 4,
+        "radius": 107,
+        "width": 24,
+        "life": 4,
+        "interval": 2.6
+      },
+      "attack": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "dash": [
+        18.6,
+        12,
+        14.6,
+        14.6,
+        12
+      ],
+      "maxHP": 40
+    },
+    "cyclope2": {
+      "stats": {
+        "damage": 10,
+        "radius": 219,
+        "interval": 1,
+        "fieldRadius": 52,
+        "fieldDamage": 1,
+        "life": 4,
+        "count": 4,
+        "weakness": 0.30000000000000004,
+        "pull": true,
+        "echo": true,
+        "burst": true
+      },
+      "attack": [
+        27.15,
+        27.15,
+        27.15,
+        21.43,
+        20
+      ],
+      "dash": [
+        37.3745,
+        27.15,
+        28.0795,
+        21.43,
+        20
+      ],
+      "maxHP": 40
+    },
+    "monkeyboxer2": {
+      "stats": {
+        "damage": 20,
+        "radius": 270,
+        "width": 74,
+        "interval": 1.4444444444444444,
+        "stun": 0.75,
+        "echo": true,
+        "slam": true,
+        "guard": true
+      },
+      "attack": [
+        80.56,
+        59.36,
+        80.56,
+        59.36,
+        59.36
+      ],
+      "dash": [
+        115.54,
+        73.14,
+        94.34,
+        73.14,
+        73.14
+      ],
+      "maxHP": 40
+    },
+    "kappa2": {
+      "stats": {
+        "damage": 6,
+        "fireDamage": 5,
+        "radius": 48,
+        "life": 5,
+        "interval": 1.2222222222222223,
+        "jumps": 5,
+        "range": 210,
+        "ring": 120,
+        "detonate": true,
+        "spread": true,
+        "strike": true
+      },
+      "attack": [
+        66.4,
+        71.4,
+        62,
+        52,
+        47
+      ],
+      "dash": [
+        84.55,
+        97.8,
+        80.15,
+        78.4,
+        73.4
+      ],
+      "maxHP": 40
+    },
+    "heartbloom2": {
+      "stats": {
+        "damage": 5,
+        "radius": 55,
+        "interval": 2.142857142857143,
+        "count": 7,
+        "life": 3.7,
+        "shieldInterval": 5.714285714285714,
+        "chorus": 2,
+        "retaliate": true,
+        "jump": true
+      },
+      "attack": [
+        12,
+        12,
+        6,
+        6,
+        6
+      ],
+      "dash": [
+        32.5,
+        32.5,
+        16.25,
+        16.25,
+        16.25
+      ],
+      "maxHP": 40
+    },
+    "spirit2": {
+      "stats": {
+        "damage": 7,
+        "interval": 1.5555555555555554,
+        "count": 8,
+        "pierce": 4,
+        "life": 2.4,
+        "marks": true,
+        "split": true,
+        "extend": true,
+        "jump": true
+      },
+      "attack": [
+        103.075,
+        80.9725,
+        80.9725,
+        72.2225,
+        15.75
+      ],
+      "dash": [
+        126.0875,
+        169.824375,
+        144.76,
+        118.685,
+        82.3375
+      ],
+      "maxHP": 40
+    },
+    "panda2": {
+      "stats": {
+        "rootDamage": 4,
+        "rootLife": 4,
+        "damage": 14,
+        "radius": 312,
+        "width": 32,
+        "life": 5,
+        "interval": 1.8571428571428574,
+        "stun": 0.75,
+        "guard": true,
+        "shatter": true
+      },
+      "attack": [
+        27.8,
+        27.8,
+        27.8,
+        27.8,
+        27.8
+      ],
+      "dash": [
+        45.87,
+        73.67,
+        45.87,
+        73.67,
+        45.87
+      ],
+      "maxHP": 40
+    },
+    "mushroom2": {
+      "stats": {
+        "rootDamage": 4,
+        "rootLife": 4,
+        "damage": 12,
+        "radius": 100,
+        "life": 5.4,
+        "interval": 2,
+        "echo": true,
+        "slow": true
+      },
+      "attack": [
+        34,
+        34,
+        34,
+        34,
+        29.6
+      ],
+      "dash": [
+        67.44,
+        63.04,
+        46.98,
+        42.58,
+        29.6
+      ],
+      "maxHP": 40
+    },
+    "trapdoor2": {
+      "stats": {
+        "damage": 14,
+        "radius": 118,
+        "interval": 1.6666666666666665,
+        "life": 4,
+        "count": 4,
+        "weakness": 0.30000000000000004,
+        "echo": true,
+        "pull": true,
+        "burst": true
+      },
+      "attack": [
+        35.15,
+        35.15,
+        35.15,
+        35.15,
+        35.15
+      ],
+      "dash": [
+        86.3495,
+        86.3495,
+        65.4,
+        50.58,
+        35.15
+      ],
+      "maxHP": 40
+    },
+    "mollusc2": {
+      "stats": {
+        "damage": 4,
+        "interval": 2.6,
+        "radius": 60,
+        "life": 4
+      },
+      "attack": [
+        8,
+        8,
+        8,
+        4,
+        0
+      ],
+      "dash": [
+        18.6,
+        16,
+        16,
+        8,
+        0
+      ],
+      "maxHP": 40
+    },
+    "octopus2": {
+      "stats": {
+        "damage": 7,
+        "interval": 0.85,
+        "radius": 196,
+        "inkDamage": 4,
+        "inkRadius": 84,
+        "life": 4,
+        "rear": true,
+        "pull": true,
+        "crush": 0.5
+      },
+      "attack": [
+        32.875,
+        23.675,
+        23.675,
+        20.8,
+        16.2
+      ],
+      "dash": [
+        40.72375,
+        23.675,
+        23.675,
+        23.79,
+        16.2
+      ],
+      "maxHP": 40
+    },
+    "reptile2": {
+      "stats": {
+        "damage": 11,
+        "bite": 10,
+        "interval": 1.1111111111111112,
+        "fireDamage": 5,
+        "radius": 58,
+        "life": 4,
+        "slam": true,
+        "spread": true,
+        "rush": true,
+        "explode": true
+      },
+      "attack": [
+        122.324,
+        142.676,
+        71.656,
+        66.144,
+        38.372
+      ],
+      "dash": [
+        122.324,
+        242.74,
+        71.656,
+        71.656,
+        38.372
+      ],
+      "maxHP": 40
+    },
+    "tengu2": {
+      "stats": {
+        "damage": 6,
+        "lightning": 6,
+        "interval": 0.8333333333333333,
+        "count": 5,
+        "jumps": 6,
+        "range": 170,
+        "marks": true,
+        "split": true,
+        "strike": true
+      },
+      "attack": [
+        135.9,
+        62.37,
+        105.78,
+        74.88,
+        63.855
+      ],
+      "dash": [
+        150.9,
+        62.37,
+        148.155,
+        89.88,
+        91.23
+      ],
+      "maxHP": 40
+    },
+    "axolotl2": {
+      "stats": {
+        "damage": 4,
+        "interval": 2.6,
+        "radius": 64,
+        "life": 4,
+        "shieldInterval": 4.444444444444445,
+        "ring": 130,
+        "chorus": 2
+      },
+      "attack": [
+        15,
+        15,
+        15,
+        10,
+        0
+      ],
+      "dash": [
+        28.6,
+        25,
+        15,
+        10,
+        0
+      ],
+      "maxHP": 40
+    }
+  },
+  "enemies": [
+    [
+      0,
+      "bat",
+      4,
+      7
+    ],
+    [
+      0,
+      "owl",
+      6,
+      7
+    ],
+    [
+      0,
+      "beast",
+      9,
+      12
+    ],
+    [
+      0,
+      "cat",
+      7,
+      7
+    ],
+    [
+      0,
+      "frog",
+      6,
+      7
+    ],
+    [
+      0,
+      "mouse",
+      2,
+      4
+    ],
+    [
+      0,
+      "mole",
+      12,
+      7
+    ],
+    [
+      0,
+      "bear",
+      28,
+      7
+    ],
+    [
+      0,
+      "salamander",
+      12,
+      7
+    ],
+    [
+      0,
+      "spider",
+      10,
+      7
+    ],
+    [
+      0,
+      "storm",
+      12,
+      7
+    ],
+    [
+      0,
+      "bamboo",
+      12,
+      7
+    ],
+    [
+      0,
+      "mollusc",
+      12,
+      7
+    ],
+    [
+      0,
+      "shaman",
+      18,
+      5
+    ],
+    [
+      0,
+      "hunter",
+      12,
+      5
+    ],
+    [
+      0,
+      "skeleton",
+      5,
+      5
+    ],
+    [
+      0,
+      "lion",
+      10,
+      10
+    ],
+    [
+      0,
+      "growth",
+      0
+    ],
+    [
+      360,
+      "bat",
+      6.4,
+      7
+    ],
+    [
+      360,
+      "owl",
+      9.6,
+      7
+    ],
+    [
+      360,
+      "beast",
+      14.4,
+      12
+    ],
+    [
+      360,
+      "cat",
+      11.2,
+      7
+    ],
+    [
+      360,
+      "frog",
+      9.6,
+      7
+    ],
+    [
+      360,
+      "mouse",
+      3.2,
+      4
+    ],
+    [
+      360,
+      "mole",
+      19.2,
+      7
+    ],
+    [
+      360,
+      "bear",
+      44.8,
+      7
+    ],
+    [
+      360,
+      "salamander",
+      19.2,
+      7
+    ],
+    [
+      360,
+      "spider",
+      16,
+      7
+    ],
+    [
+      360,
+      "storm",
+      19.2,
+      7
+    ],
+    [
+      360,
+      "bamboo",
+      19.2,
+      7
+    ],
+    [
+      360,
+      "mollusc",
+      19.2,
+      7
+    ],
+    [
+      360,
+      "shaman",
+      28.8,
+      5
+    ],
+    [
+      360,
+      "hunter",
+      19.2,
+      5
+    ],
+    [
+      360,
+      "skeleton",
+      8,
+      5
+    ],
+    [
+      360,
+      "lion",
+      16,
+      10
+    ],
+    [
+      360,
+      "growth",
+      2
+    ],
+    [
+      900,
+      "bat",
+      17.2,
+      7
+    ],
+    [
+      900,
+      "owl",
+      25.8,
+      7
+    ],
+    [
+      900,
+      "beast",
+      38.7,
+      12
+    ],
+    [
+      900,
+      "cat",
+      30.1,
+      7
+    ],
+    [
+      900,
+      "frog",
+      25.8,
+      7
+    ],
+    [
+      900,
+      "mouse",
+      8.6,
+      4
+    ],
+    [
+      900,
+      "mole",
+      51.6,
+      7
+    ],
+    [
+      900,
+      "bear",
+      120.4,
+      7
+    ],
+    [
+      900,
+      "salamander",
+      51.6,
+      7
+    ],
+    [
+      900,
+      "spider",
+      43,
+      7
+    ],
+    [
+      900,
+      "storm",
+      51.6,
+      7
+    ],
+    [
+      900,
+      "bamboo",
+      51.6,
+      7
+    ],
+    [
+      900,
+      "mollusc",
+      51.6,
+      7
+    ],
+    [
+      900,
+      "shaman",
+      77.4,
+      5
+    ],
+    [
+      900,
+      "hunter",
+      51.6,
+      5
+    ],
+    [
+      900,
+      "skeleton",
+      21.5,
+      5
+    ],
+    [
+      900,
+      "lion",
+      43,
+      10
+    ],
+    [
+      900,
+      "growth",
+      6
+    ]
+  ],
+  "health": {
+    "frogHit": 4.24,
+    "hurt": 33,
+    "hide": [
+      41,
+      48
+    ],
+    "heal": 18,
+    "bloodroot": [
+      6,
+      120
+    ],
+    "echo": 4.2
+  },
+  "bosses": [
+    1200,
+    4000
+  ],
+  "companions": {
+    "damage": 3.2,
+    "interval": 1.1
+  },
+  "beast": {
+    "damage": 4.8,
+    "shockwave": 3.2,
+    "interval": 2
+  },
+  "shot": 2
+}

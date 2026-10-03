@@ -1,0 +1,19 @@
+{
+  "image": "Thunder_Strike.png",
+  "frame_width": 64,
+  "frame_height": 64,
+  "frame_count": 28,
+  "layout": "horizontal strip, no spacing",
+  "fps": 30,
+  "duration_s": 0.933,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 58,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Head-on battle FX: the sky flickers, a jagged bolt drops onto the target at frame 5, forks and sparks fly, then an impact glow crackles out. Apollo palette, transparent, 30 fps, play once. Anchor is the strike point (enemy's feet). Hit frame 5.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 5
+}

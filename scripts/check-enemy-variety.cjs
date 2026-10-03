@@ -6,7 +6,7 @@ run('enemy variants, mage spreads, gladiator axe/spin, ally separation and clean
   const s=__survivorTest.scene;s.start();s.obstacles=[];const rand=s.rand;
   const spawn=(type,roll,x=s.player.x+200,y=s.player.y)=>{s.rand=()=>roll;const e=s.spawn(type,x,y);s.rand=rand;return e;};
   const basic=spawn('bat',.8),forest=spawn('bat',.049999),boundary=spawn('bat',.05),energy=spawn('bat',.059999),normal=spawn('bat',.06);
-  const stats={basic:[basic.hp,basic.speed,basic.contactDamage||7],forest:[forest.hp,forest.speed,forest.contactDamage],energy:[energy.hp,energy.speed,energy.contactDamage],boundary:boundary.variant,normal:normal.variant};
+  const stats={basic:[basic.hp,basic.speed,basic.contactDamage||70],forest:[forest.hp,forest.speed,forest.contactDamage],energy:[energy.hp,energy.speed,energy.contactDamage],boundary:boundary.variant,normal:normal.variant};
   const orange=spawn('owl',.05),black=spawn('owl',.049999);
   s.encounters.bullets=[];Object.assign(orange,{phase:'shoot',clock:0,aim:0});s.encounters.updateShooter(orange,0);
   const one=s.encounters.bullets.length;Object.assign(black,{phase:'shoot',clock:0,aim:0});s.encounters.updateShooter(black,0);
@@ -18,19 +18,19 @@ run('enemy variants, mage spreads, gladiator axe/spin, ally separation and clean
   s.draw();const art={red:red.sprite.texture.key,green:green.sprite.texture.key,ratio:green.sprite.scaleX/red.sprite.scaleX,gladiator:gladiator.sprite.texture.key,axe:s.enemyAxes.some(a=>a.visible),cat:s.catSprite.texture.key};
   gladiator.hp=0;s.draw();const cleanup=s.enemyAxes.every(a=>!a.visible);
   // Dodging the windup prevents damage; a late entry into the live spin still hits once.
-  const dodger=spawn('bear',.8,s.player.x+60);dodger.clock=0;s.player.inv=0;s.creatures.enemy(dodger,0);s.player.y+=200;dodger.clock=0;s.creatures.enemy(dodger,0);const dodged=s.player.hp===hit;s.player.y-=200;s.creatures.enemy(dodger,.1);const lateEntry=s.player.hp===hit-12;
+  const dodger=spawn('bear',.8,s.player.x+60);dodger.clock=0;s.player.inv=0;s.creatures.enemy(dodger,0);s.player.y+=200;dodger.clock=0;s.creatures.enemy(dodger,0);const dodged=s.player.hp===hit;s.player.y-=200;s.creatures.enemy(dodger,.1);const lateEntry=s.player.hp===hit-96;
   const old={x:dodger.x,y:dodger.y};spawn('bat',.8,dodger.x,dodger.y);s.separateEnemies(.5);const anchored=dodger.x===old.x&&dodger.y===old.y;
   const orb=s.encounters.bullets[0];s.encounters.bullets=[orb];orb.x=s.player.x;orb.y=s.player.y;s.player.inv=0;const orbHp=s.player.hp;s.encounters.update(0);const orbDamage=orbHp-s.player.hp;
   s.elapsed=360;const scaled=spawn('bat',.01),scaledBasic=spawn('bat',.8);const scaling=Math.abs(scaled.hp/scaledBasic.hp-1.25)<1e-9&&Math.abs(scaled.speed/scaledBasic.speed-1.25)<1e-9;
 
   // Threshold coverage across 10,000 evenly spaced draws, with existing spawn caps preserved.
-  const counts={};for(let i=0;i<10000;i++){const e={type:'bat',hp:4,maxHp:4,speed:68};s.rand=()=>i/10000;SurvivorEnemies.decorate(s,e);counts[e.variant]=(counts[e.variant]||0)+1;}s.rand=rand;
+  const counts={};for(let i=0;i<10000;i++){const e={type:'bat',hp:40,maxHp:40,speed:68};s.rand=()=>i/10000;SurvivorEnemies.decorate(s,e);counts[e.variant]=(counts[e.variant]||0)+1;}s.rand=rand;
   s.start();const reset=s.enemies.length===0&&s.enemyAxes.every(a=>!a.visible);
   return {stats,one,shots,warning,warningSafe,spin,hit,once,paused,art,cleanup,counts,reset,dodged,lateEntry,anchored,orbDamage,scaling};
  });
- assert.deepEqual(result.stats.basic,[4,68,7]);assert.deepEqual(result.stats.forest,[5,85,8.75]);assert.deepEqual(result.stats.energy,[8,68,14]);assert.equal(result.stats.boundary,'energyGolem');assert.equal(result.stats.normal,'golem');
+ assert.deepEqual(result.stats.basic,[40,68,70]);assert.deepEqual(result.stats.forest,[50,85,87.5]);assert.deepEqual(result.stats.energy,[80,68,140]);assert.equal(result.stats.boundary,'energyGolem');assert.equal(result.stats.normal,'golem');
  assert.equal(result.one,1);assert.equal(result.shots.length,4);assert(result.shots.every(b=>b.source==='mage_orb'&&b.texture==='mageOrb'));assert(Math.abs(result.shots[1].angle+.22)<1e-9);assert(Math.abs(result.shots[3].angle-.22)<1e-9);
- assert.equal(result.warning,'slam');assert(result.warningSafe);assert.equal(result.spin,'spin');assert.equal(result.hit,28);assert(result.once&&result.paused&&result.cleanup&&result.reset);assert(result.dodged&&result.lateEntry&&result.anchored&&result.scaling);assert.equal(result.orbDamage,6);
+ assert.equal(result.warning,'slam');assert(result.warningSafe);assert.equal(result.spin,'spin');assert.equal(result.hit,304);assert(result.once&&result.paused&&result.cleanup&&result.reset);assert(result.dodged&&result.lateEntry&&result.anchored&&result.scaling);assert.equal(result.orbDamage,48);
  assert.deepEqual(result.art,{red:'demonRed',green:'demonGreen',ratio:2,gladiator:'gladiator',axe:true,cat:'cat'});assert.deepEqual(result.counts,{forestGolem:500,energyGolem:100,golem:9400});
  // Showcase all artwork in the actual game, including a spinning axe and mage projectiles.
  await page.evaluate(()=>{const s=__survivorTest.scene;s.start();s.obstacles=[];s.spawnTimer=999;s.player.fire=999;s.player.inv=999;s.cat.attack=999;

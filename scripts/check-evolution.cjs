@@ -22,7 +22,7 @@ run('Capture fusion, inheritance, combat, discovery and twenty-minute pacing',as
    merges.push({id:r.id,reverse,paused,frozen,preview:preview.options.map(v=>v.id),success,party,maxHp,again,shared:s.upgrades.partyDamage,inherited:body.inherited,dash:s.creatures.elements.dashStyle});
   }
   reset('cat');s.expedition.release('frog',s.player.x,s.player.y,true);s.expedition.release('bear',s.player.x,s.player.y,true);capture('mollusc',2);const multi=ev().preview();const noRecruit=ev().choose('recruit');ev().choose('octopus');const fullParty=s.expedition.party();
-  capture('mouse',3);const noRecipe=ev().preview();ev().choose('leave');const afterLeave=s.expedition.party();
+  capture('owl',3);const noRecipe=ev().preview();ev().choose('leave');const afterLeave=s.expedition.party();
   reset('cat');capture('mollusc');ev().choose('recruit');const recruit=s.expedition.party();
   reset('cat');capture('mollusc');ev().choose('octopus');const a=s.creatures.allies.octopus;Object.assign(a,{x:s.player.x,y:s.player.y,attack:999});const e=target(70);const back=target(-70);ev().sweep(a,0);const forward=1000-e.hp,rearBefore=1000-back.hp;s.grantUpgrade('octoRear');ev().sweep(a,0);const rearAfter=1000-back.hp;ev().update(.01);const inked=e.inkUntil>s.elapsed,slow=e.slowUntil>s.elapsed;
   const life=ev().zones[0].life;s.mode='paused';s.tick(1);const pauseZones=ev().zones[0].life===life;s.mode='playing';
@@ -35,12 +35,12 @@ run('Capture fusion, inheritance, combat, discovery and twenty-minute pacing',as
   reset('cat');s.expedition.release('frog',s.player.x+40,s.player.y,true);capture('mollusc');s.draw();
   return {merges,multi,noRecruit,fullParty,noRecipe,afterLeave,recruit,forward,rearBefore,rearAfter,inked,slow,pauseZones,reptile,tengu,axolotl,bossInterval,resumedInterval,continued,won,firstFinal:!!first.final,finalFinal:final.final,later,known};
  });
- for(const m of result.merges){assert(m.paused&&m.frozen&&m.success&&!m.again);assert.deepEqual(m.party,[m.id]);assert(m.maxHp>40);assert.equal(m.shared,2);assert.equal(m.dash,m.id);assert(m.preview.includes(m.id));}
+ for(const m of result.merges){assert(m.paused&&m.frozen&&m.success&&!m.again);assert.deepEqual(m.party,[m.id]);assert(m.maxHp>400);assert.equal(m.shared,2);assert.equal(m.dash,m.id);assert(m.preview.includes(m.id));}
  assert.deepEqual(result.multi.options.map(o=>o.id),['octopus','axolotl']);assert.equal(result.noRecruit,false);assert.equal(result.fullParty.length,3);assert.deepEqual(result.afterLeave,result.fullParty);assert.equal(result.noRecipe.options.length,0);assert.deepEqual(result.recruit,['cat','mollusc']);
  assert(result.forward>0&&result.rearBefore===0&&result.rearAfter>0&&result.inked&&result.slow&&result.pauseZones);
  assert(result.reptile.damage>0&&result.reptile.fire&&result.reptile.stats.slam);assert(result.tengu.damage>0&&result.tengu.chain>0&&result.tengu.marked);
- assert(result.axolotl.shield&&result.axolotl.blocked&&result.axolotl.zones>0&&result.axolotl.haste>0&&result.axolotl.frog.active);assert(result.axolotl.frog.damageBonus===1);
- assert(result.continued&&result.won&&!result.firstFinal&&result.finalFinal);assert(result.bossInterval>=result.resumedInterval*5);assert(result.later.includes('mollusc'));assert.equal(result.known.length,4);
+ assert(result.axolotl.shield&&result.axolotl.blocked&&result.axolotl.zones>0&&result.axolotl.haste>0&&result.axolotl.frog.active);assert(result.axolotl.frog.damageBonus===10);
+ assert(result.continued&&result.won&&!result.firstFinal&&result.finalFinal);assert(result.bossInterval>=result.resumedInterval*5);assert(result.later.some(t=>['mollusc','spider'].includes(t)));assert.equal(result.known.length,12);
  await page.waitForTimeout(500);await page.screenshot({path:'output/evolution/merge-desktop.png'});assert.deepEqual(await offscreenTexts(page),[]);
  // Use actual pointer coordinates through the recorded logical layout.
  await clickMerge(page,'octopus');assert(await page.evaluate(()=>__survivorTest.scene.expedition.party().includes('octopus')));
@@ -65,11 +65,11 @@ run('Capture fusion, inheritance, combat, discovery and twenty-minute pacing',as
   },id);
   assert.equal(summary.texture,id);assert.equal(summary.upgrades.length,3);assert(summary.damage>0);await page.waitForTimeout(80);await page.screenshot({path:'output/evolution/ability-'+id+'.png'});
  }
- const saved=await page.evaluate(()=>{const s=__survivorTest.scene;const before=s.creatures.evolution.discovered;s.start();return {before,after:s.creatures.evolution.discovered,hp:s.maxHp,pending:s.creatures.evolution.pending,zones:s.creatures.evolution.zones.length};});assert.deepEqual(saved.before,saved.after);assert.equal(saved.hp,40);assert.equal(saved.zones,0);assert.equal(saved.pending,null);
+ const saved=await page.evaluate(()=>{const s=__survivorTest.scene;const before=s.creatures.evolution.discovered;s.start();return {before,after:s.creatures.evolution.discovered,hp:s.maxHp,pending:s.creatures.evolution.pending,zones:s.creatures.evolution.zones.length};});assert.deepEqual(saved.before,saved.after);assert.equal(saved.hp,400);assert.equal(saved.zones,0);assert.equal(saved.pending,null);
  // Native touch input and the compact desktop setting both use the same guarded transaction.
  const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});await mobile.addInitScript(()=>window.__vt_pending=true);
  await mobile.goto(require('./survivor-test-utils.cjs').gameURL('survivors.html?test'));await mobile.waitForFunction(()=>window.__phaserReady);
  await mobile.evaluate(()=>{const s=__survivorTest.scene;s.start();s.expedition.release('mollusc',s.player.x,s.player.y,false,0);const b=s.expedition.captureBody('mollusc');b.progress=2.5;s.expedition.capture(b,'mollusc',0);s.draw();});await mobile.waitForTimeout(420);await clickMerge(mobile,'octopus',{touch:true});assert(await mobile.evaluate(()=>__survivorTest.scene.expedition.party().includes('octopus')));assert.equal(await mobile.evaluate(()=>__survivorTest.scene.joy),null);await mobile.close();
  await page.evaluate(()=>{const s=__survivorTest.scene;s.starter='cat';s.start();s.juice.setUiLarge(true);s.expedition.release('frog',s.player.x+30,s.player.y,true);s.expedition.release('mollusc',s.player.x,s.player.y,false,0);const b=s.expedition.captureBody('mollusc');b.progress=2.5;s.expedition.capture(b,'mollusc',0);s.draw();});await page.waitForTimeout(420);assert.deepEqual(await offscreenTexts(page),[]);await page.screenshot({path:'output/evolution/merge-large-ui.png'});await page.keyboard.press('2');assert(await page.evaluate(()=>__survivorTest.scene.expedition.party().includes('axolotl')));
- console.log('Verified 8 recipe orders, full-party and alternate choices, inheritance, four attacks and dashes, desktop/phone/large UI, persistence, reset and boss pacing.');
+ console.log('Verified 24 recipe orders, full-party and alternate choices, inheritance, four attacks and dashes, desktop/phone/large UI, persistence, reset and boss pacing.');
 });

@@ -1,0 +1,19 @@
+{
+  "image": "Void_Orb.png",
+  "frame_width": 64,
+  "frame_height": 64,
+  "frame_count": 32,
+  "layout": "horizontal strip, no spacing",
+  "fps": 30,
+  "duration_s": 1.067,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Head-on battle FX: a dark orb opens in front of the target, swirls and pulls debris inward, then collapses (frame 25) into a flash and a ring of light. Apollo palette, transparent, 30 fps, play once. Anchor is the orb centre: place it on the enemy's body. Hit frame 25.",
+  "smoothing": "none (nearest neighbor)",
+  "hit_frame": 25
+}

@@ -5,6 +5,7 @@
 /ui-previews/
 
 /node_modules/
+/dist/
 
 # Pixel Composer: app-derived label map (regenerate with scripts/pixelcomposer/extract_labels.py), autosaves, caches.
 /scripts/pixelcomposer/templates/node_input_labels_en.json

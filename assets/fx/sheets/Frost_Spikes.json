@@ -1,0 +1,18 @@
+{
+  "image": "Frost_Spikes.png",
+  "frame_width": 64,
+  "frame_height": 64,
+  "frame_count": 40,
+  "layout": "horizontal strip, no spacing",
+  "fps": 30,
+  "duration_s": 1.333,
+  "loop": false,
+  "anchor": {
+    "x": 32,
+    "y": 60,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Ice spikes erupt from the bottom edge. Apollo palette, transparent. Anchor is bottom-centre.",
+  "smoothing": "none (nearest neighbor)"
+}

@@ -4,7 +4,7 @@
   const textures={shamanYellow:'assets/Enemies/shaman_yellow.png',shamanGreen:'assets/Enemies/shaman_green.png',shamanBlue:'assets/Enemies/shaman_blue.png',hunter:A+'Actor/Characters/Hunter/SpriteSheet.png',skeleton:A+'Actor/Characters/Skeleton/SpriteSheet.png',golem:'assets/Enemies/golem.png',forestGolem:'assets/Enemies/golem_forest.png',energyGolem:'assets/Enemies/golem_energy.png',demonRed:'assets/Enemies/DemonRed/SpriteSheet.png',demonGreen:'assets/Enemies/DemonGreen/SpriteSheet.png',mageOrange:'assets/Enemies/NinjaMageOrange/SpriteSheet.png',mageBlack:'assets/Enemies/NinjaMageBlack/SpriteSheet.png',gladiator:A+'Actor/Characters/RedGladiator/SpriteSheet.png'};
   const direction=(x,y)=>Math.abs(x)>Math.abs(y)?(x<0?2:3):(y<0?1:0);
   window.SurvivorEnemies={
-    stats:{shaman:{hp:18,speed:52,r:12,scale:3},hunter:{hp:12,speed:65,r:11,scale:3},skeleton:{hp:5,speed:72,r:10,scale:2.8},lion:{hp:10,speed:80,r:12,scale:2.8}},
+    stats:{shaman:{hp:180,speed:52,r:12,scale:3},hunter:{hp:120,speed:65,r:11,scale:3},skeleton:{hp:50,speed:72,r:10,scale:2.8},lion:{hp:100,speed:80,r:12,scale:2.8}},
     textureFor(type){return type==='shaman'?'shamanYellow':type;},
     reset(s){s.nextShamanAt=90;s.nextHunterAt=120;s.summonerId=0;},
     waveType(s){
@@ -16,11 +16,11 @@
     },
     preload(s){s.load.spritesheet('lion',A+'Actor/Animals/Lion/SpriteSheetYellow.png',{frameWidth:16,frameHeight:23});s.load.image('hunterArrow',A+'FX/Projectile/Arrow.png');for(const [key,path] of Object.entries(textures))s.load.spritesheet(key,path,{frameWidth:16,frameHeight:16});s.load.spritesheet('mageOrb',A+'FX/Projectile/EnergyBall.png',{frameWidth:16,frameHeight:16});s.load.image('enemyAxe',A+'Items/Weapons/Axe/SpriteInHand.png');},
     decorate(s,e){
-      if(e.type==='shaman'){e.variant=['shamanYellow','shamanGreen','shamanBlue'][Math.floor(s.rand()*3)];e.summonerId=++s.summonerId;e.contactDamage=5;e.clock=2;s.nextShamanAt=s.elapsed+25;}
-      if(e.type==='hunter'){e.variant='hunter';e.contactDamage=5;e.clock=1;s.nextHunterAt=s.elapsed+45;}
-      if(e.type==='skeleton'||e.type==='lion'){e.variant=e.type;e.contactDamage=e.type==='lion'?10:5;}
+      if(e.type==='shaman'){e.variant=['shamanYellow','shamanGreen','shamanBlue'][Math.floor(s.rand()*3)];e.summonerId=++s.summonerId;e.contactDamage=50;e.clock=2;s.nextShamanAt=s.elapsed+25;}
+      if(e.type==='hunter'){e.variant='hunter';e.contactDamage=50;e.clock=1;s.nextHunterAt=s.elapsed+45;}
+      if(e.type==='skeleton'||e.type==='lion'){e.variant=e.type;e.contactDamage=e.type==='lion'?100:50;}
 
-      if(e.type==='bat'){const roll=s.rand();e.variant=roll<.05?'forestGolem':roll<.06?'energyGolem':'golem';if(e.variant==='forestGolem'){e.hp*=1.25;e.maxHp*=1.25;e.speed*=1.25;e.contactDamage=7*1.25;}else if(e.variant==='energyGolem'){e.elite=true;e.hp*=2;e.maxHp*=2;e.contactDamage=14;}}
+      if(e.type==='bat'){const roll=s.rand();e.variant=roll<.05?'forestGolem':roll<.06?'energyGolem':'golem';if(e.variant==='forestGolem'){e.hp*=1.25;e.maxHp*=1.25;e.speed*=1.25;e.contactDamage=70*1.25;}else if(e.variant==='energyGolem'){e.elite=true;e.hp*=2;e.maxHp*=2;e.contactDamage=140;}}
       if(e.type==='owl')e.variant=s.rand()<.05?'mageBlack':'mageOrange';
       if(e.type==='beast')e.variant='demonRed';
       if(e.type==='bear')e.variant='gladiator';
@@ -47,7 +47,7 @@
             s.logEvent('summoned',{summoner:e.variant,creature:type,count});e.summonPoints=[];e.phase='seek';e.clock=6;
           }
         }else{const d=this.approach(s,e,dt,240);if(e.clock<=0&&d<500&&this.visible(s,e)){e.summonPoints=this.summonPoints(s,e);if(e.summonPoints.length){e.phase='summon';e.clock=1.2;}else e.clock=1;}}
-        if(Math.hypot(e.x-s.player.x,e.y-s.player.y)<e.r+s.player.r)s.encounters.damage(5,e.variant+'_contact');return true;
+        if(Math.hypot(e.x-s.player.x,e.y-s.player.y)<e.r+s.player.r)s.encounters.damage(50,e.variant+'_contact');return true;
       }
       if(e.type==='hunter'){
         const d=Math.hypot(e.x-s.player.x,e.y-s.player.y);
@@ -61,7 +61,7 @@
           if(!clear&&d<=range){const a=Math.atan2(s.player.y-e.y,s.player.x-e.x)+Math.PI/2;s.move(e,Math.cos(a)*e.speed*dt,Math.sin(a)*e.speed*dt);}
           if(e.clock<=0&&d<560&&this.visible(s,e)&&clear){e.phase='hunterAim';e.clock=1.5;e.aimLocked=false;e.aim=Math.atan2(s.player.y-e.y,s.player.x-e.x);}
         }
-        if(d<e.r+s.player.r)s.encounters.damage(5,'hunter_contact');return true;
+        if(d<e.r+s.player.r)s.encounters.damage(50,'hunter_contact');return true;
       }
       return false;
     },

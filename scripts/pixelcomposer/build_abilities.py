@@ -1,4 +1,4 @@
-"""Evolution ability effects, Phase B (Pixel Composer, Toasted40 + white). See docs/evolution-vfx-integration.md.
+"""Evolution ability effects (Pixel Composer, Toasted40 + white).
 Ink and fire are drawn in palette colours (no tint). Lightning, bubble, sweep and warning effects are white and tinted in code.
 Ground effects are 3:2 ellipses. Each JSON carries "visible_w": the visible width in px, so code can scale to the hit size.
 Tengu_Feather and Lightning_Link are hand-drawn in build_fillers.py (single-pixel detail).

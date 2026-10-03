@@ -98,7 +98,7 @@ const seq = page => page.evaluate(() => { const s = __survivorTest.scene, j = s.
     await page.screenshot({path: 'output/evolution-ui/title-landscape.png'});
     const bp = await controlPoint(page, 'Bestiary'); await page.mouse.click(bp.x, bp.y);
     let b = await page.evaluate(() => { const s = __survivorTest.scene; return {open: s.bestiaryOpen, mode: s.mode, ...s.screens.layout.bestiary}; });
-    assert.equal(b.open, true); assert.equal(b.mode, 'title'); assert.equal(b.faces.length, 11, 'All eleven base creatures');
+    assert.equal(b.open, true); assert.equal(b.mode, 'title'); assert.equal(b.faces.length, 12, 'All twelve base creatures');
     assert.deepEqual(b.evolutions.map(e => [e.id, e.known, e.fresh]), [['octopus', true, true], ['reptile', false, false], ['tengu', false, false], ['axolotl', false, false]]);
     assert.deepEqual(await offscreenTexts(page), []); await page.screenshot({path: 'output/evolution-ui/bestiary-landscape.png'});
     const row = b.evolutions[0]; await clickLayout(page, {x: row.x, y: row.y, w: 200, h: 28});

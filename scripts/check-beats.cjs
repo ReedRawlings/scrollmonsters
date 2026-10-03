@@ -213,7 +213,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const iris = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice; s.mode = 'title'; s.draw(); s.start(); return [s.mode, j.irisRadius()]; });
     assert.deepEqual(iris, ['playing', 0], 'BEGIN starts the run behind a closed iris, which then opens');
     const hideHeal = await state(rf2, () => { const s = __survivorTest.scene, j = s.juice; s.start(); s.spawnTimer = 999; s.player.hp = 10; j.numbers.reset(); s.grantUpgrade('hide'); return j.numbers.list().filter(n => n.heal).map(n => n.value); });
-    assert.deepEqual(hideHeal, [8], 'Tough Hide shows its +8 heal');
+    assert.deepEqual(hideHeal, [80], 'Tough Hide shows its +80 heal');
     await rf2.close();
     console.log('Beats: all checks passed.');
   } finally { await browser.close(); }
