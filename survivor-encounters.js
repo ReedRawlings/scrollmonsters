@@ -38,7 +38,7 @@
       this.bullets.push({x:from.x,y:from.y,dx:Math.cos(angle),dy:Math.sin(angle),speed,life:5,source,sprite});
     }
     updateNest(n,dt){
-      if(!this.nestsActive||this.s.elapsed<n.activeAt||n.destroyed||(this.s.isDemo&&this.s.elapsed>=600))return;const s=this.s;n.clock-=dt*(s.isExpedition&&this.bossPressure()?.15:1);
+      if(!this.nestsActive||this.s.elapsed<n.activeAt||n.destroyed||!SurvivorEnemies.spawnUnlocked(this.s,n.type)||(this.s.isDemo&&this.s.elapsed>=600))return;const s=this.s;n.clock-=dt*(s.isExpedition&&this.bossPressure()?.15:1);
       const own=s.enemies.filter(e=>e.nest===n.type&&e.hp>0).length;
       if(n.clock<=0&&own<6&&s.enemies.length<s.enemyCap){
         // Keep defenders out of tree trunks and stagger arrivals around the nest.

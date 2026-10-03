@@ -52,6 +52,15 @@ def template(name):
     return json.load(open(os.path.join(HERE, "templates", name)))
 
 
+PROC = json.load(open(os.path.join(HERE, "templates", "procedural_nodes.json")))
+
+
+def grad(stops):
+    """Pixel Composer gradient string from [(t, "#rrggbb", alpha 0..1)]."""
+    keys = [{"time": float(t), "value": float((abgr(c) & 0xFFFFFF) | (round(a * 255) << 24))} for t, c, a in stops]
+    return json.dumps({"keys": keys, "type": 0})
+
+
 def show(on, off=None, level=1.0):
     """Opacity keys: hidden before frame `on`, `level` from `on` through `off`, hidden after `off`."""
     k = [(0, level if on == 0 else 0.0)]
@@ -104,13 +113,78 @@ class Project:
         """Transparent bottom layer (a zero-size shape off-canvas), so every visible layer can have its own opacity."""
         return s.shape("Empty Base", "Ellipse", "#ffffff", [(0, -8, -8, 0.01, 0.01)])
 
-    def blend(s, bg, fg, opacity=None):
+    def blend(s, bg, fg, opacity=None, mode=0):
+        """mode: 0 Normal, 3 Multiply, 8 Add, 9 Screen, 11 Maximum (Blend node display order)."""
         b = s.add(s.old["Node_Blend"], "Blend", 192, s._y); s._y += 40
         I = b["inputs"]; s.link(b, 0, bg); s.link(b, 1, fg)
-        I[2]["r"]["d"] = 0; I[7]["r"]["d"] = [s.W, s.H]
+        I[2]["r"]["d"] = mode; I[7]["r"]["d"] = [s.W, s.H]
         if opacity: anim(I[3], opacity)
         else: I[3]["r"]["d"] = 1
         return b
+
+    # ---- procedural texture nodes (technique from MakhamDev's Portal-Cream sample: noise -> move -> warp -> mask -> colour last)
+    # Templates come from that sample (templates/procedural_nodes.json). Fractions are of the canvas (UV).
+
+    def proc(s, typ, name):
+        n = s.add(PROC[typ], name, 0, s._y); s._y += 160
+        return n
+
+    @staticmethod
+    def put(n, i, v):
+        """Set a static value, clearing any keyframes the template carried."""
+        n["inputs"][i].pop("anim", None); n["inputs"][i]["r"] = {"d": v}
+
+    def noise(s, name, scale=(0.25, 0.25), iters=4, seed=1, level_in=(0, 1)):
+        """Greyscale simplex noise that tiles at the canvas size, so a full-canvas Offset loops seamlessly."""
+        n = s.proc("Node_Noise_Simplex", name)
+        for i, v in [(0, [s.W, s.H]), (2, list(scale)), (3, iters), (4, 0), (14, seed), (17, True), (18, list(level_in))]:
+            s.put(n, i, v)
+        return n
+
+    def offset(s, src, name, x_keys, y_keys):
+        """Scroll with wrap-around. Keys are [(frame, fraction of the canvas)]; 1.0 = one full tile."""
+        n = s.proc("Node_Offset", name); s.link(n, 0, src)
+        for i, ks in [(1, x_keys), (2, y_keys)]:
+            if len(ks) == 1: s.put(n, i, ks[0][1])
+            else: anim(n["inputs"][i], ks)
+        return n
+
+    def polar(s, src, name, tile_keys, radius_mode=1, twist=0):
+        """Wrap a texture around the centre: x becomes angle, y becomes radius (mode 1 = inverse square)."""
+        n = s.proc("Node_Polar", name); s.link(n, 0, src)
+        s.put(n, 9, radius_mode); s.put(n, 14, twist)
+        if len(tile_keys) == 1: s.put(n, 12, tile_keys[0][1])
+        else: anim(n["inputs"][12], tile_keys)
+        return n
+
+    def gradient(s, name, stops, kind=1, radius=0.5, center=(0.5, 0.5), uniform=False, shift_keys=None):
+        """Grey or colour gradient image. stops = [(t, "#rrggbb", alpha)]. kind 1 = circular;
+        uniform=False stretches the circle to the canvas, so a 3:2 canvas gives the 3:2 ground ellipse."""
+        n = s.proc("Node_Gradient", name)
+        for i, v in [(0, [s.W, s.H]), (1, grad(stops)), (2, kind), (4, radius), (6, list(center)), (9, 1), (14, uniform)]:
+            s.put(n, i, v)
+        if shift_keys: anim(n["inputs"][5], shift_keys)
+        else: s.put(n, 5, 0)
+        return n
+
+    def colorize(s, src, name, bands):
+        """Map grey to colour in flat bands: bands = [(upper_edge, "#rrggbb" or None for transparent)], low to high.
+        Each band is a plateau (two equal keys), so every input value lands on one palette colour."""
+        stops, lo = [], 0.0
+        for hi, col in bands:
+            c, a = (col, 1) if col else ("#000000", 0)
+            stops += [(lo, c, a), (hi - 0.001 if hi < 1 else 1.0, c, a)]
+            lo = hi
+        n = s.proc("Node_Colorize", name); s.link(n, 0, src)
+        s.put(n, 1, grad(stops)); s.put(n, 2, 0)
+        return n
+
+    def dither(s, src, name, steps, contrast=1.0, pattern=0):
+        """Greyscale ordered dither to `steps` levels (pattern 0 = 2x2 Bayer). Do it before colorize."""
+        n = s.proc("Node_Dither", name); s.link(n, 0, src)
+        for i, v in [(2, pattern), (4, contrast), (14, 0), (15, steps)]:
+            s.put(n, i, v)
+        return n
 
     def stack(s, layers):
         """layers[0] is the bottom (always drawn); the rest are blended on top with optional opacity keys."""

@@ -7,6 +7,7 @@
     stats:{shaman:{hp:180,speed:52,r:12,scale:3},hunter:{hp:120,speed:65,r:11,scale:3},skeleton:{hp:50,speed:72,r:10,scale:2.8},lion:{hp:100,speed:80,r:12,scale:2.8}},
     textureFor(type){return type==='shaman'?'shamanYellow':type;},
     reset(s){s.nextShamanAt=90;s.nextHunterAt=120;s.summonerId=0;},
+    spawnUnlocked(s,type){return !s.isExpedition||s.elapsed>=({beast:60,owl:120,bear:180}[type]||0);},
     waveType(s){
       if(s.elapsed<90||s.elapsed>=1140||s.encounters?.bossPressure())return null;
       const alive=s.enemies.filter(e=>e.hp>0),roll=s.rand();

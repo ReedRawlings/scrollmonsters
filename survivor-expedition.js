@@ -106,7 +106,13 @@
     strengthen(e){if(e.lateStrong)return;e.lateStrong=true;e.hp*=1.2;e.maxHp*=1.2;}
     phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian encounter','Deeper woodland','Evolved hordes','Recruit and evolve','Relic hunters','Ancient territory','Gather strength','Relentless hordes','Final preparations','The last approach','Ancient Guardian finale'][this.phase]||'Explore the woodland';}
     interval(){const t=this.s.elapsed;if(this.s.encounters.bossPressure())return 2.4;if(t<60)return .85-t*.004;if(t<120)return .55;if(t<150)return .7;if(t<180)return .4;if(t<200)return .85;if(t<240)return .4;return Math.max(.18,.34-Math.max(0,t-300)*.00055);}
-    enemyType(){const s=this.s,special=SurvivorEnemies.waveType(s);if(special)return special;if(s.isDemo&&s.elapsed<60)return 'bat';if(s.elapsed<60)return s.elapsed>20&&s.rand()<.2?'beast':'bat';const r=s.rand();if(s.encounters.bossPressure())return r<.16?'owl':r<.35?'beast':'bat';if(s.elapsed>=120&&r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';if(r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';return r<.42?'owl':r<.6?'beast':'bat';}
+    enemyType(){const s=this.s,special=SurvivorEnemies.waveType(s);if(special)return special;
+      if(!SurvivorEnemies.spawnUnlocked(s,'beast'))return 'bat';
+      const r=s.rand();if(!SurvivorEnemies.spawnUnlocked(s,'owl'))return r<.2?'beast':'bat';
+      if(s.encounters.bossPressure())return r<.16?'owl':r<.35?'beast':'bat';
+      if(r<.12&&s.enemies.filter(e=>e.type==='mole'&&e.hp>0).length<2)return 'mole';
+      if(SurvivorEnemies.spawnUnlocked(s,'bear')&&r<.25&&s.enemies.filter(e=>e.type==='bear'&&e.hp>0).length<3)return 'bear';
+      return r<.42?'owl':r<.6?'beast':'bat';}
     draw(){const s=this.s,f=this.frog;this.frogSprite.setVisible(!!f);if(f){this.frogSprite.setPosition(f.x,f.y).setFrame(Math.floor(s.elapsed*6)%2).setDepth(f.y+20);}
       
       const sh=this.shrine;this.shrineSprite.setVisible(s.isExpedition&&s.elapsed>=90).setFrame(s.juice.frameName('ShrineStates',sh.completed)).setTint(sh.inCombat?0xffd8b0:0xffffff);

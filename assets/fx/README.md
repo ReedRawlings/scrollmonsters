@@ -141,3 +141,11 @@ Detailed, Pokémon/Dragon Quest-style move animations for a **head-on battle vie
 | Frost Spikes (recolour only, not a new effect) | `Frost_Spikes.pxc` | 64×64 | 40 @30 | no | `Icicle` |
 
 **Not yet rendered:** open `Thunder_Strike` / `Web_Snare` / `Void_Orb` / `Frost_Spikes.pxc`, play it through, then **F5** and **F6** to write `sheets/Frost_Spikes.png`. The JSON has a provisional anchor and no `hit_frame` / `visible_w` yet; set them from the first export. The Icicle ground pad is still the example's isometric ellipse; decide whether to flatten or remove it once you've seen the render.
+
+## Procedural texture effects (2026-10-03, test)
+
+Built by `build_procedural.py` with the noise helpers in `fxlib` (`noise`, `offset`, `polar`, `gradient`, `colorize`, `dither`; node templates taken from MakhamDev's Portal-Cream sample into `templates/procedural_nodes.json`). Method: tiling noise scrolls exactly one tile per loop, gets masked by a gradient, then is dithered and coloured last in flat palette bands.
+
+| Effect | Source | Size | Frames @fps | Loop | Compare with |
+|---|---|---|---|---|---|
+| Burning ground loop, noise version | `Fire_Pool_Loop_Noise.pxc` | 48×32 | 8 @10 | yes | `Fire_Pool_Loop.pxc` |

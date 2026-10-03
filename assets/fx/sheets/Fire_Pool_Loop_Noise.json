@@ -1,0 +1,20 @@
+{
+  "image": "Fire_Pool_Loop_Noise.png",
+  "frame_width": 48,
+  "frame_height": 32,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 10,
+  "duration_s": 0.8,
+  "loop": true,
+  "anchor": {
+    "x": 24,
+    "y": 18,
+    "from": "top-left of each frame"
+  },
+  "palette": "Toasted40 + white",
+  "notes": "procedural test of Fire_Pool_Loop: scrolling noise in a 3:2 mask, dithered, colour mapped last.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 40,
+  "visible_note": "scale = 2r / 40"
+}
