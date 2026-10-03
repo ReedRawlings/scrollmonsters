@@ -92,20 +92,21 @@ const seq = page => page.evaluate(() => { const s = __survivorTest.scene, j = s.
     const rs = await page.evaluate(() => { const s = __survivorTest.scene, ghosts = s.juice.merging.ghosts.map(g => g.g); s.start(); return {merging: s.juice.merging, ghosts: ghosts.every(g => !g.active), pending: s.juice.evolvedPending}; });
     assert.deepEqual(rs, {merging: null, ghosts: true, pending: null});
 
-    // --- Bestiary from the title: NEW for unseen discoveries, ? + ? = ? otherwise, selection marks seen, Escape/Enter close ---
-    await page.evaluate(() => { localStorage.removeItem('scrollmonsters-seen-evolutions-v1'); const s = __survivorTest.scene; s.screens.seenEvo = null; s.mode = 'title'; s.run = null; s.draw(); });
-    await wait(1200); const title = await page.evaluate(() => __survivorTest.scene.screens.layout); assert.equal(title.bestiaryNew, 1, 'The title flags an unseen discovery');
+    // --- Field Binder from the title: NEW while a page has news, the merge opens first, viewing clears it, Escape/Enter close ---
+    await page.evaluate(() => { const s = __survivorTest.scene; s.mode = 'title'; s.run = null; s.draw(); });
+    await wait(1200); const title = await page.evaluate(() => ({fresh: __survivorTest.scene.screens.layout.bestiaryNew, unseen: __survivorTest.scene.bestiary.unseen()}));
+    assert(title.unseen.includes('octopus'), 'The merge is news in the binder'); assert.equal(title.fresh, title.unseen.length, 'The title flags unseen pages');
     await page.screenshot({path: 'output/evolution-ui/title-landscape.png'});
-    const bp = await controlPoint(page, 'Bestiary'); await page.mouse.click(bp.x, bp.y);
+    const bp = await controlPoint(page, 'Bestiary'); await page.mouse.click(bp.x, bp.y); await wait(900);
     let b = await page.evaluate(() => { const s = __survivorTest.scene; return {open: s.bestiaryOpen, mode: s.mode, ...s.screens.layout.bestiary}; });
-    assert.equal(b.open, true); assert.equal(b.mode, 'title'); assert.equal(b.faces.length, 11, 'All eleven base creatures');
-    assert.deepEqual(b.evolutions.map(e => [e.id, e.known, e.fresh]), [['octopus', true, true], ['reptile', false, false], ['tengu', false, false], ['axolotl', false, false]]);
+    assert.equal(b.open, true); assert.equal(b.mode, 'title'); assert.equal(b.frame, 'desktop'); assert.equal(b.thumbs.length, 18, 'Every entry has a thumb');
+    assert.equal(b.thumbs.find(t => t.id === 'octopus').state, 2, 'The merged fusion is recorded');
     assert.deepEqual(await offscreenTexts(page), []); await page.screenshot({path: 'output/evolution-ui/bestiary-landscape.png'});
-    const row = b.evolutions[0]; await clickLayout(page, {x: row.x, y: row.y, w: 200, h: 28});
-    b = await page.evaluate(() => __survivorTest.scene.screens.layout.bestiary); assert.deepEqual(b.sel, {kind: 'evo', id: 'octopus'}); assert.equal(b.evolutions[0].fresh, false, 'Viewing an entry clears NEW');
+    await clickLayout(page, b.thumbs.find(t => t.id === 'octopus')); await wait(900);
+    b = await page.evaluate(() => __survivorTest.scene.screens.layout.bestiary); assert.equal(b.sel, 'octopus'); assert(b.shown.includes('octopus'));
+    assert(!(await page.evaluate(() => __survivorTest.scene.bestiary.unseen())).includes('octopus'), 'Viewing a page clears NEW');
     await page.screenshot({path: 'output/evolution-ui/bestiary-octopus.png'});
     await page.keyboard.press('Escape'); assert.equal(await page.evaluate(() => __survivorTest.scene.bestiaryOpen), false);
-    assert.equal(await page.evaluate(() => __survivorTest.scene.screens.layout.bestiaryNew), 0);
     await page.evaluate(() => __survivorTest.scene.openBestiary()); await page.keyboard.press('Enter');
     assert.deepEqual(await page.evaluate(() => [__survivorTest.scene.bestiaryOpen, __survivorTest.scene.mode]), [false, 'title'], 'Enter closes the bestiary instead of starting a run');
     assert.deepEqual(page.errors, []);
@@ -117,7 +118,8 @@ const seq = page => page.evaluate(() => { const s = __survivorTest.scene, j = s.
     assert.equal(await phone.evaluate(() => __survivorTest.scene.joy), null);
     await wait(1650); await phone.evaluate(() => { const s = __survivorTest.scene; s.juice.unlocks = []; s.juice.realtime(); s.draw(); }); await wait(1500);
     assert.deepEqual(await offscreenTexts(phone), []); await phone.screenshot({path: 'output/evolution-ui/evolved-phone.png'});
-    await phone.evaluate(() => { const s = __survivorTest.scene; s.closeEvolved(); s.mode = 'title'; s.run = null; s.openBestiary(); }); await wait(200);
+    await phone.evaluate(() => { const s = __survivorTest.scene; s.closeEvolved(); s.mode = 'title'; s.run = null; s.openBestiary(); }); await wait(900);
+    assert.equal(await phone.evaluate(() => __survivorTest.scene.screens.layout.bestiary.frame), 'phone');
     assert.deepEqual(await offscreenTexts(phone), []); await phone.screenshot({path: 'output/evolution-ui/bestiary-phone.png'});
     assert.deepEqual(phone.errors, []);
 
