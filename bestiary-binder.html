@@ -656,10 +656,10 @@ const J = {
     const pages = scene.querySelectorAll('.pg');
     if (!P) pages[0].animate([{transform:PERSP + 'rotateY(90deg)'},{transform:'none'}], {duration:240 / S.spd, delay:(hold + 260) / S.spd, easing:'ease-out', fill:'backwards'});
     cover.animate([{transform:'scale(1.04)'},{transform:'scale(1)', offset:.4},{transform:'scale(1)'}], {duration:hold / S.spd});
+    thumbsIn(hold + 400);
     await wait(hold); if (tk !== S.run) return cover.remove();
     sfx.page();
     cover.animate([{transform:PERSP + 'rotateY(0deg)'},{transform:PERSP + 'rotateY(-90deg)', filter:'brightness(.6)'}], {duration:260 / S.spd, easing:'ease-in', fill:'forwards'}).onfinish = () => cover.remove();
-    thumbsIn(hold + 400);
   },
   async turn() { binderStep(1); },
   async cry() {
