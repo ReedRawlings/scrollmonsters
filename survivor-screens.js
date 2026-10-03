@@ -73,7 +73,7 @@
       const music=portrait?{x:55,y:434,w:76,h:26}:{x:250,y:252,w:104,h:26},best=portrait?{x:139,y:434,w:76,h:26}:{x:358,y:252,w:104,h:26};
       ui.pill('Music: '+(s.musicEnabled?'On':'Off'),music.x,music.y,music.w,music.h,()=>s.toggleMusic(),{id:'music-toggle'});
       ui.pill('Bestiary',best.x,best.y,best.w,best.h,()=>s.openBestiary(),{id:'bestiary'});this.layout.bestiaryButton=[best.x+ox,best.y+oy,best.w,best.h];
-      const fresh=this.unseenEvolutions().length;this.layout.bestiaryNew=fresh;if(fresh)ui.darkText('NEW',best.x+best.w-2,best.y-3,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));
+      const fresh=s.bestiary.unseen().length;this.layout.bestiaryNew=fresh;if(fresh)ui.darkText('NEW',best.x+best.w-2,best.y-3,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));
       const other=s.field==='desert'?'woods':'desert';
       if(!s.isDemo)ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
@@ -85,49 +85,8 @@
     seenSet(){if(this.seen)return this.seen;const key=this.s.isDemo?'scrollmonsters-demo-seen-starters-v1':SEEN_KEY;let list=null;try{list=JSON.parse(localStorage.getItem(key)||'null');}catch{}
       if(!Array.isArray(list)){list=[...this.s.unlocked];try{localStorage.setItem(key,JSON.stringify(list));}catch{}}return this.seen=new Set(list);}
     markSeen(id){const set=this.seenSet();if(!id||set.has(id))return;set.add(id);try{localStorage.setItem(this.s.isDemo?'scrollmonsters-demo-seen-starters-v1':SEEN_KEY,JSON.stringify([...set]));}catch{}}
-    // Evolutions viewed in the bestiary. Unlike starters, a first visit marks nothing seen: every discovery starts out NEW.
-    seenEvos(){if(this.seenEvo)return this.seenEvo;let list=[];try{list=JSON.parse(localStorage.getItem(this.s.isDemo?'scrollmonsters-demo-seen-evolutions-v1':SEEN_EVO_KEY)||'[]');}catch{}return this.seenEvo=new Set(Array.isArray(list)?list:[]);}
-    markEvoSeen(id){const set=this.seenEvos();if(set.has(id))return;set.add(id);try{localStorage.setItem(this.s.isDemo?'scrollmonsters-demo-seen-evolutions-v1':SEEN_EVO_KEY,JSON.stringify([...set]));}catch{}}
-    unseenEvolutions(){const seen=this.seenEvos();return this.s.creatures.evolution.discovered.filter(id=>(!this.s.isDemo||this.s.demoRecipes.includes(id))&&!seen.has(id));}
-    // Bestiary (from the title; drawn instead of it). Base creatures unlock by capture; evolutions stay ? + ? = ? until merged once.
-    bestiary(w,h){
-      const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=s.isDemo?SurvivorExpansion.roster.filter(([id])=>s.demoRoster.includes(id)):SurvivorExpansion.roster,recipes=s.isDemo?SurvivorEvolution.recipes.filter(r=>s.demoRecipes.includes(r.id)):SurvivorEvolution.recipes,found=s.creatures.evolution.discovered.filter(id=>!s.isDemo||s.demoRecipes.includes(id)),seen=this.seenEvos(),now=j.now();
-      // Darker than other modals: the title field keeps moving behind it and would compete with the small faces.
-      this.dim(w,h);ui.rect(0,0,w,h,'#0b0710a0');const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2);if(!portrait){ui.beginGroup('bestiaryframe',{x:ox,y:oy});w=480;h=320;}
-      const L=portrait?{banner:14,grid:[24,62],evo:[24,170,28,222],detail:[12,286,w-24,146],back:[w/2-50,442,100,26]}
-        :{banner:2,grid:[12,56],evo:[12,170,29,230],detail:[256,48,212,214],back:[312,272,100,26]};
-      const sel=this.bsel??={kind:'base',id:s.starter};this.layout.bestiary={sel:{...sel},faces:[],evolutions:[]};
-      const pick=v=>{this.bsel=v;if(v.kind==='evo'&&found.includes(v.id))this.markEvoSeen(v.id);s.draw();};
-      const bracket=(x,y,bw,bh)=>{const g=ui.graphics();g.lineStyle(2,0xffffff,1);
-        for(const [cx,cy,dx,dy] of [[x-3,y-3,1,1],[x+bw+3,y-3,-1,1],[x-3,y+bh+3,1,-1],[x+bw+3,y+bh+3,-1,-1]])g.lineBetween(cx,cy,cx+6*dx,cy).lineBetween(cx,cy,cx,cy+6*dy);};
-      ui.banner('BESTIARY',w/2,L.banner);
-      const known=roster.filter(([id])=>s.unlocked.includes(id)).length;
-      ui.darkText('CREATURES '+known+'/'+roster.length,L.grid[0],L.grid[1]-8,{color:D().gold});
-      roster.forEach(([id],i)=>{const x=L.grid[0]+(i%6)*38,y=L.grid[1]+Math.floor(i/6)*46,on=s.unlocked.includes(id),f=ui.image('face_'+id,x,y,38,38);
-        if(f){if(on)f.clearTint();else f.setTint(SILHOUETTE);}ui.hitArea(x,y,38,38,()=>pick({kind:'base',id}),'bface-'+id);
-        this.layout.bestiary.faces.push({id,known:on,x:x+ox,y:y+oy});if(sel.kind==='base'&&sel.id===id)bracket(x,y,38,38);});
-      const [ex,ey,pitch,rowW]=L.evo;ui.darkText('EVOLUTIONS '+found.length+'/'+recipes.length,ex,ey-10,{color:D().gold});
-      const pageSize=portrait?3:4,pages=Math.ceil(recipes.length/pageSize),page=Math.min(this.bpage||0,pages-1);this.layout.bestiary.page=page;this.layout.bestiary.pages=pages;
-      recipes.slice(page*pageSize,page*pageSize+pageSize).forEach((r,i)=>{const y=ey+i*pitch,on=found.includes(r.id),cell=(k,x)=>{if(on)ui.image('face_'+k,x,y,28,28);else{ui.panel('dk_slot',x,y,28,28,5,2);ui.darkText('?',x+14,y+14,{align:'center',color:D().muted});}};
-        cell(r.parents[0],ex);ui.darkText('+',ex+37,y+14,{align:'center'});cell(r.parents[1],ex+46);ui.darkText('=',ex+83,y+14,{align:'center'});cell(r.id,ex+92);
-        const fresh=on&&!seen.has(r.id);ui.darkText(on?r.name.toUpperCase():'???',ex+128,y+(fresh?20:14),{color:on?D().text:D().muted});
-        if(fresh)ui.darkText('NEW',ex+128,y+4,{size:9,color:D().gold}).setAlpha(j.reduced?1:.65+.35*Math.sin(now/160));
-        ui.hitArea(ex-2,y-2,rowW,32,()=>pick({kind:'evo',id:r.id}),'bevo-'+r.id);this.layout.bestiary.evolutions.push({id:r.id,known:on,fresh,x:ex+ox,y:y+oy});
-        if(sel.kind==='evo'&&sel.id===r.id)bracket(ex-2,y-2,rowW,32);});
-      if(pages>1){const ny=portrait?259:291;ui.pill('<',ex,ny,30,18,()=>{this.bpage=(page+pages-1)%pages;s.draw();},{id:'bestiary-prev'});ui.darkText((page+1)+' / '+pages,ex+rowW/2,ny+9,{align:'center',color:D().muted});ui.pill('>',ex+rowW-30,ny,30,18,()=>{this.bpage=(page+1)%pages;s.draw();},{id:'bestiary-next'});}
-      // Detail for the selected entry.
-      const [dx,dy,dw,dh]=L.detail,wrap=dw-16;ui.darkPanel(dx,dy,dw,dh);let ty=dy+14;const line=(t,o={})=>{const tx=ui.darkText(t,dx+8,ty,{wrap,...o}).setOrigin(0,0);ty+=tx.height+4;return tx;};ty-=6;
-      if(sel.kind==='base'){const on=s.unlocked.includes(sel.id),info=roster.find(([id])=>id===sel.id);
-        line(on?pretty(sel.id).toUpperCase():'???',{size:18});
-        if(!on)line('Capture one in an expedition to unlock it.',{color:D().muted});
-        else{line(info?.[1]||'',{color:D().muted});const evos=recipes.filter(r=>found.includes(r.id)&&r.parents.includes(sel.id));if(evos.length)line('Evolves into '+evos.map(r=>r.name).join(', ')+'.',{color:D().teal});}}
-      else{const r=recipes.find(v=>v.id===sel.id),on=found.includes(r.id);
-        if(!on){line('???',{size:18});line('Merge two creatures in an expedition to discover this evolution.',{color:D().muted});}
-        else{const cat=s.creatures.evolution.catalog().find(v=>v.id===r.id);line(r.name.toUpperCase(),{size:18});line(pretty(r.parents[0])+' + '+pretty(r.parents[1]),{color:D().teal});
-          line('+'+r.hp+' party HP · '+(portrait?EVO_SHORT[r.id][0]:r.bonus),{color:D().gold});line(r.ability,{color:D().muted});if(cat)line('Upgrades: '+cat.upgrades.map(u=>u.name).join(', '),{color:D().muted});}}
-      ui.pill('Back',...L.back,()=>s.closeBestiary(),{id:'bestiary-back'});
-      if(!portrait)ui.endGroup();
-    }
+    // Bestiary (from the title; drawn instead of it): the Field Binder. See survivor-binder.js and survivor-bestiary.js.
+    bestiary(w,h){this.s.binder.draw(w,h);this.layout.bestiary=this.s.binder.layout;}
     paused(w,h){
       const s=this.s,ui=s.ui,ids=[...new Set(s.relics.equipped)];this.dim(w,h);
       if(ids.length){

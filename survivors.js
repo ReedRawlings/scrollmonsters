@@ -56,6 +56,7 @@
       this.load.image('killIcon',A+'Items/Weapons/Sword/SpriteInHand.png');
       this.load.font('NovelMix','assets/ui/font_medium_9px.ttf');
       for(const [id,path] of Object.entries(FACESETS))this.load.image('face_'+id,A+'Actor/'+path+'/Faceset.png');
+      this.load.image('face_guardian',A+'Actor/Boss/DemonCyclop/Faceset.png');this.load.image('face_ancient',A+'Actor/Boss/DemonCyclop2/Faceset.png');
       for(const id of RELIC_IDS)this.load.image('relic_'+id,'assets/icons/relics/'+(RELIC_FILES[id]||id+'.png'));
       for(const [key,m] of Object.entries(FX_SHEETS))this.load.image(key,m.src);
       for(const id of UPGRADE_ICON_IDS)this.load.image('upgrade_'+id,'assets/icons/upgrades/'+id+'.png');
@@ -82,7 +83,7 @@
       this.catShadow=this.add.ellipse(754,822,26,10,0x243b2c,.3);
       this.fx=this.add.graphics().setDepth(900000000);
       this.cameras.main.startFollow(this.playerSprite,true,1,1);
-      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(1000000000);this.juice=new SurvivorJuice(this);this.evoFx=new SurvivorEvolutionFx(this);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);
+      this.ui=new ScrollUI.NativeView(this);this.ui.root.setScrollFactor(0).setDepth(1000000000);this.juice=new SurvivorJuice(this);this.evoFx=new SurvivorEvolutionFx(this);this.hud=new SurvivorHud(this);this.screens=new SurvivorScreens(this);this.bestiary=new SurvivorBestiary(this);this.binder=new SurvivorBinder(this);
       this.joyGraphic=this.add.graphics().setScrollFactor(0).setDepth(1000000001);
       this.input.addPointer(2);
       // Any interactive UI object under the pointer owns the press; only bare field starts movement.
@@ -98,6 +99,8 @@
       this.input.keyboard.on('keydown-ENTER',()=>{if(this.mode==='title'&&this.bestiaryOpen)this.closeBestiary();else if(this.mode==='title'&&this.bestiaryClosedFrame===this.game.loop.frame)return;else if(this.mode==='title'||this.mode==='won'||this.mode==='lost')this.start();else if(this.mode==='paused')this.pause();else if(this.mode==='unlock')this.closeUnlock();else if(this.mode==='evolved')this.closeEvolved();else if(this.mode==='pack')this.packs.act();else if(this.mode==='playing')this.juice.skipMerge();});
       this.input.keyboard.on('keydown',()=>this.unlockAudio());
       for(let i=1;i<=3;i++)this.input.keyboard.on('keydown-'+['ONE','TWO','THREE'][i-1],()=>this.mode==='merge'?this.chooseMergeIndex(i-1):this.mode==='relic'?(this.juice.since('relic')>=SurvivorScreens.LOCK_MS&&this.relics.choose(i-1)):(this.juice.since('upgrade')>=SurvivorScreens.LOCK_MS&&this.chooseUpgrade(i-1)));
+      // The Field Binder turns pages with the arrow keys.
+      for(const [k,d] of [['LEFT',-1],['RIGHT',1]])this.input.keyboard.on('keydown-'+k,()=>{if(this.mode==='title'&&this.bestiaryOpen)this.binder.step(d);});
       this.input.keyboard.on('keydown-ESC',()=>{if(this.mode==='title'&&this.bestiaryOpen)this.closeBestiary();else this.pause();});
       this.input.keyboard.on('keydown-P',()=>this.pause());
       this.input.keyboard.on('keydown-R',()=>{if(this.mode!=='title')this.start();});
@@ -155,7 +158,7 @@
     closeUnlock(){if(this.mode!=='unlock')return;this.unlockType=null;this.mode='playing';this.accumulator=0;this.draw();}
     openEvolved(type){this.evolvedType=type;this.mode='evolved';this.joy=null;this.input.keyboard.resetKeys();this.accumulator=0;this.draw();}
     closeEvolved(){if(this.mode!=='evolved')return;this.evolvedType=null;this.mode='playing';this.accumulator=0;this.draw();}
-    openBestiary(){if(this.mode!=='title')return;this.bestiaryOpen=true;this.draw();}
+    openBestiary(){if(this.mode!=='title')return;this.bestiaryOpen=true;this.binder.open();this.draw();}
     closeBestiary(){this.bestiaryOpen=false;this.bestiaryClosedFrame=this.game.loop.frame;this.draw();}
     // Title presentation state (starterFrom/starterAt/lockedTap) only drives the menu's flip and hints.
     chooseStarter(id){if(DEMO){if(!DEMO_ROSTER.includes(id))return;const previous=this.demoPreview||this.starter;this.demoPreview=id;if(id!==previous){this.starterFrom=previous;this.starterAt=this.juice.now();}}if(!this.unlocked.includes(id)){this.lockedTap={id,at:this.juice.now()};this.draw();return;}this.lockedTap=null;if(!DEMO&&id!==this.starter){this.starterFrom=this.starter;this.starterAt=this.juice.now();}const mode=this.mode;this.run=null;this.starter=id;this.resetState();this.mode=mode;this.draw();}
@@ -165,7 +168,7 @@
     syncMusic(){if(!this.audioUnlocked||this.sound.locked)return;const list=MUSIC,inRun=this.mode!=='title'&&this.mode!=='won'&&this.mode!=='lost',wanted=inRun?'combat':'menu';if(!this.musicEnabled){this.music?.pause();return;}if(this.musicPlaylistEnded){if(this.musicGroup==='menu'&&wanted==='combat'){const tracks=list.combat||[];if(!tracks.length)return;this.musicGroup='combat';this.musicIndex=(this.run?.seed||0)%tracks.length;this.musicPlaylistEnded=false;this.playMusicTrack();}return;}if(!this.music){const tracks=list[wanted]||[];if(!tracks.length)return;this.musicGroup=wanted;this.musicIndex=wanted==='combat'?(this.run?.seed||0)%tracks.length:0;this.playMusicTrack();return;}if(this.music.isPaused)this.music.resume();}
     start(){this.unlockAudio();this.lockedTap=null;this.bestiaryOpen=false;if(this.run&&!this.run.finished)this.finishRun('restarted');const fromTitle=this.mode==='title';this.seed=this.runSeed();this.resetState();this.juice.reset();if(fromTitle)this.juice.iris();this.run={id:crypto.randomUUID(),version:2,seed:this.seed,build:DEMO?'evolution-demo-v2':'expedition-combat-v55',field:this.field,runMode:DEMO?'demo':this.isExpedition?'expedition':'trial',starter:this.starter,startedAt:new Date().toISOString(),status:'in_progress',events:[],samples:[],finished:false};this.nextSample=0;this.logEvent('started');this.saveRun();this.mode='playing';this.input.keyboard.resetKeys();this.draw();}
     reward(kind,data={}){this.events.emit('reward',{kind,...data});} // presentation hook: emits only, changes nothing
-    logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished)this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});}
+    logEvent(type,data={}){if(type==='owl_captured')this.expedition.unlock('owl');if(type==='beast_captured')this.expedition.unlock('beast');if(this.run&&!this.run.finished){this.run.events.push({time:+this.elapsed.toFixed(2),type,...data});this.bestiary?.event(type,data);}}
     runSummary(){return {field:this.field,greens:this.greens?.summary()||null,totalXp:this.totalXp,creatures:this.creatures.summary(),relics:this.relics.summary(),expedition:this.expedition.summary(),seconds:+this.elapsed.toFixed(2),spawned:this.spawned,enemiesAlive:this.enemies.filter(e=>e.hp>0).length,peakEnemies:this.peakEnemies,spawnCapSeconds:+this.spawnCapSeconds.toFixed(2),kills:this.kills,level:this.level,xp:this.xp,hp:this.player.hp,maxHp:this.maxHp,damage:{player:this.playerDamage,cat:this.catDamage,owl:this.owlDamage,taken:this.damageTaken},companionStats:this.companionStats(),encounters:this.encounters.summary(),upgrades:{...this.upgrades},owl:this.owl?.state||'not_seen'};}
     saveRun(){
       if(!this.run)return;
@@ -201,7 +204,7 @@
         }
       }catch{this.logStorageError=true;}
     }
-    finishRun(status){if(!this.run||this.run.finished)return;this.logEvent('ended',{outcome:status});this.run.status=status;this.run.finished=true;this.saveRun();}
+    finishRun(status){if(!this.run||this.run.finished)return;this.bestiary?.finish(status);this.logEvent('ended',{outcome:status});this.run.status=status;this.run.finished=true;this.saveRun();}
     sampleRun(){
       if(!this.run||this.elapsed<this.nextSample)return;
       this.run.samples.push({
@@ -284,7 +287,7 @@
       if(!relicEffect){this.creatures.elements.hit(e,source);if(e.hp<=0){this.relics.killed(e,amount);this.creatures.elements.killed(e);this.creatures.evolution.killed(e,source);}}if(this.encounters.hitSpecial(e))return;
       if(e===this.owl&&e.hp<=0){e.state='ready';e.progress=0;this.logEvent('owl_weakened');this.announce('Owl weakened! Stay inside its ring to capture.');return;}
       if(source==='cat'&&this.upgrades.pull)this.knockbackEnemy(e);else this.effectKnockback(e,from);
-      if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
+      if(e.hp<=0){if(e.packReward)this.packs.drop(e.x,e.y,'elite');if(e.shrineTier)this.expedition.completeShrine(e);else if(e.elite){this.logEvent('elite_defeated');this.announce('Elite defeated!');for(let i=0;i<8;i++)this.drop('xp',e.x,e.y);}if(e.type==='shaman')this.bestiary?.defeat('shaman');this.kills++;if(source==='cat')this.catKills++;this.drop('xp',e.x,e.y);if(this.player.hp<this.maxHp&&this.elapsed>=this.nextHealAt){this.drop('heal',e.x,e.y);this.nextHealAt=this.elapsed+30;}}
     }
     // Map callouts are off by design (playtest 2026-09-29); only headline() shows a header.
     announce(message){}

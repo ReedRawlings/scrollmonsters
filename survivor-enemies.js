@@ -17,7 +17,7 @@
     },
     preload(s){s.load.spritesheet('lion',A+'Actor/Animals/Lion/SpriteSheetYellow.png',{frameWidth:16,frameHeight:23});s.load.image('hunterArrow',A+'FX/Projectile/Arrow.png');for(const [key,path] of Object.entries(textures))s.load.spritesheet(key,path,{frameWidth:16,frameHeight:16});s.load.spritesheet('mageOrb',A+'FX/Projectile/EnergyBall.png',{frameWidth:16,frameHeight:16});s.load.image('enemyAxe',A+'Items/Weapons/Axe/SpriteInHand.png');},
     decorate(s,e){
-      if(e.type==='shaman'){e.variant=['shamanYellow','shamanGreen','shamanBlue'][Math.floor(s.rand()*3)];e.summonerId=++s.summonerId;e.contactDamage=50;e.clock=2;s.nextShamanAt=s.elapsed+25;}
+      if(e.type==='shaman'){s.bestiary?.see('shaman');e.variant=['shamanYellow','shamanGreen','shamanBlue'][Math.floor(s.rand()*3)];e.summonerId=++s.summonerId;e.contactDamage=50;e.clock=2;s.nextShamanAt=s.elapsed+25;}
       if(e.type==='hunter'){e.variant='hunter';e.contactDamage=50;e.clock=1;s.nextHunterAt=s.elapsed+45;}
       if(e.type==='skeleton'||e.type==='lion'){e.variant=e.type;e.contactDamage=e.type==='lion'?100:50;}
 
