@@ -150,8 +150,12 @@ td code{font-size:12px;color:var(--teal)}
 .stamp{position:absolute;transform:translate(-50%,-50%) rotate(-8deg);border:3px double var(--stamp);color:var(--stamp);padding:4px 7px 2px;font-size:18px;line-height:18px;white-space:nowrap;background:var(--stampbg)}
 .stamp.in{animation:slam calc(160ms/var(--spd)) steps(4) both}
 @keyframes slam{from{transform:translate(-50%,-50%) rotate(-18deg) scale(2.4);opacity:0}to{transform:translate(-50%,-50%) rotate(-8deg) scale(1);opacity:1}}
-.seal{position:absolute;width:62px;height:62px;border-radius:50%;transform:translate(-50%,-50%) rotate(-10deg);border:3px double var(--gild);color:var(--gild);background:var(--paper);display:grid;place-items:center;text-align:center;line-height:10px}
-.seal.in{animation:slam calc(160ms/var(--spd)) steps(4) both}
+.pshade{position:absolute;pointer-events:none;opacity:0}
+.pshade.r{background:linear-gradient(90deg,#000000b0 0,#00000040 35%,#0000 75%)}
+.pshade.l{background:linear-gradient(270deg,#000000b0 0,#00000040 35%,#0000 75%)}
+.trace{position:absolute;overflow:visible;pointer-events:none}
+.mband{position:absolute;transform:translateX(-50%);pointer-events:none}
+.mband>div{display:flex;gap:3px;align-items:center;white-space:nowrap;background:var(--gild);padding:2px 9px 1px;clip-path:polygon(0 0,100% 0,calc(100% - 4px) 50%,100% 100%,0 100%,4px 50%);box-shadow:inset 0 -2px 0 #0003}
 .fade{transition:opacity calc(300ms/var(--spd));opacity:0}
 .shake{animation:shake calc(160ms/var(--spd)) steps(4)}
 @keyframes shake{25%{transform:translate(1px,0)}50%{transform:translate(-1px,1px)}75%{transform:translate(1px,-1px)}}
@@ -166,7 +170,7 @@ td code{font-size:12px;color:var(--teal)}
 .nope{animation:nope calc(260ms/var(--spd)) steps(6)}
 @keyframes nope{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
 .note{position:absolute;width:7px;height:9px;pointer-events:none}
-@media (prefers-reduced-motion:reduce){.newb,.stamp.in,.seal.in,.shake,.tremble,.cry,.nope,.popin,.inkin>*{animation:none!important}.sbr{transition:none}}
+@media (prefers-reduced-motion:reduce){.newb,.stamp.in,.shake,.tremble,.cry,.nope,.popin,.inkin>*{animation:none!important}.sbr{transition:none}}
 
 /* ---------------- versions (no red) ---------------- */
 .th-moss{--cover:#3e6b45;--cover-d:#2f5536;--cover-dd:#1f3a25;--pat:repeating-linear-gradient(45deg,#ffffff0b 0 1px,#0000 1px 4px),repeating-linear-gradient(-45deg,#00000014 0 1px,#0000 1px 4px);
@@ -191,7 +195,7 @@ td code{font-size:12px;color:var(--teal)}
 <header class="top">
   <div class="brand">
     <h1>FIELD BINDER</h1>
-    <p>Four versions of the Field Binder, none of them red, and eight juice moments you can play on any page. Built from the game's facesets, NovelMix font and effect sheets.</p>
+    <p>The Field Binder in Dune Ledger, the picked version, with three alternates and eight juice moments you can play on any page. Built from the game's facesets, NovelMix font and effect sheets.</p>
   </div>
   <div class="controls">
     <div class="ctl"><span class="seg-label">FRAME</span><div class="seg" id="frameSeg" role="group" aria-label="Frame">
@@ -295,42 +299,42 @@ const SAVES = {
 };
 // ---------------------------------------------------------------- versions
 const THEMES = {
+  dune:{label:'DUNE LEDGER', sub:'Picked: stitched leather, blue ink', frame:'notch', dark:false, sil:[34,56,79], sw:['#c4995c','#f7f1e3','#22384f','#2a8f8c'],
+    note:'Picked. Tan leather with stitching, off-white pages, blue ink rules and teal accents. It matches the desert field and moves furthest from a Pokédex.'},
   moss:{label:'MOSS BINDER', sub:'Woodland cloth and brass', frame:'notch', dark:false, sil:[34,52,38], sw:['#3e6b45','#f4efdc','#d1ab55','#1d2a1f'],
-    note:'Green cloth cover, brass rings and cream pages. It matches the woodland field and reads as a ranger\'s field book. Closest to the layout you picked.'},
+    note:'Green cloth cover, brass rings and cream pages. It matches the woodland field and reads as a ranger\'s field book.'},
   night:{label:'NIGHT FOLIO', sub:'The game\'s DarkMode kit', frame:'panel', dark:true, sil:[92,80,112], sw:['#1d1428','#0b0710','#ffc41b','#2dc5c0'],
     note:'Black pages framed by the DarkMode panel art, with gold numbers and teal stamps. It sits closest to the menus already in the game.'},
   scroll:{label:'FIELD SCROLL', sub:'Hanging scrolls on a table', frame:'scroll', dark:false, sil:[74,51,34], sw:['#3b2a20','#ecdcb0','#7a4c28','#6b3fa0'],
     note:'Each creature is a parchment scroll on a wooden table. It plays on the name ScrollMonsters. Opening unrolls the scrolls instead of a cover.'},
-  dune:{label:'DUNE LEDGER', sub:'Stitched leather, blue ink', frame:'notch', dark:false, sil:[34,56,79], sw:['#c4995c','#f7f1e3','#22384f','#2a8f8c'],
-    note:'Tan leather with stitching, off-white pages, blue ink rules and teal accents. It matches the desert field and moves furthest from a Pokédex.'},
 };
 const JUICE = [
-  ['open','OPEN BINDER','Cover swings open, pages land, icons pop in.','~1.3s','CSS 3D only','Fade in'],
-  ['turn','TURN PAGE','Page lifts around the spine, the next lands, bracket slides.','340ms','Pack_Flip','Instant swap'],
+  ['open','OPEN BINDER','Cover settles, then turns over like a page; the first page lands on its back.','~0.7s','None (CSS 3D)','Fade in'],
+  ['turn','TURN PAGE','One sheet turns: the old page on its front, the next page on its back.','380ms','Pack_Flip (phone only)','Instant swap'],
   ['cry','CRY','Portrait squashes, ring pops, notes rise, cry plays.','300ms','Slot_PowerUp','No squash; sound stays'],
-  ['seen','FIRST SIGHTING','Ink splats, silhouette inks in, gold NEW pulses.','~700ms','Ink_Splat','No splat; fade in'],
-  ['caught','CAPTURED','Light pillar, white wipe, colour art, CAUGHT stamp.','~1.6s','Capture_Burst, Unlock_Fill, Damage_Crit, Reward_Trail','No wipe or shake'],
+  ['seen','FIRST SIGHTING','Silhouette inks in, name pops, gold NEW pulses.','~600ms','None','Fade in'],
+  ['caught','CAPTURED','Portrait trembles, white wipe, colour art, CAUGHT stamp.','~1.4s','Unlock_Fill, Damage_Crit, Reward_Trail','No wipe or shake'],
   ['fusion','FUSION FOUND','Parents glow, trails merge, result pops, HP counts up.','~1.5s','Slot_PowerUp, Merge_Trail, Merge_Core, Merge_Reveal, Merge_Ring, Recipe_Discovered','No burst'],
   ['ready','READY TO FUSE','Recipe circle loops around the ? box, READY pulses.','Loop','Recipe_Discovered','No pulse'],
-  ['mastered','MASTERED','Sheen sweeps, border turns gold, seal stamps.','~1.6s','Pack_Sheen, Evolved_Slot_Glow, Unlock_Rays','No sheen or shake'],
+  ['mastered','MASTERED','Gold line traces the page, corners twinkle, sheen crosses the portrait.','~1.2s','Reward_Trail, Pack_Sheen','Gold border without trace or sheen'],
 ];
 const SPEC = {
-  open:'The cover holds for 380ms, then swings open around the spine in 260ms. The inside page lands in 240ms. Strip icons pop in 25ms apart and the DEX types in. Field Scroll unrolls each scroll in 420ms, the second 140ms later.',
-  turn:'The old page lifts around the spine in 170ms and the new page lands in 170ms, with a paper sound and a Pack_Flip puff at the corner. The strip bracket slides 150ms to the new icons. The DEX types in.',
+  open:'The closed cover settles for 300ms. Then it turns over like one page: the cover lifts around the spine in 190ms and the first page lands on its back in 190ms, with a soft shadow on each side. Strip icons pop in 25ms apart and the DEX types in. On a phone the cover lifts away. Field Scroll unrolls each scroll in 420ms, the second 140ms later.',
+  turn:'On desktop one sheet turns. Its front is the page you leave and its back is the next page. It lifts around the spine in 190ms (ease-in) and lands in 190ms (ease-out). The page it will cover stays until it lands, and the page it reveals starts in shadow. On a phone the page lifts away with a Pack_Flip puff. The strip bracket slides 150ms and the DEX types in.',
   cry:'The portrait squashes and stretches in 300ms, a Slot_PowerUp ring pops and three notes rise. The creature\'s cry plays. An uncaught creature shakes "no" and stays silent.',
-  seen:'An Ink_Splat lands on the empty portrait. 120ms later the silhouette inks in over four steps and the name pops in. A gold NEW pulses beside the name until the page turns.',
-  caught:'A Capture_Burst pillar rises while the portrait trembles harder for 520ms. Unlock_Fill wipes white; at full white the colour faceset replaces the silhouette. CAUGHT stamps down with a 1px shake and Damage_Crit sparks. ATTACK, DASH and DEX type in, Reward_Trail sparkles fly to the strip icon and OWN bumps.',
+  seen:'The empty portrait inks in a silhouette over four steps and the name pops in. A gold NEW pulses beside the name until the page turns.',
+  caught:'The silhouette trembles harder for 520ms. Unlock_Fill wipes white; at full white the colour faceset replaces the silhouette. CAUGHT stamps down with a 1px shake and Damage_Crit sparks. ATTACK, DASH and DEX type in, Reward_Trail sparkles fly to the strip icon and OWN bumps.',
   fusion:'Each parent box glows in turn and its link lights (140ms apart). Merge_Trail sparks fly to the ? box, Merge_Core pulses, then Merge_Reveal and Merge_Ring burst. The result face pops in, the HP bonus counts up from 0 in 360ms and Recipe_Discovered spins for 1.5s.',
   ready:'While you own both parents and have not made the fusion, Recipe_Discovered loops around the ? box and READY pulses. This shows on its own in the Mid save (Mollusc and Frog).',
-  mastered:'A Pack_Sheen sweeps across the page in 700ms and the page border turns gold for good. Evolved_Slot_Glow rings the portrait, the gold mark pops beside the number, the NOTE types in, and a MASTERED seal stamps down with Unlock_Rays behind it.',
+  mastered:'A gold line traces the page edge in 16 steps (460ms) and the border stays gold. Reward_Trail twinkles at the four corners, a Pack_Sheen crosses the portrait as it does on pack cards, and a MASTERED ribbon pops under the portrait for 1.5s. The gold mark pops beside the number and the NOTE types in.',
 };
 
 // ---------------------------------------------------------------- state
-const store = { get(k){ try { return localStorage.getItem('field-binder-' + k); } catch { return null; } },
-  set(k,v){ try { localStorage.setItem('field-binder-' + k, v); } catch {} } };
+const store = { get(k){ try { return localStorage.getItem('field-binder-v2-' + k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('field-binder-v2-' + k, v); } catch {} } };
 const hashT = location.hash.slice(1);
 const S = {
-  theme: THEMES[hashT] ? hashT : THEMES[store.get('theme')] ? store.get('theme') : 'moss',
+  theme: THEMES[hashT] ? hashT : THEMES[store.get('theme')] ? store.get('theme') : 'dune',
   frame: store.get('frame') || (innerWidth < 640 ? 'phone' : 'desktop'),
   save: store.get('save') || 'mid', sound: store.get('sound') !== 'off', spd: 1,
   sel: 'cat', over: {}, picks: {}, newIds: new Set(), typeIds: new Set(), anim: {}, run: 0, sbrX: null,
@@ -541,7 +545,7 @@ function fit() {
 }
 const loops = [];
 function stopLoops() { while (loops.length) loops.pop().stop(); }
-function clearFX() { stopLoops(); fxl.innerHTML = ''; }
+function clearFX() { stopLoops(); fxl.innerHTML = ''; for (const pg of scene.querySelectorAll('.pg')) pg.style.visibility = ''; }
 function render() {
   const P = fit(), t = T();
   stopLoops();
@@ -569,8 +573,8 @@ function pos(el) { let x = 0, y = 0, e = el; while (e && e !== stage) { x += e.o
   const w = el.offsetWidth, h = el.offsetHeight; return {x, y, w, h, cx: x + w / 2, cy: y + h / 2}; }
 
 // ---------------------------------------------------------------- effect sheets (horizontal strips from assets/fx/sheets)
-const FXS = {Ink_Splat:[48,32,6,20], Capture_Burst:[48,96,12,15], Unlock_Fill:[48,48,8,20], Damage_Crit:[24,24,5,20], Reward_Trail:[8,8,5,20],
-  Pack_Sheen:[24,85,8,12], Evolved_Slot_Glow:[32,24,6,15], Unlock_Rays:[64,64,8,8], Slot_PowerUp:[32,32,6,15], Merge_Trail:[8,8,6,24],
+const FXS = {Unlock_Fill:[48,48,8,20], Damage_Crit:[24,24,5,20], Reward_Trail:[8,8,5,20],
+  Pack_Sheen:[24,85,8,12], Slot_PowerUp:[32,32,6,15], Merge_Trail:[8,8,6,24],
   Merge_Core:[32,32,6,24], Merge_Reveal:[48,48,8,24], Merge_Ring:[64,44,8,24], Recipe_Discovered:[64,64,8,8], Pack_Flip:[48,48,6,20]};
 function fx(name, x, y, o = {}) {
   if (o.flash && RM) return null;
@@ -604,9 +608,29 @@ function anim(el, cls) { if (!el || RM) return; el.classList.remove(cls); void e
 function bump(el) { anim(el, 'bump'); }
 
 // ---------------------------------------------------------------- page turn and binder open
-const PERSP = 'perspective(700px) ';
+// A desktop turn is one sheet. Its front is the page that lifts and its back is the page that lands, so the two halves
+// read as one object. The page on the landing side stays until the sheet covers it; a soft shadow follows the sheet.
+const PERSP = 'perspective(1400px) ', HALF = 190;
 function sheetEl(b, html = '', cls = 'sheet') { const el = document.createElement('div'); el.className = cls; el.style.cssText = box(b); el.innerHTML = html; fxl.appendChild(el); return el; }
-function turnFX(dir) {
+function shadeEl(b, side) {
+  const el = sheetEl(b, '', 'pshade ' + side), [, , w, h] = b, n = w - 70;
+  if (T().frame === 'notch') el.style.clipPath = `polygon(0 0,${n}px 0,${n + 12}px 12px,${w}px 12px,${w}px ${h}px,0 ${h}px)`;
+  return el;
+}
+function pageTurn(dir, front, back, under, done) {
+  const [lp, rp] = layout(false).pages, ms = HALF / S.spd, a = dir > 0 ? -90 : 90;
+  if (under) fxl.appendChild(under);
+  const shadeTo = shadeEl(dir > 0 ? lp : rp, dir > 0 ? 'l' : 'r'), shadeFrom = shadeEl(dir > 0 ? rp : lp, dir > 0 ? 'r' : 'l');
+  fxl.append(front, back);
+  front.style.transformOrigin = dir > 0 ? '0 50%' : '100% 50%';
+  back.style.transformOrigin = dir > 0 ? '100% 50%' : '0 50%';
+  front.animate([{transform:PERSP + 'rotateY(0deg)', filter:'brightness(1)'},{transform:PERSP + `rotateY(${a}deg)`, filter:'brightness(.82)'}], {duration:ms, easing:'cubic-bezier(.45,0,1,1)', fill:'forwards'});
+  back.animate([{transform:PERSP + `rotateY(${-a}deg)`, filter:'brightness(.82)'},{transform:PERSP + 'rotateY(0deg)', filter:'brightness(1)'}], {duration:ms, delay:ms, easing:'cubic-bezier(0,0,.55,1)', fill:'both'});
+  shadeFrom.animate([{opacity:.6},{opacity:0}], {duration:ms, easing:'ease-in', fill:'forwards'});
+  shadeTo.animate([{opacity:0},{opacity:.5}], {duration:ms, delay:ms, easing:'ease-in', fill:'both'});
+  setTimeout(() => { for (const el of [front, back, under, shadeTo, shadeFrom]) el?.remove(); done?.(); }, ms * 2 + 30);
+}
+function turnFX(dir, snap) {
   sfx.page(); if (RM) return;
   const P = isPhone(), L = layout(P), t = T();
   if (t.frame === 'scroll') { // scrolls roll up and down again instead of turning
@@ -614,22 +638,23 @@ function turnFX(dir) {
       pg.querySelector('.roller.b').animate([{transform:`translateY(${-L.pages[i][3]}px)`},{transform:'none'}], {duration:260 / S.spd, delay:i * 70 / S.spd, easing:'ease-out', fill:'backwards'}); });
     return;
   }
-  const lift = (b, origin, to) => { const el = sheetEl(b); el.style.transformOrigin = origin;
-    el.animate([{transform:PERSP + 'rotateY(0deg)'},{transform:PERSP + `rotateY(${to}deg)`, filter:'brightness(.75)'}], {duration:170 / S.spd, easing:'ease-in'}).onfinish = () => el.remove(); return el; };
-  if (P) { lift(L.pages[0], '0 50%', -90); const [x, y, w] = L.pages[0]; fx('Pack_Flip', x + w - 6, y + 14, {scale:1}); return; }
-  const [lp, rp] = L.pages, pages = scene.querySelectorAll('.pg');
-  if (dir > 0) { lift(rp, '0 50%', -90); pages[0].animate([{transform:PERSP + 'rotateY(90deg)'},{transform:'none'}], {duration:170 / S.spd, delay:170 / S.spd, easing:'ease-out', fill:'backwards'});
-    fx('Pack_Flip', rp[0] + rp[2] - 6, rp[1] + 16, {scale:1}); }
-  else { lift(lp, '100% 50%', 90); pages[1].animate([{transform:PERSP + 'rotateY(-90deg)'},{transform:'none'}], {duration:170 / S.spd, delay:170 / S.spd, easing:'ease-out', fill:'backwards'});
-    fx('Pack_Flip', lp[0] + 6, lp[1] + 16, {scale:1}); }
+  if (P) { const el = sheetEl(L.pages[0]); el.style.transformOrigin = '0 50%';
+    el.animate([{transform:'perspective(700px) rotateY(0deg)'},{transform:'perspective(700px) rotateY(-90deg)', filter:'brightness(.75)'}], {duration:170 / S.spd, easing:'ease-in'}).onfinish = () => el.remove();
+    const [x, y, w] = L.pages[0]; fx('Pack_Flip', x + w - 6, y + 14, {scale:1}); return; }
+  if (!snap) return;
+  const pages = scene.querySelectorAll('.pg');
+  if (dir > 0) pageTurn(1, snap[1], pages[0].cloneNode(true), snap[0]);
+  else pageTurn(-1, snap[0], pages[1].cloneNode(true), snap[1]);
 }
 function show(id, dir) {
   const P = isPhone(), oldKey = keyOf(cur().i, P);
+  // Desktop turns need the pages being left: copy them before the new spread renders.
+  const snap = P || RM || T().frame === 'scroll' ? null : [...scene.querySelectorAll('.pg')].map(pg => pg.cloneNode(true));
   S.run++; clearFX(); S.sel = id;
   const key = keyOf(cur().i, P);
   if (key !== oldKey) { S.newIds.clear(); for (const s of shownIds()) S.typeIds.add(s); }
   render();
-  if (key !== oldKey) turnFX(dir ?? Math.sign(key - oldKey));
+  if (key !== oldKey) turnFX(dir ?? Math.sign(key - oldKey), snap);
 }
 function binderStep(d) { const P = isPhone(), i = cur().i, base = P ? i : i - i % 2; show(MON[(base + d * (P ? 1 : 2) + MON.length) % MON.length].id, d); }
 
@@ -648,18 +673,20 @@ const J = {
         pg.querySelector('.roller.b').animate([{transform:`translateY(${-L.pages[i][3]}px)`},{transform:'none'}], o); });
       setTimeout(() => sfx.page(), 200 / S.spd); setTimeout(() => sfx.page(), 340 / S.spd); thumbsIn(700); return;
     }
-    const cv = P ? L.pages[0] : L.pages[1], hold = 380;
+    const cv = P ? L.pages[0] : L.pages[1], hold = 300;
     const cover = sheetEl([cv[0] - 2, cv[1] - 2, cv[2] + 4, cv[3] + 4],
       `<div class="plate"><div class="ct">FIELD<br>BINDER</div></div><div>SCROLLMONSTERS</div><div>${c.own}/${c.total} CAUGHT</div>
        ${t.frame === 'notch' ? ['left:6px;top:6px','right:6px;top:6px','left:6px;bottom:6px','right:6px;bottom:6px'].map(p => `<i class="cap" style="${p}"></i>`).join('') : ''}`, 'coverEl');
-    cover.style.transformOrigin = P ? '0 50%' : '0 50%';
     const pages = scene.querySelectorAll('.pg');
-    if (!P) pages[0].animate([{transform:PERSP + 'rotateY(90deg)'},{transform:'none'}], {duration:240 / S.spd, delay:(hold + 260) / S.spd, easing:'ease-out', fill:'backwards'});
-    cover.animate([{transform:'scale(1.04)'},{transform:'scale(1)', offset:.4},{transform:'scale(1)'}], {duration:hold / S.spd});
-    thumbsIn(hold + 400);
-    await wait(hold); if (tk !== S.run) return cover.remove();
+    if (!P) pages[0].style.visibility = 'hidden'; // a closed binder shows only its cover
+    cover.animate([{transform:'translateY(-4px)'},{transform:'translateY(1px)', offset:.5},{transform:'none'}], {duration:hold / S.spd, easing:'ease-out'});
+    thumbsIn(hold + 2 * HALF);
+    await wait(hold); if (tk !== S.run) return;
     sfx.page();
-    cover.animate([{transform:PERSP + 'rotateY(0deg)'},{transform:PERSP + 'rotateY(-90deg)', filter:'brightness(.6)'}], {duration:260 / S.spd, easing:'ease-in', fill:'forwards'}).onfinish = () => cover.remove();
+    if (P) { cover.style.transformOrigin = '0 50%';
+      cover.animate([{transform:'perspective(700px) rotateY(0deg)'},{transform:'perspective(700px) rotateY(-90deg)', filter:'brightness(.6)'}], {duration:260 / S.spd, easing:'ease-in', fill:'forwards'}).onfinish = () => cover.remove(); return; }
+    const back = pages[0].cloneNode(true); back.style.visibility = '';
+    pageTurn(1, cover, back, null, () => { pages[0].style.visibility = ''; });
   },
   async turn() { binderStep(1); },
   async cry() {
@@ -671,16 +698,14 @@ const J = {
       n.animate([{transform:'translate(0,0)', opacity:1},{transform:`translate(${(i - 1) * 6}px,-26px)`, opacity:0}], {duration:600 / S.spd, easing:'ease-out'}).onfinish = () => n.remove(); }, i * 90 / S.spd));
   },
   async seen(tk) {
-    const m = cur(); S.over[m.id] = 0; render(); await wait(260); if (tk !== S.run) return;
-    const p = pos(page(m.id).querySelector('.portrait'));
-    sfx.ink(); fx('Ink_Splat', p.cx, p.cy + 8, {scale:2});
-    await wait(130); if (tk !== S.run) return;
+    const m = cur(); S.over[m.id] = 0; render(); await wait(300); if (tk !== S.run) return;
+    sfx.ink();
     S.over[m.id] = 1; S.newIds.add(m.id); S.anim = {[m.id]:'seen'}; S.typeIds.add(m.id); render();
   },
   async caught(tk) {
     const m = cur(); S.over[m.id] = 1; S.newIds.delete(m.id); render(); await wait(220); if (tk !== S.run) return;
     let pg = page(m.id), el = pg.querySelector('.portrait'), p = pos(el);
-    sfx.charge(); fx('Capture_Burst', p.cx, p.y + p.h - 4, {scale:2, ay:80 / 96}); anim(el, 'tremble');
+    sfx.charge(); anim(el, 'tremble');
     await wait(520); if (tk !== S.run) return;
     fx('Unlock_Fill', p.cx, p.cy, {scale:2, flash:true});
     await wait(RM ? 0 : 140); if (tk !== S.run) return;
@@ -719,22 +744,38 @@ const J = {
     const {r} = fusionTarget(); S.over[r.id] = 0; for (const q of r.from) if (st(q) < 2) S.over[q] = 2; render(); sfx.pop();
   },
   async mastered(tk) {
-    const m = cur(); if (st(m.id) < 2 || st(m.id) === 3) S.over[m.id] = 2; render(); await wait(220); if (tk !== S.run) return;
-    let pg = page(m.id); const pp = pos(pg);
-    if (!RM) { const clip = sheetEl([pp.x, pp.y, pp.w, pp.h], '', 'clipbox'), sh = fx('Pack_Sheen', 0, 0, {scale:3, loop:true, parent:clip, ax:0, ay:0});
-      sh.el.style.top = (pp.h - 255) / 2 + 'px';
-      sh.el.animate([{transform:'translateX(-80px)'},{transform:`translateX(${pp.w + 10}px)`}], {duration:700 / S.spd, easing:'ease-in-out'}).onfinish = () => { sh.stop(); clip.remove(); }; }
-    sfx.chime();
-    await wait(320); if (tk !== S.run) return;
-    S.over[m.id] = 3; S.anim = {[m.id]:'mastered'}; S.typeIds.add(m.id); render();
-    pg = page(m.id); const p = pos(pg.querySelector('.portrait')), d = pos(pg.querySelector('.fs'));
-    fx('Evolved_Slot_Glow', p.cx, p.cy, {scale:3});
-    await wait(260); if (tk !== S.run) return;
-    const sx = d.x + d.w - 36, sy = d.y + d.h - 26;
-    fx('Unlock_Rays', sx, sy, {scale:1, loop:true, life:1300, alpha:.9});
-    stamp(`<span>${img(T().dark ? 'sparkW' : 'spark')}<br>MASTERED</span>`, sx, sy, 'seal');
+    const m = cur(); if (st(m.id) < 2 || st(m.id) === 3) S.over[m.id] = 2; render(); await wait(200); if (tk !== S.run) return;
+    const pp = pos(page(m.id)); sfx.chime();
+    // 1. a gold line traces the page edge in steps
+    const trace = traceEl(pp);
+    await wait(RM ? 0 : 480); if (tk !== S.run) return;
+    // 2. the border stays gold and the corners twinkle
+    S.over[m.id] = 3; S.anim = {[m.id]:'mastered'}; S.typeIds.add(m.id); render(); trace.remove();
+    const pg = page(m.id), pr = pos(pg.querySelector('.portrait'));
+    [[pp.x + 2, pp.y + 2], [pp.x + pp.w - 2, pp.y + 14], [pp.x + pp.w - 2, pp.y + pp.h - 2], [pp.x + 2, pp.y + pp.h - 2]]
+      .forEach(([x, y], i) => setTimeout(() => fx('Reward_Trail', x, y, {scale:2}), i * 60 / S.spd));
+    // 3. a sheen crosses the portrait, as on pack cards, and a MASTERED ribbon pops under it
+    if (!RM) { const s = pr.h > 100 ? 2 : 1, clip = sheetEl([pr.x + 2, pr.y + 2, pr.w - 4, pr.h - 4], '', 'clipbox'), sh = fx('Pack_Sheen', 0, 0, {scale:s, loop:true, parent:clip, ax:0, ay:0});
+      sh.el.animate([{transform:`translateX(${-24 * s}px)`},{transform:`translateX(${pr.w}px)`}], {duration:420 / S.spd, delay:120 / S.spd, easing:'ease-in-out', fill:'backwards'}).onfinish = () => { sh.stop(); clip.remove(); }; }
+    const rb = document.createElement('div'); rb.className = 'mband'; rb.style.left = pr.cx + 'px'; rb.style.top = pr.y + pr.h - 6 + 'px';
+    rb.innerHTML = `<div class="popin ol">${img('sparkW')}MASTERED</div>`; fxl.appendChild(rb);
+    setTimeout(() => { rb.classList.add('fade'); setTimeout(() => rb.remove(), 320 / S.spd); }, 1500 / S.spd);
   },
 };
+// A gold copy of the page outline, drawn on in 16 steps.
+function traceEl(pp) {
+  const ns = 'http://www.w3.org/2000/svg', w = pp.w, h = pp.h, b = 1.5, n = w - 70;
+  const pts = T().frame === 'notch' ? [[b,b],[n,b],[n + 12,12 + b],[w - b,12 + b],[w - b,h - b],[b,h - b]] : [[b,b],[w - b,b],[w - b,h - b],[b,h - b]];
+  const svg = document.createElementNS(ns, 'svg'), poly = document.createElementNS(ns, 'polygon');
+  svg.setAttribute('class', 'trace'); svg.setAttribute('width', w); svg.setAttribute('height', h); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.style.left = pp.x + 'px'; svg.style.top = pp.y + 'px';
+  poly.setAttribute('points', pts.map(p => p.join(',')).join(' ')); poly.setAttribute('fill', 'none'); poly.setAttribute('stroke', 'var(--gild)'); poly.setAttribute('stroke-width', '3');
+  svg.appendChild(poly); fxl.appendChild(svg);
+  const len = poly.getTotalLength(); poly.style.strokeDasharray = len;
+  if (RM) poly.style.strokeDashoffset = 0;
+  else poly.animate([{strokeDashoffset:len},{strokeDashoffset:0}], {duration:460 / S.spd, easing:'steps(16, end)', fill:'forwards'});
+  return svg;
+}
 // The page that shows a recipe: the open page if it has one, else Cat (or Mollusc and Frog on the Mid save).
 function fusionTarget() {
   let m = cur(); if (m.kind === 'fusion') { const p = BY[m.from[1]]; S.picks[p.id] = fusionsOf(p.id).indexOf(m); m = p; }
