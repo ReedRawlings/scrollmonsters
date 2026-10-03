@@ -187,7 +187,7 @@ td code{font-size:12px;color:var(--teal)}
   --ringc:#6a4a26;--ringd:#3a2812;--th:#f7f1e3;--thf:#e3ecea;--thx:#f1e1c8;--bracket:#22384f;--emboss:#2a3f56;--stitch:#fff3d299}
 .th-scroll .thumb{border-color:#2a180c}
 .th-scroll .bd-arrow{border-color:#2a180c}
-.th-scroll .ribbon{display:none}
+.th-scroll .ribbon,.turning .ribbon{display:none}
 .th-night .thumb .sil{filter:brightness(0) invert(.45)}
 </style>
 
@@ -545,7 +545,7 @@ function fit() {
 }
 const loops = [];
 function stopLoops() { while (loops.length) loops.pop().stop(); }
-function clearFX() { stopLoops(); fxl.innerHTML = ''; for (const pg of scene.querySelectorAll('.pg')) pg.style.visibility = ''; }
+function clearFX() { stopLoops(); fxl.innerHTML = ''; scene.classList.remove('turning'); for (const pg of scene.querySelectorAll('.pg')) pg.style.visibility = ''; }
 function render() {
   const P = fit(), t = T();
   stopLoops();
@@ -619,6 +619,9 @@ function shadeEl(b, side) {
 }
 function pageTurn(dir, front, back, under, done) {
   const [lp, rp] = layout(false).pages, ms = HALF / S.spd, a = dir > 0 ? -90 : 90;
+  // The bookmark ribbon hangs below the page, where the sheet cannot cover it: hide it until the sheet lands.
+  for (const el of [front, back, under]) el?.querySelectorAll('.ribbon').forEach(r => r.remove());
+  scene.classList.add('turning');
   if (under) fxl.appendChild(under);
   const shadeTo = shadeEl(dir > 0 ? lp : rp, dir > 0 ? 'l' : 'r'), shadeFrom = shadeEl(dir > 0 ? rp : lp, dir > 0 ? 'r' : 'l');
   fxl.append(front, back);
@@ -628,7 +631,7 @@ function pageTurn(dir, front, back, under, done) {
   back.animate([{transform:PERSP + `rotateY(${-a}deg)`, filter:'brightness(.82)'},{transform:PERSP + 'rotateY(0deg)', filter:'brightness(1)'}], {duration:ms, delay:ms, easing:'cubic-bezier(0,0,.55,1)', fill:'both'});
   shadeFrom.animate([{opacity:.6},{opacity:0}], {duration:ms, easing:'ease-in', fill:'forwards'});
   shadeTo.animate([{opacity:0},{opacity:.5}], {duration:ms, delay:ms, easing:'ease-in', fill:'both'});
-  setTimeout(() => { for (const el of [front, back, under, shadeTo, shadeFrom]) el?.remove(); done?.(); }, ms * 2 + 30);
+  setTimeout(() => { for (const el of [front, back, under, shadeTo, shadeFrom]) el?.remove(); scene.classList.remove('turning'); done?.(); }, ms * 2 + 30);
 }
 function turnFX(dir, snap) {
   sfx.page(); if (RM) return;
