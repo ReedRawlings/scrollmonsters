@@ -59,6 +59,10 @@ th{font:400 9px/1.4 var(--pixel);letter-spacing:.5px;color:var(--muted);border-t
 td:first-child{font:400 9px/1.6 var(--pixel);letter-spacing:.5px;white-space:nowrap}
 td code{font-size:12px;color:var(--teal)}
 .foot{margin-top:14px;color:var(--muted);font-size:14px}
+.rules{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:12px 0 0}
+.rules dt{font:400 9px/1.9 var(--pixel);color:var(--muted);letter-spacing:.5px}
+.rules dd{margin:0;color:#ddd6ee;max-width:80ch}
+@media (max-width:520px){.rules{grid-template-columns:minmax(0,1fr);gap:2px}.rules dd{margin-bottom:8px}}
 @media (max-width:900px){.juice,.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.versions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:440px){.juice small,.versions small{display:none}}
 
@@ -218,6 +222,17 @@ td code{font-size:12px;color:var(--teal)}
 </div>
 <div class="juice" id="juice"></div>
 <section class="cards" id="cards"></section>
+<section class="card spec" id="mastery">
+  <h2>Mastery rule</h2>
+  <dl class="rules">
+    <dt>RULE</dt><dd>Win an expedition with the creature in your party when the run ends. A fusion counts only when the fusion itself is in the party. One win is enough.</dd>
+    <dt>FOES</dt><dd>Foes cannot join a party, so they have defeat goals: Shaman 10, Guardian 3, Ancient Guardian 1.</dd>
+    <dt>ON THE PAGE</dt><dd>A caught creature shows an empty star beside its number and its goal at the end of the DEX box. Mastery fills the star in gold, turns the border gold and replaces the goal with a field NOTE. The phone page adds a records line: caught, wins and best damage.</dd>
+    <dt>WHEN</dt><dd>The MASTERED juice plays the first time you open that page after the winning run. Until then, the Bestiary button on the title screen shows NEW, as it already does for new evolutions.</dd>
+    <dt>REWARD</dt><dd>Proposed: a gold palette for that creature in runs. It changes no stats, so the balance stays the same.</dd>
+    <dt>DATA</dt><dd>The game needs one new save: a lifetime record for each creature (caught, wins, best damage), updated when a run is won. Run history keeps only the last 50 runs, so it cannot hold lifetime totals.</dd>
+  </dl>
+</section>
 <section class="card spec">
   <h2>Juice spec</h2>
   <div class="tbl"><table>
@@ -289,13 +304,13 @@ const BY = Object.fromEntries(MON.map(m => [m.id, m]));
 const CREATURES = MON.filter(m => m.kind === 'base' || m.kind === 'fusion');
 const fusionsOf = id => MON.filter(m => m.from?.includes(id));
 const hash = s => [...s].reduce((h,c) => (h*31 + c.charCodeAt(0)) >>> 0, 7);
-const rec = id => { const h = hash(id); return {caught:1 + h%7, merged:h%4, runs:2 + h%11, best:300 + h%1700, defeated:3 + h%20}; };
+const rec = id => { const h = hash(id); return {caught:1 + h%7, merged:h%4, runs:2 + h%11, wins:1 + h%5, best:300 + h%1700, defeated:3 + h%20}; };
 
 // 0 unknown, 1 seen, 2 caught (foes: defeated), 3 mastered
 const SAVES = {
   fresh:{cat:2,owl:1,beast:1,mollusc:1},
   mid:{cat:3,owl:2,beast:1,frog:2,mouse:1,mole:2,salamander:2,spider:1,storm:2,mollusc:2,octopus:2,tengu:2,shaman:2,guardian:2,ancient:1},
-  full:Object.fromEntries(MON.map(m => [m.id, ['mouse','spider','reptile','axolotl','shaman','ancient'].includes(m.id) ? 2 : 3])),
+  full:Object.fromEntries(MON.map(m => [m.id, ['mouse','spider','reptile','axolotl','shaman'].includes(m.id) ? 2 : 3])),
 };
 // ---------------------------------------------------------------- versions
 const THEMES = {
@@ -316,7 +331,7 @@ const JUICE = [
   ['caught','CAPTURED','Portrait trembles, white wipe, colour art, CAUGHT stamp.','~1.4s','Unlock_Fill, Damage_Crit, Reward_Trail','No wipe or shake'],
   ['fusion','FUSION FOUND','Parents glow, trails merge, result pops, HP counts up.','~1.5s','Slot_PowerUp, Merge_Trail, Merge_Core, Merge_Reveal, Merge_Ring, Recipe_Discovered','No burst'],
   ['ready','READY TO FUSE','Recipe circle loops around the ? box, READY pulses.','Loop','Recipe_Discovered','No pulse'],
-  ['mastered','MASTERED','Gold line traces the page, corners twinkle, sheen crosses the portrait.','~1.2s','Reward_Trail, Pack_Sheen','Gold border without trace or sheen'],
+  ['mastered','MASTERED','After a win with it in your party: gold line traces the page, corners twinkle, sheen crosses the portrait.','~1.2s','Reward_Trail, Pack_Sheen','Gold border without trace or sheen'],
 ];
 const SPEC = {
   open:'The closed cover settles for 300ms. Then it turns over like one page: the cover lifts around the spine in 190ms and the first page lands on its back in 190ms, with a soft shadow on each side. Strip icons pop in 25ms apart and the DEX types in. On a phone the cover lifts away. Field Scroll unrolls each scroll in 420ms, the second 140ms later.',
@@ -326,7 +341,7 @@ const SPEC = {
   caught:'The silhouette trembles harder for 520ms. Unlock_Fill wipes white; at full white the colour faceset replaces the silhouette. CAUGHT stamps down with a 1px shake and Damage_Crit sparks. ATTACK, DASH and DEX type in, Reward_Trail sparkles fly to the strip icon and OWN bumps.',
   fusion:'Each parent box glows in turn and its link lights (140ms apart). Merge_Trail sparks fly to the ? box, Merge_Core pulses, then Merge_Reveal and Merge_Ring burst. The result face pops in, the HP bonus counts up from 0 in 360ms and Recipe_Discovered spins for 1.5s.',
   ready:'While you own both parents and have not made the fusion, Recipe_Discovered loops around the ? box and READY pulses. This shows on its own in the Mid save (Mollusc and Frog).',
-  mastered:'A gold line traces the page edge in 16 steps (460ms) and the border stays gold. Reward_Trail twinkles at the four corners, a Pack_Sheen crosses the portrait as it does on pack cards, and a MASTERED ribbon pops under the portrait for 1.5s. The gold mark pops beside the number and the NOTE types in.',
+  mastered:'Plays the first time you open the page after you win a run with this creature in your party. A gold line traces the page edge in 16 steps (460ms) and the border stays gold. Reward_Trail twinkles at the four corners, a Pack_Sheen crosses the portrait as it does on pack cards, and a MASTERED ribbon pops under the portrait for 1.5s. The empty star beside the number fills in gold and the NOTE replaces the mastery goal.',
 };
 
 // ---------------------------------------------------------------- state
@@ -373,6 +388,7 @@ function makeIcons() {
   const NOTE = ['..###','..#.#','..#.#','..#.#','###.#','###..','###..','.....','.....'];
   ICON.ring = bitmap(RING, {'#':'#1a1a22'}); ICON.ringW = bitmap(RING, {'#':'#ffffff'});
   ICON.spark = bitmap(SPARK, {'#':'#b8862a'}); ICON.sparkW = bitmap(SPARK, {'#':'#ffc41b'});
+  ICON.sparkO = bitmap(SPARK, {'#':'#c9bc98'}); ICON.sparkOW = bitmap(SPARK, {'#':'#4a3f5c'});
   ICON.tri = bitmap(TRI, {'#':'#1a1a22'}); ICON.triL = bitmap(TRIL, {'#':'#1a1a22'}); ICON.triW = bitmap(TRI, {'#':'#ffffff'}); ICON.triLW = bitmap(TRIL, {'#':'#ffffff'});
   ICON.note = bitmap(NOTE, {'#':'#ffc41b'});
 }
@@ -478,8 +494,12 @@ const keyOf = (i, P) => P ? i : Math.floor(i / 2);
 const shownIds = () => isPhone() ? [S.sel] : (k => [MON[k*2].id, MON[k*2+1].id])(keyOf(cur().i, false));
 
 // ================================================================= one creature per page
+// The tab notch leaves room top right for the number, the capture ring and the mastery star.
+const NOTCH = 78;
+// Mastery: win an expedition with the creature in your party. Foes cannot join a party, so they have defeat goals.
+const FOE_GOAL = {shaman:10, guardian:3, ancient:1};
 function dexPage(m, [x, y, w, h], P, t, sel) {
-  const s = st(m.id), known = s >= 1, own = s >= 2, a = S.anim[m.id] || '', notch = w - 70;
+  const s = st(m.id), known = s >= 1, own = s >= 2, a = S.anim[m.id] || '', notch = w - NOTCH;
   const nm = known ? m.name.toUpperCase() : '???', big = textW9(nm) * 2 <= notch - 16;
   const ps = P ? 120 : 84, idx = 9 + ps + (P ? 6 : 8), line = 28 + ps + 7;
   const hab = m.kind === 'fusion' ? 'FUSION ONLY' : m.when || 'WOODS/DESERT', hp = m.wild ? m.wild[0] : '+' + m.hp;
@@ -496,18 +516,20 @@ function dexPage(m, [x, y, w, h], P, t, sel) {
         ${recipes.length > 1 ? `<button data-act="chain" data-id="${m.id}" style="display:flex;gap:2px;align-items:center">${pick + 1}/${recipes.length} ${img(t.dark ? 'triW' : 'tri')}</button>` : ''}</div>`;
   }
   const R = rec(m.id);
-  const records = P && s === 3 ? `<div style="display:flex;gap:6px;align-items:center">${img(t.dark ? 'sparkW' : 'spark')}<span>${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  MERGED ${R.merged}  BEST ${R.best}`}</span></div>` : '';
+  const records = P && s === 3 ? `<div style="display:flex;gap:6px;align-items:center">${img(t.dark ? 'sparkW' : 'spark')}<span>${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}  WINS ${R.wins}  BEST ${R.best}`}</span></div>` : '';
+  const g = FOE_GOAL[m.id], goal = isFoe(m) ? `Defeat ${g === 1 ? 'it once' : g + ' times'}${g > 1 ? ` (${Math.min(R.defeated, g - 1)}/${g})` : ''}.` : 'Win a run with it in your party.';
   const dexText = !known ? 'No data. Find it in the field.' : !own ? (isFoe(m) ? 'Defeat one to learn more.' : 'Capture one to learn more.')
-    : m.dex + (P ? '\n\nIN BATTLE: ' + m.atk[1] : '') + (s === 3 ? (P ? '\n\n' : '\n') + 'NOTE: ' + m.note : '');
+    : m.dex + (P ? '\n\nIN BATTLE: ' + m.atk[1] : '') + (P ? '\n\n' : '\n') + (s === 3 ? 'NOTE: ' + m.note : 'MASTERY: ' + goal);
   const tw = txt => `data-tw="${esc(txt)}"`;
   const atk = own ? m.atk[0] : '???', dash = isFoe(m) ? stateWord(m) : own ? m.dash : '???';
   const pair = (l, v) => `<div style="display:flex;flex-direction:column;gap:1px">${l}${v}</div>`;
   const frame = t.frame === 'panel' ? '<div class="pframe"></div>' : t.frame === 'scroll' ? '<div class="parch"></div><div class="roller t"></div><div class="roller b"></div>'
     : pageSVG(w, h, notch, S.theme === 'dune' ? 2 : 3);
-  const mark = own ? img(s === 3 ? (t.dark ? 'sparkW' : 'spark') : t.dark ? 'ringW' : 'ring', a === 'caught' || a === 'mastered' ? 'popin' : '') : '';
+  // Caught: the capture ring and an empty star to earn. Mastered: the star fills in gold.
+  const mark = own ? img(t.dark ? 'ringW' : 'ring', a === 'caught' ? 'popin' : '') + img(s === 3 ? (t.dark ? 'sparkW' : 'spark') : t.dark ? 'sparkOW' : 'sparkO', a === 'mastered' ? 'popin' : '') : '';
   return `<section class="pg${s === 3 ? ' gilded' : ''}" data-page="${m.id}" style="${box([x, y, w, h])}">${frame}<div class="in">
     <div class="bd-name"><span class="${big ? 't18' : ''}${a === 'seen' ? ' popin' : ''}">${nm}</span>${S.newIds.has(m.id) ? '<span class="newb">NEW</span>' : ''}</div>
-    <div class="bd-no">No.${m.no}${mark}</div>
+    <div class="bd-no" title="${own ? (s === 3 ? 'Mastered' : 'Mastery: ' + esc(goal)) : ''}">No.${m.no}${mark}</div>
     <div class="portrait dbl${a === 'seen' ? ' inkin' : ''}" style="${box([9, 28, ps, ps])}" data-act="cry" data-id="${m.id}" title="Click to hear its cry">${face(m.id, P ? 3 : 2)}</div>
     <div class="bd-id" style="left:${idx}px;top:28px;right:9px;height:${ps}px;justify-content:space-between">
       <div class="sp">${known ? m.sp : '?????'}</div>
@@ -552,7 +574,9 @@ function render() {
   stage.className = `stage th-${S.theme}`; stage.style.setProperty('--spd', S.spd);
   scene.innerHTML = binderHTML(P, t);
   const typed = [...S.typeIds]; S.typeIds = new Set(); S.anim = {};
-  for (const id of typed) { const pg = page(id); if (pg) typeInto([...pg.querySelectorAll('[data-tw]')].map(el => [el, el.dataset.tw]), true); }
+  // One typewriter for every page that types, so a spread types both pages together.
+  const jobs = typed.flatMap(id => { const pg = page(id); return pg ? [...pg.querySelectorAll('[data-tw]')].map(el => [el, el.dataset.tw]) : []; });
+  if (jobs.length) typeInto(jobs, true);
   // strip: the bracket slides from the last icons it marked (150ms, as on the title screen)
   const inner = scene.querySelector('.strip-in'), sbr = inner.querySelector('.sbr'), on = inner.querySelector(`.thumb[data-pick="${shownIds()[0]}"]`), x = on.offsetLeft;
   sbr.classList.add('sbr');
@@ -613,7 +637,7 @@ function bump(el) { anim(el, 'bump'); }
 const PERSP = 'perspective(1400px) ', HALF = 190;
 function sheetEl(b, html = '', cls = 'sheet') { const el = document.createElement('div'); el.className = cls; el.style.cssText = box(b); el.innerHTML = html; fxl.appendChild(el); return el; }
 function shadeEl(b, side) {
-  const el = sheetEl(b, '', 'pshade ' + side), [, , w, h] = b, n = w - 70;
+  const el = sheetEl(b, '', 'pshade ' + side), [, , w, h] = b, n = w - NOTCH;
   if (T().frame === 'notch') el.style.clipPath = `polygon(0 0,${n}px 0,${n + 12}px 12px,${w}px 12px,${w}px ${h}px,0 ${h}px)`;
   return el;
 }
@@ -767,7 +791,7 @@ const J = {
 };
 // A gold copy of the page outline, drawn on in 16 steps.
 function traceEl(pp) {
-  const ns = 'http://www.w3.org/2000/svg', w = pp.w, h = pp.h, b = 1.5, n = w - 70;
+  const ns = 'http://www.w3.org/2000/svg', w = pp.w, h = pp.h, b = 1.5, n = w - NOTCH;
   const pts = T().frame === 'notch' ? [[b,b],[n,b],[n + 12,12 + b],[w - b,12 + b],[w - b,h - b],[b,h - b]] : [[b,b],[w - b,b],[w - b,h - b],[b,h - b]];
   const svg = document.createElementNS(ns, 'svg'), poly = document.createElementNS(ns, 'polygon');
   svg.setAttribute('class', 'trace'); svg.setAttribute('width', w); svg.setAttribute('height', h); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('shape-rendering', 'crispEdges');

@@ -629,7 +629,7 @@ function screen(w, h) {
         <div class="slot" style="width:28px;height:28px">${k ? spr(r.id, 1, {dark:true}) : '<span class="mut">?</span>'}</div>
         <span class="ol" style="margin-left:4px;line-height:11px">${k ? r.name.toUpperCase() + '<br><span class="gold">+' + r.hp + ' HP</span>' : ready(r) ? '<span class="gold blink">READY</span>' : '???'}</span></div>`; }).join(''); }
   if (T === 'LOG') { const R = rec(m.id);
-    body = s < 3 ? `<div class="ol mut">${isFoe(m) ? 'Defeat 10 to unlock the log.' : 'Master it to unlock the log. Capture it 5 times.'}</div>`
+    body = s < 3 ? `<div class="ol mut">${isFoe(m) ? 'Defeat 10 to unlock the log.' : 'Master it to unlock the log: win a run with it in your party.'}</div>`
       : `<div class="ol">${isFoe(m) ? 'DEFEATED ' + R.defeated : `CAUGHT ${R.caught}   MERGED ${R.merged}<br>RUNS ${R.runs}   BEST ${R.best} DMG`}</div>
          <div class="ol gold" style="margin-top:5px">NOTE: ${m.note}</div>`; }
   return `<div class="frame"></div>${head}
