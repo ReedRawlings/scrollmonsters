@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const {run, gameURL} = require('./survivor-test-utils.cjs');
 
 // Embers: coins from dens, elites, shrines, the hidden treasure and guardians, plus 1 per two minutes survived,
-// banked at the end of every full expedition (won, lost or restarted). The demo and the trial never award them.
+// banked only when a full expedition is completed (won or lost); restarting forfeits. The demo and the trial never award them.
 run('Embers drop, collect and bank across runs', async page => {
   const r = await page.evaluate(() => {
     const s = __survivorTest.scene, out = {}; localStorage.removeItem(SurvivorEmbers.KEY);
@@ -63,7 +63,7 @@ run('Embers drop, collect and bank across runs', async page => {
   assert.equal(r.saved.total, r.foundAll + 5); assert.equal(r.bankedOnce, r.foundAll + 5, 'Banking happens once per run');
   assert.deepEqual(r.endLine, [`Embers +${r.foundAll + 5} · ${r.foundAll + 5} saved`]);
   assert.equal(r.fresh, 0, 'A new run starts with no coins found');
-  assert.equal(r.afterRestart, r.foundAll + 5 + 2, 'Restarting mid-run banks the survival Embers (250 s = 2)');
+  assert.equal(r.afterRestart, r.foundAll + 5, 'Restarting mid-run forfeits that run\'s Embers');
 
   // the Ancient Guardian pays 20 and ends the run as a win, which also banks
   const w = await page.evaluate(() => { const s = __survivorTest.scene; localStorage.removeItem(SurvivorEmbers.KEY); s.start(); s.spawnTimer = 999; s.player.inv = 999;

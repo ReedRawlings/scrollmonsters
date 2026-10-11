@@ -18,7 +18,7 @@
           else {const best=targets.reduce((best,e)=>{const count=targets.filter(t=>dist(t,e)<stats.radius).length;return !best||count>best.count?{e,count}:best;},null).e;this.strikes.push({x:best.x,y:best.y,r:stats.radius,time:1,total:1,source:'mole',damage:stats.damage,echo:!!s.upgrades.moleEcho});}}
         }
       }
-      for(const h of this.helpers){h.life-=dt;if(h.target.hp<=0){h.target=s.combatTargets().find(e=>e.hp>0&&!h.hits.has(e)&&dist(h,e)<220);if(!h.target){h.life=0;continue;}}const target=h.target;this.follow(h,target,dt,310);if(dist(h,target)<target.r+9){h.hits.add(target);s.hit(target,h.damage,'mouse',h);s.burst('fxHit',h.x,h.y,.8,.2,0xb0ffff);if(s.upgrades.mouseJump&&target.hp<=0&&h.hits.size===1){const next=s.combatTargets().find(e=>e.hp>0&&!h.hits.has(e)&&dist(h,e)<160);if(next)h.target=next;else h.life=0;}else h.life=0;}}
+      for(const h of this.helpers){h.life-=dt;if(h.target.hp<=0){h.target=s.combatTargets().find(e=>e.hp>0&&!h.hits.has(e)&&dist(h,e)<220);if(!h.target){h.life=0;continue;}}const target=h.target;this.follow(h,target,dt,310);if(dist(h,target)<target.r+9){h.hits.add(target);s.hit(target,h.damage,'mouse',h);if(!s.attackFx?.bite(target))s.burst('fxHit',h.x,h.y,.8,.2,0xb0ffff);if(s.upgrades.mouseJump&&target.hp<=0&&h.hits.size===1){const next=s.combatTargets().find(e=>e.hp>0&&!h.hits.has(e)&&dist(h,e)<160);if(next)h.target=next;else h.life=0;}else h.life=0;}}
       this.helpers=this.helpers.filter(h=>{if(h.life>0)return true;h.sprite.setVisible(false);return false;});
       const echoes=[];for(const a of this.strikes){a.time-=dt;if(a.shape==='cross'){
         const reach=a.r*Math.min(1,1-a.time/a.total);
@@ -45,7 +45,7 @@
       if(e.type==='mole'){if(d>310)s.move(e,(p.x-e.x)/d*e.speed*dt,(p.y-e.y)/d*e.speed*dt);if(e.clock<=0&&d<550){if(this.elements.hostileCount()<4&&this.strikes.filter(a=>a.hostile&&a.source==='mole_eruption').length<3)this.strikes.push({x:p.x,y:p.y,r:58,time:1.25,total:1.25,hostile:true,source:'mole_eruption',damage:90});e.clock=s.elapsed>=570?6:4;s.logEvent('mole_targeted',{x:Math.round(p.x),y:Math.round(p.y)});}if(d<e.r+p.r)s.encounters.damage(60,'mole_contact');return true;}return false;}
     draw(){this.elements.draw();this.evolution.draw();const s=this.s,g=s.fx;for(const [type,a] of Object.entries(this.allies)){a.sprite.setPosition(a.x,a.y).setFrame(Math.floor(s.elapsed*6)%4*4).setDepth(a.y+20);}
       for(const h of this.helpers)h.sprite.setPosition(h.x,h.y).setFrame(Math.floor(s.elapsed*10)%4*4).setDepth(h.y+25);
-      for(const a of this.strikes){if(a.shape==='cross'){
+      for(const a of this.strikes){if(a.shape==='cross'){if(s.attackFx?.coversCross())continue;
         const reach=a.r*Math.min(1,1-a.time/a.total),half=a.width/2;
         g.fillStyle(0xbaffcb,.22).fillRect(a.x-reach,a.y-half,reach*2,a.width).fillRect(a.x-half,a.y-reach,a.width,reach*2);
         g.lineStyle(2,0xbaffcb,.9).strokeRect(a.x-reach,a.y-half,reach*2,a.width).strokeRect(a.x-half,a.y-reach,a.width,reach*2);

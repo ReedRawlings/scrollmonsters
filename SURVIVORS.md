@@ -43,7 +43,7 @@ The bestiary has three desktop pages or four portrait pages of recipes, with dis
 
 Embers are the currency for the Star Map, the planned meta progression screen. They exist only in the full expedition, not the demo or the two-minute trial. Orange coins (`Coin2-Sheet`) spill in a ring from: a den (3, then 4 after 6:00 and 5 after 12:00), an elite (1, or 2 from pack hunters), each cleared shrine challenge and the Giant Spirit (3), the hidden treasure (10), the Guardian (10) and the Ancient Guardian (20). Coins never expire; they are pulled in like XP gems and by the XP magnet. Survival adds 1 Ember per full two minutes.
 
-Everything banks when the run ends, whether it was won, lost or restarted, in `scrollmonsters-embers-v1` (`{total, lifetime}`). The HUD shows coins found this run; the end screen shows `Embers +N · total saved`. Logic lives in `survivor-embers.js`; drops use fixed offsets, so they do not change the simulation's random sequence. `scripts/check-embers.cjs` covers every source, collection, banking once per run, the HUD count, the end line, the win path, and that the demo and trial award nothing.
+Embers bank only when the run is completed, won or lost; restarting mid-run or closing the tab forfeits that run's Embers. They save in `scrollmonsters-embers-v1` (`{total, lifetime}`). The HUD shows coins found this run; the end screen shows `Embers +N · total saved`. Logic lives in `survivor-embers.js`; drops use fixed offsets, so they do not change the simulation's random sequence. `scripts/check-embers.cjs` covers every source, collection, banking once per run, the HUD count, the end line, the win path, and that the demo and trial award nothing.
 
 ## Combat units and player art
 

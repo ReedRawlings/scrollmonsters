@@ -1,28 +1,14 @@
-# Making effects in Pixel Composer by editing files
+# Pixel Composer technical reference
 
-General lessons from building effects by editing Pixel Composer projects directly (v1.22.10, macOS, Sept 2026).
-File-format and rendering details are in `NOTES.md`. The house rules, workflow and everything learned so far, in one
-place, are in `assets/fx/MAKING_EFFECTS.md`.
+How `.pxc` files and their nodes work, for building effects by editing files directly (Pixel Composer v1.22.10,
+macOS). House rules, workflow, art direction and lessons learned are in `assets/fx/MAKING_EFFECTS.md`; read that first.
 
 ---
 
-## 1. The approach
+## 1. The `.pxc` file
 
-A `.pxc` project is a compressed JSON **node graph**. An effect is a chain of nodes (generate → shape → move →
-color → clean up → output), and each node has a list of settings. You can make new effects without the app:
-
-1. **Start from something that works:** a built-in sample, an example project, or an effect you've already approved.
-2. **Change a few settings,** and sometimes insert or rewire a node.
-3. **Save it under a new name,** then check it in the app.
-
-Building a graph from scratch is the hardest and least reliable path. Almost any effect has a sample that's close.
-Good places to look:
-
-- `~/Library/Application Support/com.MakhamDev.PixelComposer/Welcome files/Sample Projects/`: complete
-  effects such as Smoke Explosion, Magic Circle, Star Collapse, Cyber Frame, and Spiral.
-- `Welcome files/Getting started/`: tutorials with clean, minimal uses of individual nodes (particles,
-  paths, animation, loops, simulations). These are good places to copy a single node from.
-- To survey what's available, list the node types used in each sample (see `pxc.py`).
+A `.pxc` project is a compressed JSON **node graph**. On disk: `"PXCX"` + length, a THMB chunk (zlib thumbnail), a META
+chunk (16 bytes, version), then a zlib stream of JSON with a trailing NUL. `pxc.py` reads and writes it:
 
 ```python
 from pxc import load, save
@@ -31,13 +17,26 @@ header, project = load("Some_Sample.pxc")
 save("New_Effect.pxc", header, project)
 ```
 
+- `project["nodes"]`: each node has `type`, `id` and a positional `inputs[]` list. A setting's value is `inputs[k].r.d`.
+- To survey what a sample uses, list the node types in it.
+
+**Working graphs to start from** (almost any effect has a sample that's close; building from scratch is the least
+reliable path):
+
+- `/Applications/PixelComposerExamples/Complex`: the reference for detailed effects (§3).
+- `/Applications/PixelComposerExamples/`: also `Cobweb`, `Fire & Smoke` and others.
+- `~/Library/Application Support/com.MakhamDev.PixelComposer/Welcome files/Sample Projects/`: Smoke Explosion,
+  Magic Circle, Star Collapse, Cyber Frame, Spiral.
+- `Welcome files/Getting started/`: tutorials with clean, minimal uses of single nodes. Good to copy one node from.
+
 ---
 
 ## 2. Editing settings safely
 
 Settings are stored **by position**, with no names. Slot 18 on a Particle node is "Speed", but the file doesn't say so.
 
-- **Look up every slot in the label map:** `templates/node_input_labels_en.json` (not committed; it's the app's own locale data. Run `python3 scripts/pixelcomposer/extract_labels.py` to create it), taken from the app's language pack.
+- **Look up every slot in the label map:** `templates/node_input_labels_en.json`, taken from the app's language pack.
+  It isn't committed; run `python3 scripts/pixelcomposer/extract_labels.py` to create it.
   `labels["Node_Particle"]["inputs"][18]["name"] == "Speed"`. Check that the slot count in the file matches the label count.
 - **Never guess a slot's meaning.** One guessed slot turned on "Export on Save" instead of "Export on Update".
 - **Check units:** `unit: 1` means a fraction of the canvas (0.5 = center), and `unit: 0` means pixels.
@@ -59,6 +58,7 @@ Settings are stored **by position**, with no names. Slot 18 on a Particle node i
 | Direction range | `[0, min_deg, max_deg, 0, 0]`; 0° = right, 90° = up |
 | Area | `[x, y, w, h, shape, ?]` in canvas fractions |
 | Animated setting | `"anim": true`; `r` becomes keys `[[0, frame], value, [0,1], [0,0], 0, 0, true, 0, 16777215]` |
+| Curve | `[0, 1, 0, 0, 1, 0]`, then six numbers per point: `[in-handle x, in-handle y, x, y, out-handle x, out-handle y]` |
 
 ### Rewiring
 - A link is `inputs[k].from_node` (source id) plus `from_index` (which output).
@@ -68,12 +68,9 @@ Settings are stored **by position**, with no names. Slot 18 on a Particle node i
 
 ---
 
-## 3. How common effects are built
+## 3. How the Complex examples are wired
 
-### How the Complex examples are built (the reference for detailed effects)
-
-`/Applications/PixelComposerExamples/Complex` holds the effects to match. None of them is one noise field: each
-layers several distinct elements, and each element has its own pipeline.
+None of them is one noise field: each layers several distinct elements, and each element has its own pipeline.
 
 - **Fire-Tornado:** one crafted flame piece (gradient × simplex noise, displaced by upward-smeared anisotropic noise,
   wrapped with Polar, shaped by a Curve) is cached with **Cache Array** and **Repeat**ed along a **Path** (10 copies,
@@ -91,30 +88,29 @@ walk `from_node` links). To reuse a working part, `Rich.borrow_tree(example, nod
 upstream of it with its settings intact, re-timed to your frame count and resized to your canvas; then pin any one-time
 animations so loops stay seamless, and recolour its Colorize ramps.
 
-**Curves** (Particle over-lifetime, Repeat over-copy, Curve node) are stored as `[0, 1, 0, 0, 1, 0]` followed by six
-numbers per point: `[in-handle x, in-handle y, x, y, out-handle x, out-handle y]`.
+**Reading the app's own logic:** every node's GLSL is in `strings Contents/Resources/game.ios`; node code is on GitHub
+(`Ttanasart-pt/Pixel-Composer`, `scripts/node_<name>/node_<name>.gml`). Facts found that way:
 
-**Gradient node facts** (read from the app's shader; `strings Contents/Resources/game.ios` holds every node's GLSL):
-circular prog = length(uv offset / Shape) / (Radius × √2), so a ground ellipse of half-width rx px on a W-wide canvas
-is Radius = rx / (W × √2) with Shape [1, 2/3 × W/H] and Uniform ratio off. Radial (angular) prog =
-fract((atan2(dy, dx) + Angle) / 360°) with y pointing down. Loop: 0 none, 1 loop, 2 ping-pong; Scale divides prog, so a
-small Scale with ping-pong repeats the ramp many times.
+- **Gradient:** circular prog = length(uv offset / Shape) / (Radius × √2), so a ground ellipse of half-width rx px on a
+  W-wide canvas is Radius = rx / (W × √2) with Shape `[1, 2/3 × W/H]` and Uniform ratio off. Radial (angular) prog =
+  fract((atan2(dy, dx) + Angle) / 360°) with y pointing down. Loop: 0 none, 1 loop, 2 ping-pong; Scale divides prog, so
+  a small Scale with ping-pong repeats the ramp many times.
+- More (Repeat placement, Smear sampling, Path anchors, Line sampling): `MAKING_EFFECTS.md` §5.
 
-### Common patterns
+---
 
-Once you recognize these patterns, you'll see them in most samples.
+## 4. Node patterns
 
 **Particles carrying a sprite.** A small animated shape (a simulation, a Shape node, or an image) is cached,
-and a **Particle** node spawns copies of it. You control the look with the sprite and the motion with Particle
-settings: spawn area, amount, delay, direction, speed, lifespan, size, and alpha over life.
+and a **Particle** node spawns copies of it. The sprite controls the look; Particle settings control the motion:
+spawn area, amount, delay, direction, speed, lifespan, size, and alpha over life.
 - **Burst:** spawn once, Directed From Center on, 360° angle range.
 - **Stream / trail:** spawn every frame (Spawn Delay 1), a few particles each time, with a keyframed Spawn Area to move the source.
 - **Rising / falling:** set a direction range around 90° or 270° with Directed From Center off.
 - Particles often start out barely moving (speed 0–0.3). Check speed before assuming the direction is wrong.
 
-**Trails through feedback.** A **Feedback** loop blends each frame with a faded copy of the previous one. That's where the
-smeared, lingering look comes from. Anything placed *inside* the loop is applied again every frame, so put
-one-time transforms after it.
+**Trails through feedback.** A **Feedback** loop blends each frame with a faded copy of the previous one, which gives the
+smeared, lingering look. Anything placed *inside* the loop is applied again every frame, so put one-time transforms after it.
 
 **Pixel-art cleanup at the end.** A typical ending is **Threshold → Level → Colorize → Posterize (palette) → De-Stray**.
 - **Threshold** cuts faint pixels; lower it for fuller shapes.
@@ -126,86 +122,53 @@ one-time transforms after it.
 **Shapes.** The Shape node's **Positioning Mode** (slot 15) decides which settings place it: **0 = Area** uses Position (slot 3,
 `[cx, cy, half_w, half_h, 0, 0]` in canvas fractions), 1 = Center/Half Size, and **2 = fill the whole canvas** (it ignores
 position and only uses Shape Scale). Many templates are mode 2, so set mode 0 before keyframing a shape's size or position.
-**Rotating a shape:** use slot 19 "Shape Rotation" (degrees; can be keyframed). Slot 7 "Rotation" does not rotate area-positioned shapes.
-**Donut Inner Radius (slot 5) sets ring thickness, not hole size:** 0.1 gives a thin outline, and 0.8 gives a nearly solid disc.
-Keyframing Position from size 0 is a clean way to make something appear and grow (the Magic Circle sample does this).
-No sample uses transparency in shape colors; get translucency from the **Blend** node's Opacity (slot 3, which can be keyframed) instead.
-Blend opacity is also a reliable way to switch a layer on and off at a given frame.
+- **Rotating:** slot 19 "Shape Rotation" (degrees; can be keyframed). Slot 7 "Rotation" does not rotate area-positioned shapes.
+- **Donut Inner Radius (slot 5) sets ring thickness, not hole size:** 0.1 gives a thin outline, 0.8 a nearly solid disc.
+- Keyframing Position from size 0 is a clean way to make something appear and grow (the Magic Circle sample does this).
+- No sample uses transparency in shape colors; get translucency from the **Blend** node's Opacity (slot 3, can be
+  keyframed). Blend opacity is also a reliable way to switch a layer on and off at a given frame.
 
-**Fake 3D / thickness:** don't show depth with one shifted copy of a shape. On thin (edge-on) frames it separates from the face and the outline draws a gap between them. Stack several copies at small offset steps (under ½ px apart) so they merge into a solid, attached band (see `build_heart.py`, Heart_Spin).
+**Fake 3D / thickness:** don't show depth with one shifted copy of a shape. On thin (edge-on) frames it separates from
+the face and the outline draws a gap between them. Stack several copies at small offset steps (under ½ px apart) so they
+merge into a solid, attached band (see `build_heart.py`, Heart_Spin).
 
 **Simulations** (smoke, fluid, rigid bodies, strands) come with their own node group. The emitter's position and velocity,
 and the domain's inertia or acceleration, decide whether the result rises, drifts, or stays put.
 
 ---
 
-## 4. Common changes
+## 5. Common changes
 
 | Goal | Where to change it |
 |---|---|
-| Recolor | The **Colorize** gradient. Palette-snapped colors must be in the palette. Rotating the hue of *every* color also shifts backgrounds and neutrals, so skip very dark and grey colors. |
+| Recolor | The **Colorize** gradient. Palette-snapped colors must be in the palette. Rotating the hue of *every* color also shifts backgrounds and neutrals, so skip very dark and grey colors (`recolor.py`). |
 | Bigger or smaller canvas | `attributes.surface_dimension`, plus any node with a fixed dimension (e.g. Blend "Constant dimension"). Check that positions are fractions. |
 | Longer or shorter animation | `animator.frames_total`; then check lifespans and keyframe frames. |
 | Faster, slower, spreading | Particle Speed, Lifespan, Speed Over Lifespan |
 | Stop something rising | Emitter velocity, domain inertia or acceleration, particle direction and gravity |
 | Different random variation | Particle **Seed** (and any other seed settings) |
 | Fuller or more opaque | Lower Threshold, lower the Level white point, raise particle Alpha |
-| ¾ top-down ground (3:2) | Draw ground shapes as 3:2 ellipses (Gradient Shape `[1, 2/3 × W/H]`, or a **Transform** with Scale `(1, 0.667)`); height goes straight up the screen. For a moving source, squash the *sprite* (before it becomes a particle) so the path isn't squashed too. 2:1 iso looked too flat. |
-| Directional variants | Generate with a script: E, NE, SE, N, S, then flip horizontally in the engine for W, NW, SW. |
-
----
-
-## 5. Art direction lessons
-
-- **Tiny canvases look crude.** Even with 16×16 to 16×32 characters, 16×12 effects looked "way too pixelated". Effects at
-  roughly 64–192 px across looked right. Choose canvas size for how the effect reads, not to match the character's size.
-- **Author at on-screen size; show at a whole-number scale.** Pixel art breaks at fractional scales (1.5×, 2.03×, a
-  stretched arc). Make the canvas as big as the effect appears and show it at 1×; if it needs more detail, make the
-  canvas bigger instead of enlarging it in game. Long links (lightning between targets) tile instead of stretching.
-- **Layer distinct elements.** The Complex examples read as rich because every element is crafted on its own (drawn
-  cracks with light seen through them, a flame sprite fed to particles, crust plates over a molten layer). A single
-  noise × envelope → threshold → colour ramp reads as a smudge no matter how it's tuned.
-- **Keep phases continuous.** A follow-up phase should grow out of the one before it (same cracks, same light) rather
-  than switch to a new look.
-- **Match the game's viewpoint.** Round, side-view shapes in a straight line read as a "2D battle screen" in the top-down
-  game. Draw ground effects as 3:2 ellipses (2:1 iso was tried and looked too flat).
-- **Motion reads before detail.** Puffs popping one after another at scattered points read as "a frog hopping", whereas a
-  continuous source reads as the intended motion.
-- **Palette.** Existing sheets use Toasted40 + white; detailed attack FX use Apollo. The examples use Endesga 32, so
-  recolour anything borrowed from them.
+| ¾ top-down ground (3:2) | Gradient Shape `[1, 2/3 × W/H]`, or a **Transform** with Scale `(1, 0.667)`. For a moving source, squash the *sprite* (before it becomes a particle) so the path isn't squashed too. |
 
 ---
 
 ## 6. Rendering and export
 
-- **Headless / CLI rendering is broken** in 1.22.10 on Mac: most nodes fail to build. Also, command-line arguments split on spaces.
+- **Headless / CLI rendering is broken** in 1.22.10 on Mac: most nodes fail to build, and command-line arguments split
+  on spaces. The user renders in the app (see `MAKING_EFFECTS.md` §3).
 - **In the app:** open the file, press **F5** (Render All) and then **F6** (Export All). `File → Export` saves the *project*, not images.
-- **Images come from nodes:** an **Export** node (`templates/export_node.json`) set to single image PNG
-  (slot 3 = 0, 9 = 0, template `%d%n`, slot 1 = full path including the name) or an image sequence (slot 3 = 1).
-- **Sprite sheets only collect frames that have played:** play the animation through once (or scrub every frame) before F6, otherwise the sheet comes out empty or sparse.
-- **Sprite sheets:** **Render Spritesheet** → Export. Check **Custom Range** (samples may limit it to a few frames),
-  **Frame Step** (2 = every other frame), and **Packing** (0 is assumed to be horizontal; not yet confirmed).
-- **What the game needs per effect:** a transparent PNG strip with equal frame sizes, FPS or duration, loop or play once, and the
-  anchor point, written to a JSON file next to the sheet. About 10–15 FPS matches the game's pixel-art effects.
+- **Export node** (`templates/export_node.json`): slot 1 Directory (full path including the name), 2 Template (`%d%n`),
+  3 Type (0 single image, 1 sequence), 9 Format (0 PNG), 22 Export on Update.
+- **Render Spritesheet node:** slot 2 Frame Step (2 = every other frame), 3 Packing (0 assumed horizontal), 11 Custom
+  Range (samples may limit it to a few frames).
+- **Sprite sheets only collect frames that have played:** play the animation through once before exporting, or the
+  sheet comes out empty or sparse.
 - **If Claude must render:** launching a second app instance with a file works (relaunching right after a quit sometimes
   fails, so retry). Clicking in the app needs screen-control permission and a regular desktop Space, not a full-screen one.
 
 ---
 
-## 7. Workflow
-
-- **You build blind.** Headless rendering is broken, so the user checks in the app and exports. Ask for the export and
-  read the PNG yourself (crop and enlarge frames with PIL) before changing anything; don't iterate on guesses.
-- **Once a plan is approved, build without check-ins,** then report a short table of what changed and what to look for.
-- **Ask one question when feedback is ambiguous** before redoing work.
-- **Build each effect on its own** from the examples' techniques; don't make one and script the rest from it.
-- **Keep only approved work as examples.** Move rejected versions to `_archive/` or delete them; rejected examples left
-  in builders and docs steer the next attempt the wrong way.
-- **Never overwrite approved work.** Save new names and keep backups (`output/pixelcomposer-backups/`, gitignored).
-
----
-
-## 8. Still unverified
+## 7. Still unverified
 
 - Particle Spawn Type 0 = stream, 1 = burst (inferred from samples).
 - Render Spritesheet Packing 0 = horizontal.

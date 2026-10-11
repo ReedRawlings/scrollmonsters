@@ -1,8 +1,8 @@
 # Making effects: how we do it and what we've learned
 
-A single reference for building ScrollMonsters pixel VFX in Pixel Composer. The details behind each point live in
-`scripts/pixelcomposer/EFFECTS_GUIDE.md` (node and file facts) and the `making-scrollmonsters-vfx` skill (paths and
-workflow); this doc is the "why" and the hard-won lessons.
+The main doc for building ScrollMonsters pixel VFX in Pixel Composer: house rules, workflow, art direction and the
+hard-won lessons. The `.pxc` file format and node-by-node facts are in `scripts/pixelcomposer/EFFECTS_GUIDE.md`; the
+`making-scrollmonsters-vfx` skill is the short version loaded into every effects session.
 
 ---
 
@@ -28,11 +28,11 @@ workflow); this doc is the "why" and the hard-won lessons.
 
 | Rule | Detail |
 |---|---|
-| Palette | **Apollo** for detailed attack FX (`palettes/Apollo.hex`). Older sheets use Toasted40 + white. Effects "tinted in code" are pure white. |
+| Palette | **Apollo** for detailed attack FX (`palettes/Apollo.hex`). Older sheets use Toasted40 + white. Effects "tinted in code" are pure white. The Pixel Composer examples use Endesga 32, so recolour anything borrowed from them. |
 | View | 3/4 top-down. Anything on the ground is a **3:2 ellipse**; height goes straight up the screen. 2:1 iso looked too flat; round side-view shapes in a line looked like a "2D battle screen". |
 | Size | **Author at the size it appears on screen and show it at 1x.** Need more detail? Make the canvas bigger. Tiny canvases (16×12) looked "way too pixelated"; ~48–192 px reads well. |
 | Scale | **Whole-number scales only.** Never 1.5×, 2.03×, a stretched arc, or scaling to fit a gameplay radius. Upgrades that grow an area may stretch it a little; don't design around that. |
-| Rotation | Arbitrary rotation breaks the pixel grid just like fractional scaling. Make **direction variants** (E, NE, N, SE, S) and flip in the engine for W, NW, SW. |
+| Direction | **Draw directional attacks once, facing east, and flip horizontally in game** for targets on the left. No 5- or 8-direction sets: at survivors pace exact aim doesn't read, and extra directions multiply build and export work. Never rotate at runtime: it breaks the pixel grid like fractional scaling, and a 90° turn stands a 3:2 ground arc on end. (The older `Dust_Trail_{E,NE,SE,N,S}` set predates this rule.) |
 | Long things | Long links (chain lightning, cross arms) **tile** in fixed-size pieces; crop the last piece, never stretch. |
 | One sheet per attack | Cover every phase in one strip (wind-up through hit, ignite plus loop, land/loop/snap). The game plays it, loops a range, indexes it by progress, or picks a section. No Start/Loop/End trios. Record ranges in the JSON (`loop_frames`, `sections`, …). |
 | Output contract | Horizontal strip, equal frames, no spacing; JSON with `image, frame_width, frame_height, frame_count, layout, fps, duration_s, loop, anchor, palette, notes, smoothing`, plus `px` (display scale) and `visible_w` where it applies. `fxlib.finish` writes it. |
@@ -108,6 +108,8 @@ and recolour its ramps. Don't recolour an example and call it a new effect.
   (`looped()` in `build_attacks.py`). Particles can't loop exactly; keep them sparse so the seam doesn't show.
 - **Sections in one sheet.** Repeat the same relative keys in every section (`every()` in `cross_slam`), gate each
   section's layers with Blend opacity, and make sure Delay never pulls a previous section's frames into view.
+  **Hold every key to the section's last frame**: keys interpolate across the gap to the next section's first key, so
+  without it Cross_Slam's shards faded back in (and shrank) between pieces.
 - **Shapes.** Positioning Mode 0 (Area) or they fill the canvas; rotate with slot 19 "Shape Rotation"; Donut Inner
   Radius is thickness; fade with Blend opacity, not transparent shape colours; under ~2 px they vanish.
 - **Multiply needs an opaque base.** A field built from transparent copies (Repeat output) must sit on black before
@@ -152,7 +154,7 @@ effect names you want (`python3 build_attacks.py fire_patch`); run only the ones
 | File | What it's for |
 |---|---|
 | `assets/fx/MAKING_EFFECTS.md` | This doc: house rules, workflow, lessons. |
-| `scripts/pixelcomposer/EFFECTS_GUIDE.md` | The technical reference: `.pxc` format, editing settings by slot, value formats, rewiring, how each Complex example is wired, common node patterns, common changes, rendering/export. |
+| `scripts/pixelcomposer/EFFECTS_GUIDE.md` | The technical reference: `.pxc` format, where to find working sample graphs, editing settings by slot, value formats, rewiring, how each Complex example is wired, node patterns, common changes, Export and Render Spritesheet node slots. |
 | `.claude/skills/making-scrollmonsters-vfx/SKILL.md` | The short version loaded into every effects session: where things live, conventions, workflow, past mistakes. |
 | `assets/fx/README.md` | Inventory: every sheet, its builder, size, frames, anchor, and where the game uses it. |
 | `assets/fx/VFX_REQUESTS.md` | Requests with exact specs. |
@@ -183,7 +185,7 @@ effect names you want (`python3 build_attacks.py fire_patch`); run only the ones
 
 - [ ] Each effect is its own graph, made of distinct elements; borrowed parts came from a dumped, understood example.
 - [ ] Authored at on-screen size; JSON has `px` (normally 1), anchor, phase/section ranges.
-- [ ] Ground shapes are 3:2; directional things come as direction variants, not rotations.
+- [ ] Ground shapes are 3:2; directional attacks are one east-facing sheet (flipped in game), never rotated.
 - [ ] Loops move whole tiles/turns per period.
 - [ ] Builder reports no dangling links and no colours outside the palette.
 - [ ] Every surface in the file is canvas-sized or a deliberate sprite size (`fxlib.finish` enforces the multiplier rule).

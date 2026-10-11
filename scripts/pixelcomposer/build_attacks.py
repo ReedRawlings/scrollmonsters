@@ -333,9 +333,11 @@ def cross_slam():
         for slot, (x, y) in zip((4, 5), (b, t)):
             p["inputs"][slot].pop("anim", None); p["inputs"][slot]["r"] = {"d": [x / W, y / H, 0, 0, 0, 0, 0]}
     line = M("gSHAfe0")
-    R.set(line, "Range", every([(0, [0, 0]), (2, [0, 1])]))
-    R.set(line, "Width", every([(0, [2, 2]), (2, [6, 6])]))
-    R.set(M("gSHBDX1"), "Scale", every([(1, 1.26), (4, 0.0)]))
+    # every key is held to the piece's last frame (9); otherwise it interpolates toward the next piece's first key and
+    # shard bits fade back in between pieces
+    R.set(line, "Range", every([(0, [0, 0]), (2, [0, 1]), (N - 1, [0, 1])]))
+    R.set(line, "Width", every([(0, [2, 2]), (2, [6, 6]), (N - 1, [6, 6])]))
+    R.set(M("gSHBDX1"), "Scale", every([(1, 1.26), (4, 0.0), (N - 1, 0.0)]))
     # Icicle's facet texture (gradient + half-plane + shine) washed out to white at this size: colour the shard along
     # its length instead, base dark to tip light, and give it a solid dark outline
     line["inputs"][R.slot(line, "Texture")].pop("from_node")
@@ -345,7 +347,7 @@ def cross_slam():
     R.set(line, "Span Color over Path", True)
     R.set(M("gSHB0W1"), "Color", abgr("#202e37")); R.set(M("gSHB0W1"), "Blend", False)
     R.set(shard, "Color", abgr("#c7cfcc"))
-    shard = R.mix(R.empty(), shard, opacity=every(hold((0, 1), (5, 0))), name="Shard Shatter")   # gone when it breaks
+    shard = R.mix(R.empty(), shard, opacity=every(hold((0, 1), (5, 0), (N - 1, 0))), name="Shard Shatter")   # gone when it breaks
     stagger = R.node("Delay", "Shard Stagger", {"Frames": [0, 1, 2]}, {"Surface": shard})
 
     def shards(name, values, seed):
@@ -478,12 +480,9 @@ def storm_arc():
     rad, shp = ground(R, 12)
     flash = grad(R, "Zap Flash", F((zx, zy)), [(s, rad * 0.6), (s + 1, rad), (s + 4, rad * 0.5), (s + 6, 0.0)], shape=shp)
     ring = R.path("Zap Ring Path", ellipse_pts(zx, zy, 13, n=24), loop=True)
-    ring_light = path_line(R, "Zap Ring Light", ring, 3, [(0, "#ffffff")], wiggle=(2, 6, crackle(5303, (s, s + 7))))
     ring_line = path_line(R, "Zap Ring", ring, 1, [(0, "#a4dddb")], wiggle=(2, 6, crackle(5303, (s, s + 7))), crisp=True)
-    ring_halo = R.mix(R.empty(), R.node("Blur", "Zap Ring Halo", {"Size": 1}, {"Surface In": ring_light}),
-                      opacity=[(0, 0), (s - 1, 0), (s, 1), (s + 3, 1), (s + 5, 0)], name="Zap Ring Fade")
-    zap_light = R.mix(flash, ring_halo, "add", name="Zap Light")
-    field = R.mix(field, R.mix(R.empty(), zap_light, opacity=gate(s), name="Zap Gate"), "add", name="Zap Layer")
+    # no glow on the ring: lit, it read as a thick white octagon (a selection marker); the thin crackle is enough
+    field = R.mix(field, R.mix(R.empty(), flash, opacity=gate(s), name="Zap Gate"), "add", name="Zap Layer")
     star = []
     for i in range(6):
         a = math.radians(i * 60 + 15)

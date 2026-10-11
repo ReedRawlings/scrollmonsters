@@ -1,6 +1,7 @@
 (() => {
   // Embers: the Star Map currency. Full expeditions only (not the demo or the trial). Coins drop from dens, elites, shrines,
-  // the hidden treasure and guardians; survival adds 1 per two minutes. Everything banks when the run ends, won or lost.
+  // the hidden treasure and guardians; survival adds 1 per two minutes. A run must be completed, won or lost, to bank them:
+  // restarting mid-run or closing the tab forfeits that run's Embers.
   const KEY = 'scrollmonsters-embers-v1', SURVIVAL_SECONDS = 120;
   class SurvivorEmbers {
     constructor(s){this.s=s;this.found=0;this.dropped=0;this.banked=null;}
@@ -15,9 +16,10 @@
       this.dropped+=count;this.s.logEvent('embers_dropped',{source,count});
     }
     collect(item){this.found++;this.s.reward('ember',{x:item.x,y:item.y,found:this.found});}
-    // Called once from finishRun for any ending: won, lost or restarted.
+    // Called once from finishRun. Only a completed run (won or lost) banks; a restart forfeits.
     bank(status){
       if(!this.enabled||this.banked)return this.banked;
+      if(status!=='won'&&status!=='lost'){this.banked={found:this.found,survival:this.survival(),earned:0,total:SurvivorEmbers.read().total,stored:false,forfeited:true};this.s.logEvent('embers_forfeited',{status,found:this.found});return this.banked;}
       const survival=this.survival(),earned=this.found+survival,saved=SurvivorEmbers.read();
       saved.total+=earned;saved.lifetime+=earned;let stored=true;
       try{localStorage.setItem(KEY,JSON.stringify(saved));}catch{stored=false;}

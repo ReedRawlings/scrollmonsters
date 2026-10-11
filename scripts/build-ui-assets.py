@@ -188,7 +188,7 @@ def write_manifest():
                 continue
         manifest[path.stem] = {'src': f'assets/fx/attacks/{j["image"]}', 'fw': j['frame_width'], 'fh': j['frame_height'], 'n': j['frame_count'],
                                'fps': j.get('fps') or 1, 'loop': bool(j.get('loop')), 'ax': j['anchor']['x'], 'ay': j['anchor']['y']}
-        manifest[path.stem].update({k: j[k] for k in ('visible_w', 'loop_from', 'hit_frame', 'px', 'sections', 'loop_frames', 'land', 'snap', 'ignite') if k in j})
+        manifest[path.stem].update({k: j[k] for k in ('visible_w', 'loop_from', 'hit_frame', 'px', 'sections', 'loop_frames', 'land', 'snap', 'ignite', 'piece_len') if k in j})
     for key, (src, fw, fh, n, fps, loop, ax, ay) in FX_EXTRA.items():
         manifest[key] = {'src': src, 'fw': fw, 'fh': fh, 'n': n, 'fps': fps, 'loop': loop, 'ax': ax, 'ay': ay}
     manifest['Damage_Digits'] = digit_strip()
