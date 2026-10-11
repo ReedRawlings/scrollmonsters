@@ -34,6 +34,7 @@
     title(w,h){
       const s=this.s,ui=s.ui,j=s.juice,portrait=h>w,roster=s.isDemo?SurvivorExpansion.roster.filter(([id])=>s.demoRoster.includes(id)):SurvivorExpansion.roster,sel=s.isDemo?(s.demoPreview||s.starter):s.starter,now=j.now(),red=j.reduced,W=w,H=h,tt=j.since('title');
       if(s.bestiaryOpen)return this.bestiary(w,h);
+      if(s.starMapOpen)return s.starmap.draw(w,h);
       this.dim(w,h);if(!s.isDemo||s.unlocked.includes(sel))this.markSeen(sel);const seen=this.seenSet(),fx={wake:0,logo:1,bob:0,faces:[]};this.layout.titleFx=fx;this.layout.newFaces=[];
       // Landscape is laid out in a 480x320 frame, centred however big the logical screen is (720x480 at Normal UI size).
       const ox=portrait?0:Math.round((w-480)/2),oy=portrait?0:Math.round((h-320)/2)+32;/* +32: the frame's content spans y 10..246, so this centres it */if(!portrait){ui.beginGroup('titleframe',{x:ox,y:oy});w=480;h=320;}
@@ -70,17 +71,26 @@
       bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,tile,tile);
       const [bx,by,bw,bh]=L.begin;ui.card('BEGIN',bx,by,bw,bh,()=>s.start(),{color:D().gold,size:18,align:'center',id:'begin'});
       bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx+ox,by+oy,bw,bh];this.layout.beginBrackets=[bx+ox,by+oy,bw,bh];
-      const music=portrait?{x:55,y:434,w:76,h:26}:{x:250,y:252,w:104,h:26},best=portrait?{x:139,y:434,w:76,h:26}:{x:358,y:252,w:104,h:26};
-      ui.pill('Music: '+(s.musicEnabled?'On':'Off'),music.x,music.y,music.w,music.h,()=>s.toggleMusic(),{id:'music-toggle'});
+      // Star Map takes the slot Music used; music now lives behind the settings gear (top right).
+      const star=portrait?{x:55,y:434,w:76,h:26}:{x:250,y:252,w:104,h:26},best=portrait?{x:139,y:434,w:76,h:26}:{x:358,y:252,w:104,h:26};
+      if(!s.isDemo){ui.pill('Star Map',star.x,star.y,star.w,star.h,()=>s.starmap.open(),{id:'starmap'});this.layout.starMapButton=[star.x+ox,star.y+oy,star.w,star.h];}
       ui.pill('Bestiary',best.x,best.y,best.w,best.h,()=>s.openBestiary(),{id:'bestiary'});this.layout.bestiaryButton=[best.x+ox,best.y+oy,best.w,best.h];
       const fresh=s.bestiary.unseen().length;this.layout.bestiaryNew=fresh;if(fresh)ui.darkText('NEW',best.x+best.w-2,best.y-3,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));
       const other=s.field==='desert'?'woods':'desert';
       if(!s.isDemo)ui.pill(s.field==='desert'?'Desert':'Woodland',...L.field,()=>location.assign('survivors.html?'+(s.isExpedition?'':'trial&')+'field='+other),{id:'field'});
       ui.pill('History',...L.hist,()=>location.assign('survivor-runs.html'),{id:'history'});
       if(!portrait)ui.endGroup();
+      ui.pill('',W-26,8,20,16,()=>{s.settingsOpen=true;s.draw();},{id:'settings'});ui.image('gearIcon',W-21,11,10,10)?.clearTint();
+      if(s.settingsOpen)this.settings(W,H);
       // Wake: fade up from black over the first 350ms.
       fx.wake=tt<350?1-tt/350:0;if(fx.wake>0)ui.rect(0,0,W,H,'#000000'+Math.round(fx.wake*255).toString(16).padStart(2,'0'));
     }
+    // Title settings (the gear, top right): music, damage numbers and, on desktop, UI size.
+    settings(w,h){const s=this.s,ui=s.ui;this.dim(w,h);const wide=w>h,pw=Math.min(w-24,wide?340:254),ph=124,px=(w-pw)/2,py=(h-ph)/2;
+      this.layout.settingsPanel={x:px,y:py,w:pw,h:ph};ui.darkPanel(px,py,pw,ph);ui.banner('SETTINGS',w/2,py-16);
+      this.button('Music: '+(s.musicEnabled?'On':'Off'),w/2-64,py+24,128,20,()=>s.toggleMusic(),'music-toggle');
+      this.numbersToggle(w,py+52);
+      this.button('Close',w/2-50,py+ph-32,100,22,()=>{s.settingsOpen=false;s.draw();},'settings-close');}
     // Starters the player has already picked at least once; a first visit counts every current unlock as seen.
     seenSet(){if(this.seen)return this.seen;const key=this.s.isDemo?'scrollmonsters-demo-seen-starters-v1':SEEN_KEY;let list=null;try{list=JSON.parse(localStorage.getItem(key)||'null');}catch{}
       if(!Array.isArray(list)){list=[...this.s.unlocked];try{localStorage.setItem(key,JSON.stringify(list));}catch{}}return this.seen=new Set(list);}

@@ -27,7 +27,7 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 - Bottom: party bar of 4 Zelda slots, player first. The player's charge bar shows the dash cooldown; slots are not tappable. A `Dash` pill sits above the right end of the bar.
 
 ### Screens (`survivor-screens.js`)
-- Title, pause (with relic collection), won/lost, level-up and relic choice. Every screen dims the field and blocks taps behind it. Each screen has a portrait and a landscape layout; `scripts/check-ui-foundation.cjs` fails if any text leaves the canvas.
+- Title (BEGIN, then Woodland/History and Star Map/Bestiary; a settings gear top right holds Music, damage numbers and UI size), Star Map, pause (with relic collection), won/lost, level-up and relic choice. Every screen dims the field and blocks taps behind it. Each screen has a portrait and a landscape layout; `scripts/check-ui-foundation.cjs` fails if any text leaves the canvas.
 
 ### Juice (`survivor-juice.js`)
 - Rewards reach the juice only through `scene.reward(kind, data)`, which emits an event and changes nothing.

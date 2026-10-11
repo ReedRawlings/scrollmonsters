@@ -45,6 +45,12 @@ Embers are the currency for the Star Map, the planned meta progression screen. T
 
 Embers bank only when the run is completed, won or lost; restarting mid-run or closing the tab forfeits that run's Embers. They save in `scrollmonsters-embers-v1` (`{total, lifetime}`). The HUD shows coins found this run; the end screen shows `Embers +N · total saved`. Logic lives in `survivor-embers.js`; drops use fixed offsets, so they do not change the simulation's random sequence. `scripts/check-embers.cjs` covers every source, collection, banking once per run, the HUD count, the end line, the win path, and that the demo and trial award nothing.
 
+## Star Map
+
+The title's Star Map pill (in the slot Music used; music moved behind the settings gear, top right, alongside damage numbers and UI size) opens a constellation of 14 stars bought with saved Embers. Lighting a star reveals its neighbours; stars two links away show as `?` slots. Vitality (+40 max HP per rank), Ferocity (+5% damage), Fleet Foot (+4% move speed), Quick Roll (-10% dash cooldown) and Magnet (+20% gem and coin pull range) apply at the start of every full expedition; the other nine stars show "Coming soon" and cannot be bought yet. Tapping empty map clears the selection; Back, Escape or Enter close the screen. The demo has no Star Map and no bonuses.
+
+Ranks save in `scrollmonsters-starmap-v1`. Star icons reuse in-run upgrade and relic art under their own `star_<id>` keys. Logic and drawing live in `survivor-starmap.js`; bonuses are read once in `start()` into `scene.meta`. `scripts/check-starmap.cjs` covers the title and settings, reveal rules, purchases and refusals, deselection, each live bonus in a run, and the demo.
+
 ## Combat units and player art
 
 Combat HP, damage, healing and flat upgrades use ten times the original prototype units: starting party HP is 400, a basic player shot is 20, Cat sweeps deal 24, Frog adds 10 per hit, and Tough Hide adds/heals 80 HP. Enemy, den, prop and boss HP scale with damage, preserving combat pacing. Percentage bonuses, attack intervals, ranges, shields that block one hit, and damage reduction are unchanged. HP retains fractional damage; popups round only for display. The pre-scale balance fixture in `scripts/fixtures/combat-before-scale.json` verifies attacks, evolved abilities, dashes and healing after normalizing units.

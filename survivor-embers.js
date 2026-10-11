@@ -6,6 +6,9 @@
   class SurvivorEmbers {
     constructor(s){this.s=s;this.found=0;this.dropped=0;this.banked=null;}
     static read(){try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&Number.isFinite(v.total))return {total:v.total,lifetime:v.lifetime||0};}catch{}return {total:0,lifetime:0};}
+    // Star Map purchases. Returns false (and changes nothing) if the total is short or storage fails.
+    static spend(n){const v=SurvivorEmbers.read();if(!(n>0)||v.total<n)return false;v.total-=n;try{localStorage.setItem(KEY,JSON.stringify(v));}catch{return false;}return true;}
+    static refund(n){const v=SurvivorEmbers.read();v.total+=n;try{localStorage.setItem(KEY,JSON.stringify(v));}catch{}}
     get enabled(){return !!this.s.isExpedition&&!this.s.isDemo;}
     survival(){return Math.floor(this.s.elapsed/SURVIVAL_SECONDS);}
     // Coins spill in a ring around the source. Fixed offsets keep the simulation's random sequence unchanged.

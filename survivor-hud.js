@@ -36,7 +36,7 @@
       const kills=ui.darkText(String(s.kills),188,51);
       // Embers found this run sit after the kill count; the coin bumps on each pickup.
       if(s.embers?.enabled){const x=Math.round(188+kills.width+8),b=s.juice.emberBump(),sz=Math.round(10*(1+.4*b));this.layout.embers={x,count:s.embers.found,bump:b};
-        ui.image('emberCoin',x+5-sz/2,51-sz/2,sz,sz,{frame:[0,0,10,10]});ui.darkText(String(s.embers.found),x+13,51,{color:D().gold});}
+        ui.image('emberCoin',x+5-sz/2,51-sz/2,sz,sz,{frame:[0,0,10,10]})?.clearTint();ui.darkText(String(s.embers.found),x+13,51,{color:D().gold});}
     }
     timer(ui,w){
       const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${Math.floor(s.duration/60)}:00`;
@@ -71,7 +71,7 @@
     // 0 right after an attack, 1 when ready. Reads timers only.
     chargeOf(type){
       const s=this.s,k=(t,i)=>i>0?1-clamp(t/i,0,1):1;
-      if(type==='walker')return 1-clamp(s.expansion.cooldown/3,0,1);
+      if(type==='walker')return 1-clamp(s.expansion.cooldown/(s.expansion.cooldownMax||3),0,1);
       if(type==='cat')return k(s.cat.attack,.85);
       if(type==='owl')return s.owl?k(s.owl.attack,s.companionStats().owl.interval):1;
       if(type==='beast'){const b=s.encounters.beast;return b?k(b.attack,s.companionStats().beast.interval):1;}
