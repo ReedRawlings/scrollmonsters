@@ -14,7 +14,7 @@
       this.handlers={};this.played=[];
       // Creating a Phaser Text draws from Math.random (texture keys), so pop texts are made once here and reused.
       this.texts=[0,1,2,3].map(()=>{const t=s.add.text(0,0,'',{fontFamily:'NovelMix',fontSize:18}).setOrigin(.5).setStroke('#120a1a',2).setVisible(false);this.front.add(t);return t;});this.nextText=0;
-      this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);this.handlers.mergeoffer=e=>this.onMergeOffer(e);this.handlers.merge=e=>this.onMerge(e);
+      this.handlers.ember=e=>this.onEmber(e);this.handlers.levelup=e=>this.onLevelUp(e);this.handlers.capture=e=>this.onCapture(e);this.handlers.unlock=e=>this.onUnlock(e);this.handlers.shrine=e=>this.onShrine(e);this.handlers.upgrade=e=>this.onUpgrade(e);this.handlers.pack=e=>this.onPack(e);this.handlers.relic=e=>this.onRelic(e);this.handlers.gem=e=>this.onGem(e);this.handlers.relicoffer=()=>{this.mode='relic';this.modeAt=this.now();};/* arms the deal-in clock: a relic can open without a draw */this.handlers.packflip=e=>this.onPackFlip(e);this.handlers.packapply=e=>this.onPackApply(e);this.handlers.mergeoffer=e=>this.onMergeOffer(e);this.handlers.merge=e=>this.onMerge(e);
       this.numbers=new SurvivorDamageNumbers(this);
       let saved={};try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')||{};}catch{}
       this.numbersOn=saved.damageNumbers!==false;this.uiLarge=saved.uiLarge===true;
@@ -22,7 +22,7 @@
       s.events.on('reward',e=>{if(this.enabled)this.handlers[e.kind]?.(e);});
     }
     reset(){
-      this.s.evoFx?.reset();
+      this.s.evoFx?.reset();this.s.attackFx?.reset();
       for(const f of this.fx||[])f.sprite.destroy();for(const f of this.flights||[])f.im.destroy();
       for(const r of Object.values(this.rings||{})){r.ring.destroy();r.fill.destroy();}
       for(const t of this.texts||[]){this.s.tweens.killTweensOf(t);t.setVisible(false);}
@@ -59,6 +59,9 @@
       const fx={sprite:c,key:'flash',start:this.now(),loop:true};this.fx.push(fx);
       this.s.tweens.add({targets:c,alpha:0,duration:ms,onComplete:()=>this.stop(fx)});
     }
+    // Ember pickup: a gold +1 where the coin was, and the HUD coin bumps.
+    onEmber(e){this.emberAt=this.now();const p=this.s.toUI(e.x,e.y);this.popText('+1',p.x,p.y-8,{size:9});}
+    emberBump(){const t=this.now()-(this.emberAt??-Infinity);return !this.enabled||this.reduced||t>=200?0:1-t/200;}
     popText(text,x,y,{size=18,color='#ffc41b'}={}){
       const t=this.texts[this.nextText++%this.texts.length];this.s.tweens.killTweensOf(t);
       t.setText(text).setFontSize(size).setColor(color).setPosition(x,y).setAlpha(1).setScale(1).setVisible(true);

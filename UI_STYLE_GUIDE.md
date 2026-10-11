@@ -21,7 +21,7 @@ Two UI families ship today. **Survivors (`survivors.html`) uses Pixelarium DarkM
 - A card's description must fit inside the card; `check-ui-foundation.cjs` fails if it spills.
 
 ### HUD (`survivor-hud.js`)
-- Top-left status frame: heart, HP bar (no numbers), XP bar, `LV n`, sword icon and kill count.
+- Top-left status frame: heart, HP bar (no numbers), XP bar, `LV n`, sword icon and kill count, then (full expedition only) an orange coin and the Embers found this run. The coin bumps on each pickup.
 - Top-right: gold timer and the `II` pause pill.
 - Under the bars: relic row (20px icons on a 24px pitch, 8 per row, counts only above 1). No empty slots; the shrine sprite shows challenges left.
 - Bottom: party bar of 4 Zelda slots, player first. The player's charge bar shows the dash cooldown; slots are not tappable. A `Dash` pill sits above the right end of the bar.

@@ -1,0 +1,33 @@
+{
+  "image": "Cat_Swipe.png",
+  "frame_width": 128,
+  "frame_height": 128,
+  "frame_count": 6,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.3,
+  "loop": false,
+  "anchor": {
+    "x": 12,
+    "y": 65,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Cat claw swipe, drawn facing east: 6 frames at 20 fps, played once. Flip horizontally when the target is to the left; never rotate. Three crescent claw marks sweep over a 124-degree 3:2 arc (radii 76-100 px, about the 120 px hit reach), crescent air smear behind, flecks off the tips. Shown at 1x; the sweep upgrade may stretch it slightly. Anchor = the cat. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "reach_px": 100,
+  "sections": {
+    "E": {
+      "frames": [
+        0,
+        5
+      ],
+      "anchor": [
+        12,
+        65
+      ],
+      "angle": 0
+    }
+  }
+}

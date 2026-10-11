@@ -1,0 +1,32 @@
+{
+  "image": "Silk_Web.png",
+  "frame_width": 96,
+  "frame_height": 72,
+  "frame_count": 34,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 2.833,
+  "loop": true,
+  "anchor": {
+    "x": 48,
+    "y": 36,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Spider web on the ground: frames 0-9 land (splat, spokes shoot out, the spiral winds in), frames 10-25 loop seamlessly (glint sweeping round, dew), frames 26-33 the snap for Tension Trap (spokes recoil, shreds, fade). Play 0-9 once, repeat 10-25, play 26-33 only when the web bursts; otherwise fade the loop out. Web ellipse 84x56 px (visible_w 84), shown at 1x. Anchor = hub. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 84,
+  "px": 1,
+  "land": [
+    0,
+    9
+  ],
+  "loop_frames": [
+    10,
+    25
+  ],
+  "snap": [
+    26,
+    33
+  ]
+}

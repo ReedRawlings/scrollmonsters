@@ -39,6 +39,12 @@ Bamboo is capturable from full-expedition dens and unlocks as the twelfth starte
 
 The bestiary has three desktop pages or four portrait pages of recipes, with discovery saved between runs. The new abilities use existing sheets, creature sprites and temporary terrain geometry; custom effect art can replace their presentation without changing combat. Definitions and new combat live in `survivor-evolution-roster.js`; presentation stays in `survivor-evolution-fx.js`. `scripts/check-evolution-roster.cjs` covers recipe coverage, both capture orders, inheritance, combat, dashes, effects-on/off equivalence, guardian interception and desktop/touch bestiary paging.
 
+## Embers
+
+Embers are the currency for the Star Map, the planned meta progression screen. They exist only in the full expedition, not the demo or the two-minute trial. Orange coins (`Coin2-Sheet`) spill in a ring from: a den (3, then 4 after 6:00 and 5 after 12:00), an elite (1, or 2 from pack hunters), each cleared shrine challenge and the Giant Spirit (3), the hidden treasure (10), the Guardian (10) and the Ancient Guardian (20). Coins never expire; they are pulled in like XP gems and by the XP magnet. Survival adds 1 Ember per full two minutes.
+
+Everything banks when the run ends, whether it was won, lost or restarted, in `scrollmonsters-embers-v1` (`{total, lifetime}`). The HUD shows coins found this run; the end screen shows `Embers +N · total saved`. Logic lives in `survivor-embers.js`; drops use fixed offsets, so they do not change the simulation's random sequence. `scripts/check-embers.cjs` covers every source, collection, banking once per run, the HUD count, the end line, the win path, and that the demo and trial award nothing.
+
 ## Combat units and player art
 
 Combat HP, damage, healing and flat upgrades use ten times the original prototype units: starting party HP is 400, a basic player shot is 20, Cat sweeps deal 24, Frog adds 10 per hit, and Tough Hide adds/heals 80 HP. Enemy, den, prop and boss HP scale with damage, preserving combat pacing. Percentage bonuses, attack intervals, ranges, shields that block one hit, and damage reduction are unchanged. HP retains fractional damage; popups round only for display. The pre-scale balance fixture in `scripts/fixtures/combat-before-scale.json` verifies attacks, evolved abilities, dashes and healing after normalizing units.

@@ -23,7 +23,7 @@
     static parentUpgrades=PARENT_UPGRADES;
     static types=Object.keys(ASSETS);
     static evolved=RECIPES.map(r=>r.id);
-    static preload(s){for(const [type,entries] of Object.entries(UPGRADES))for(const [id] of entries)s.load.image('upgrade_'+id,'assets/icons/upgrades/'+({...SurvivorEvolutionRoster.icons,mollusc:'webArea',octopus:'sweep',reptile:'slam',tengu:'feather',axolotl:'bubble'}[type])+'.png');for(const [id,[dir,file,height]] of Object.entries(ASSETS)){if((window.SCROLLMONSTERS_DEMO||new URLSearchParams(location.search).has('demo'))&&id in SurvivorEvolutionRoster.assets)continue;const root=id==='tengu'?CHARACTER_ROOT:ROOT;s.load.spritesheet(id,root+dir+'/'+file,{frameWidth:16,frameHeight:height});s.load.image('face_'+id,root+dir+'/Faceset.png');}}
+    static preload(s){for(const [type,entries] of Object.entries(UPGRADES))for(const [id] of entries)s.load.image('upgrade_'+id,'assets/icons/upgrades/'+({...SurvivorEvolutionRoster.icons,mollusc:'webArea',octopus:'sweep',reptile:'slam',tengu:'feather',axolotl:'bubble'}[type])+'.png');for(const [id,[dir,file,height]] of Object.entries(ASSETS)){if((window.SCROLLMONSTERS_DEMO||new URLSearchParams(location.search).has('demo'))&&id in SurvivorEvolutionRoster.assets)continue;const root=id==='tengu'?CHARACTER_ROOT:ROOT;s.load.spritesheet(id,root+dir+'/'+file,{frameWidth:16,frameHeight:height});if(id!=='spirit')s.load.image('face_'+id,root+dir+'/Faceset.png');}}
     constructor(s,owner){this.s=s;this.owner=owner;this.pending=null;this.zones=[];this.projectiles=[];this.projectilePool=[];this.links=[];this.casts=[];this.haste=0;this.fx=[];this.merges=[];this.discovered=[];this.roster=new SurvivorEvolutionRoster(this);this.storageKey=s.isDemo?'scrollmonsters-demo-evolutions-v1':'scrollmonsters-evolutions-v1';
       try{const v=JSON.parse(localStorage.getItem(this.storageKey)||'[]');if(Array.isArray(v))this.discovered=v.filter(id=>SurvivorEvolution.evolved.includes(id));}catch{}
       for(const [type,entries] of Object.entries(UPGRADES)){this.owner.damage[type]=0;for(const [id] of entries)s.upgrades[id]=0;}
@@ -96,7 +96,7 @@
       if(st.slam)for(const e of s.hitTargets())if(e.hp>0&&dist(e,a)<105+e.r)s.hit(e,32+10*(a.inherited?.beastPower||0),'reptile',a);
       s.reward('abilityfx',{creature:'reptile',effect:'bite',x:a.x,y:a.y,radius:70});
     }
-    feather(a,target,stats){const angle=Math.atan2(target.y-a.y,target.x-a.x);for(let i=0;i<stats.count&&this.projectiles.length<40;i++){const an=angle+(i-(stats.count-1)/2)*.15;this.projectiles.push({x:a.x,y:a.y,dx:Math.cos(an),dy:Math.sin(an),life:1.3,hits:new Set(),stats,sprite:this.s.pooled(this.projectilePool,'feather',1.7).setTint(0x9ce9ff)});}
+    feather(a,target,stats){const angle=Math.atan2(target.y-a.y,target.x-a.x),count=stats.count*this.s.relics.projectileCopies('tengu');for(let i=0;i<count&&this.projectiles.length<40;i++){const an=angle+(i-(count-1)/2)*.15;this.projectiles.push({x:a.x,y:a.y,dx:Math.cos(an),dy:Math.sin(an),life:1.3,hits:new Set(),stats,sprite:this.s.pooled(this.projectilePool,'feather',1.7).setTint(0x9ce9ff)});}
       a.volleys=(a.volleys||0)+1;if(stats.strike&&a.volleys%3===0&&this.casts.length<8)this.casts.push({x:target.x,y:target.y,r:60,time:.65,damage:stats.lightning*2});
     }
     lightning(from,first,st,power=1){let target=first,origin=from;const seen=new Set();for(let i=0;i<st.jumps&&target?.hp>0;i++){seen.add(target);this.links.push({x:origin.x,y:origin.y,tx:target.x,ty:target.y,life:.25});this.s.hit(target,st.lightning*power,'tengu',origin);origin=target;const range=st.range+(this.s.relics?.stormglassRange(target)||0);target=this.s.combatTargets().filter(e=>e.hp>0&&!seen.has(e)&&dist(origin,e)<range).sort((a,b)=>dist(origin,a)-dist(origin,b))[0];}this.links=this.links.slice(-64);}
@@ -106,16 +106,16 @@
     }
     update(dt){const s=this.s;this.haste=Math.max(0,this.haste-dt);
       for(const type of SurvivorEvolution.types){const a=this.owner.allies[type];if(!a)continue;s.expedition.capture(a,type,dt);if(s.mode!=='playing')return;if(a.state!=='ally')continue;const st=this.stats(type);a.attack-=dt*s.attackRate();
-        if(this.roster.has(type)){this.roster.support(dt,a,type,st);if(this.roster.rush(a,dt))continue;this.owner.follow(a,{x:s.player.x-50+(Object.keys(this.owner.allies).indexOf(type)%3)*42,y:s.player.y+45},dt);const target=s.target(a,type==='cyclope'?st.radius:380);if(a.attack<=0&&target){a.attack=st.interval;this.roster.attack(a,type,target);}continue;}
+        if(this.roster.has(type)){this.roster.support(dt,a,type,st);if(this.roster.rush(a,dt))continue;this.owner.follow(a,{x:s.player.x-50+(Object.keys(this.owner.allies).indexOf(type)%3)*42,y:s.player.y+45},dt);const target=s.target(a,type==='cyclope'?st.radius:380);if(a.attack<=0&&target){a.attack=st.interval;for(let i=0;i<s.relics.projectileCopies(type);i++)this.roster.attack(a,type,target);}continue;}
         if(type==='reptile'&&a.charge>0){const step=Math.min(dt,a.charge);s.move(a,a.dx*430*step,a.dy*430*step,false);a.charge-=dt;a.trailClock-=dt;
-          if(a.trailClock<=0){a.trailClock=.12;this.zone('fire',a,'reptile',{radius:st.radius,life:st.life,damage:st.fireDamage*(a.inherited?.comboFire?1.2:1)});}
+          if(a.trailClock<=0){a.trailClock=.12;for(let i=0;i<s.relics.projectileCopies('reptile');i++)this.zone('fire',a,'reptile',{radius:st.radius,life:st.life,damage:st.fireDamage*(a.inherited?.comboFire?1.2:1)});}
           for(const e of s.hitTargets())if(e.hp>0&&!a.hits.has(e)&&dist(a,e)<e.r+26){a.hits.add(e);s.hit(e,st.damage,'reptile',a);}
           if(a.charge<=0){this.bite(a);const next=s.target(a,200);if(st.rush&&!a.followup&&next)this.charge(a,next,true);}continue;
         }
         this.owner.follow(a,{x:s.player.x-45+(['mollusc','octopus','reptile','tengu','axolotl'].indexOf(type))*22,y:s.player.y+48},dt);
         if(type==='axolotl'){a.pulseClock=(a.pulseClock??1)-dt;if(a.pulseClock<=0){a.pulseClock=st.shieldInterval;s.shield=true;s.expedition.supportPulses++;if(st.chorus)s.chorusTime=3;s.reward('abilityfx',{creature:type,effect:'shield',x:s.player.x,y:s.player.y});}}
         const target=s.target(a,type==='octopus'?st.radius:360);if(a.attack>0||!target)continue;a.attack=st.interval;
-        if(type==='octopus')this.sweep(a,Math.atan2(target.y-a.y,target.x-a.x));else if(type==='reptile')this.charge(a,target);else if(type==='tengu')this.feather(a,target,st);else this.ink(target,type);
+        if(type==='octopus'){for(let i=0;i<s.relics.projectileCopies(type);i++)this.sweep(a,Math.atan2(target.y-a.y,target.x-a.x));}else if(type==='reptile')this.charge(a,target);else if(type==='tengu')this.feather(a,target,st);else for(let i=0;i<s.relics.projectileCopies(type);i++)this.ink(target,type);
       }
       this.roster.update(dt);
       for(const z of this.zones){z.life-=dt;z.tick-=dt;const targets=s.hitTargets().filter(e=>e.hp>0&&dist(e,z)<z.r+e.r);for(const e of targets){if(z.type==='ink'){e.inkUntil=s.elapsed+.2;if(!s.unstoppable(e))e.slowUntil=s.elapsed+.2;}else e.burningUntil=s.elapsed+.7;}
@@ -133,10 +133,10 @@
     }
     killed(e,source){this.roster.killed(e,source);const a=this.owner.allies.reptile;if(source==='reptile'&&a&&this.stats('reptile').spread&&e.burningUntil>this.s.elapsed&&!e.evolutionSpread){e.evolutionSpread=true;const st=this.stats('reptile');this.zone('fire',e,'reptile',{radius:st.radius*.7,life:1.5,damage:st.fireDamage});}}
     enemy(e,dt){if(e.type==='bamboo'){const s=this.s,d=dist(e,s.player)||1;if(d>190)s.move(e,(s.player.x-e.x)/d*e.speed*dt,(s.player.y-e.y)/d*e.speed*dt);if(e.clock<=0&&d<300){e.clock=5;this.owner.elements.cast('web',e,s.player,true);}if(d<e.r+s.player.r)s.encounters.damage(50,'bamboo_contact');return true;}if(e.type!=='mollusc')return false;const s=this.s,d=dist(e,s.player)||1;if(d>160)s.move(e,(s.player.x-e.x)/d*e.speed*dt,(s.player.y-e.y)/d*e.speed*dt);if(e.clock<=0&&d<300){e.clock=4;this.owner.elements.cast('web',e,s.player,true);}if(d<e.r+s.player.r)s.encounters.damage(50,'mollusc_contact');return true;}
-    dashEnd(from,power=1,endpoint=null){const s=this.s,p=endpoint||s.player,type=from.style;if(this.roster.dash(from,power,p))return;if(type==='octopus')this.sweep({...p,inherited:this.owner.allies.octopus?.inherited},Math.atan2(p.y-from.y,p.x-from.x),power);
-      else if(type==='reptile'){const st=this.stats(type);for(let i=0;i<3;i++)this.zone('fire',{x:from.x+(p.x-from.x)*i/2,y:from.y+(p.y-from.y)*i/2},type,{radius:st.radius,life:st.life,damage:st.fireDamage},power);}
-      else if(type==='tengu'){const t=s.target(p,220);if(t)this.lightning(p,t,this.stats(type),power);}
-      else if(type==='mollusc')this.ink(p,type,power);else if(type==='axolotl'){s.shield=true;this.ink(p,type,power);s.reward('abilityfx',{creature:'axolotl',effect:'shield',x:p.x,y:p.y});}
+    dashEnd(from,power=1,endpoint=null){const s=this.s,p=endpoint||s.player,type=from.style;if(this.roster.dash(from,power,p))return;if(type==='octopus'){for(let i=0;i<s.relics.projectileCopies(type);i++)this.sweep({...p,inherited:this.owner.allies.octopus?.inherited},Math.atan2(p.y-from.y,p.x-from.x),power);}
+      else if(type==='reptile'){const st=this.stats(type);for(let i=0;i<3;i++)for(let n=0;n<s.relics.projectileCopies(type);n++)this.zone('fire',{x:from.x+(p.x-from.x)*i/2,y:from.y+(p.y-from.y)*i/2},type,{radius:st.radius,life:st.life,damage:st.fireDamage},power);}
+      else if(type==='tengu'){const t=s.target(p,220);if(t)for(let i=0;i<s.relics.projectileCopies(type);i++)this.lightning(p,t,this.stats(type),power);}
+      else if(type==='mollusc')for(let i=0;i<s.relics.projectileCopies(type);i++)this.ink(p,type,power);else if(type==='axolotl'){s.shield=true;for(let i=0;i<s.relics.projectileCopies(type);i++)this.ink(p,type,power);s.reward('abilityfx',{creature:'axolotl',effect:'shield',x:p.x,y:p.y});}
     }
     draw(){this.roster.draw();const s=this.s,g=s.fx;for(const z of this.zones){if(s.evoFx?.coversZone(z.type))continue;const color=z.type==='fire'?0xff8c40:0x9b7be5;g.fillStyle(color,.2).fillCircle(z.x,z.y,z.r);g.lineStyle(2,color,.7).strokeCircle(z.x,z.y,z.r);}
       for(const p of this.projectiles)p.sprite.setPosition(p.x,p.y).setRotation(Math.atan2(p.dy,p.dx)).setDepth(p.y+25);

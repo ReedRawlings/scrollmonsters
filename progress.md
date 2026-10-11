@@ -1343,3 +1343,13 @@ Calculator now explicitly enforces every listed capture milestone (including Fan
 ## October 3 — stagger enemy introductions
 - User requested Demons at 1:00, Mages at 2:00 and axe-wielding Gladiators at 3:00. Added shared spawnUnlocked gates for regular wave selection and matching den defenders, preserving den/recruitment availability. Golems fill the first minute; minute two uses the 80/20 golem/demon mix. Existing specialist, mouse, mole, elite and boss schedules and spawn intervals remain. Updated changed script cache versions to v59.
 - Verification passed: new browser test checks immediately before/at each unlock, full pool at 3:00, both boss support pools, and each gated den defender. Gameplay smoke reached 6.07s with only golem variants and no reported errors. Inspected the full-page Metal screenshot of all four enemy appearances at 3:00. Syntax and diff checks passed.
+
+## October 10 — Twinshot Sigil relic
+- Added Twinshot Sigil to the relic reward pool with a dedicated icon. It doubles player projectiles, Cat slashes, Owl/Tengu volleys, element attacks, ink attacks, and eligible ranged/effect evolution attacks, including dashes that create those effects.
+- Kept Mole, Beast, Bear, Mouse, and their non-projectile evolved attacks out of the relic's eligible source set.
+- Cache-busted the modified combat scripts. Browser testing was not run.
+
+## October 11 — Embers earned in runs
+- User agreed the Star Map currency is earned in-run and kept on a loss: den 3–5, elite 1 (pack hunter 2), shrine challenge 3, hidden treasure 10, Guardian 10, Ancient Guardian 20, plus 1 per two minutes survived. Full expedition only.
+- Added survivor-embers.js (drops, collection, banking in finishRun, save `scrollmonsters-embers-v1`), orange Coin2 pickups that spin and are pulled like gems, a HUD count after kills with a bump and +1 pop, and an `Embers +N · total saved` line on the end screen. Cache-busted changed scripts.
+- check-embers.cjs: every source, collection, single banking, HUD, end line, win path, demo/trial off. All assertions pass; the run reports one 404 for assets/Enemies/energy_golem.png, which comes from an uncommitted survivor-enemies.js edit (the file on disk is golem_energy.png). check-expedition's shrine step also fails against the uncommitted six-spirit shrine waves, with or without Embers.

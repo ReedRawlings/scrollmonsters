@@ -24,6 +24,7 @@ SOURCES = {
     "Blur": "Black-Hole", "Bloom": "Lava-Floor", "Color_adjust": "Fire-Tornado", "Polar": "Fire-Tornado",
     "Line_2Points": "Spark-Bolt", "MK_Sparkle": "Spark-Bolt", "Shape": "Black-Hole", "Curve": "Fire-Tornado",
     "Path": "Fire-Tornado", "Line": "Fire-Tornado", "Outline": "Spark-Bolt", "Transform": "Spark-Bolt",
+    "Repeat": "Icicle", "Delay": "Icicle",
 }
 _cache = {}
 
@@ -44,8 +45,8 @@ BLEND = {"normal": 0, "multiply": 3, "add": 8, "screen": 9, "max": 11, "subtract
 
 
 class Rich(Project):
-    def __init__(s, W, H, FR, fps=30):
-        super().__init__(W, H, FR, pal="Apollo", fps=fps)
+    def __init__(s, W, H, FR, fps=30, out=None):
+        super().__init__(W, H, FR, pal="Apollo", fps=fps, out=out)
         s._x = 0
 
     def slot(s, n, label):
@@ -76,6 +77,45 @@ class Rich(Project):
             n["inputs"][s.slot(n, "Constant dimension")]["r"] = {"d": [s.W, s.H]}
         return n
 
+    def set(s, n, label, v):
+        """Change one setting on a node already in the graph (e.g. one copied with borrow_tree); [(frame, v)] keys it."""
+        inp = n["inputs"][s.slot(n, label)]
+        if isinstance(v, list) and v and isinstance(v[0], tuple): anim(inp, v)
+        else:
+            inp.pop("anim", None); inp["r"] = {"d": v}
+        return n
+
+    def px(s, n, *labels):
+        """Read these settings as pixels instead of canvas fractions (unit 0)."""
+        for l in labels: n["inputs"][s.slot(n, l)]["unit"] = 0
+        return n
+
+    def dim(s, n, w, h):
+        """Give a generator its own surface size (a sprite smaller than the canvas)."""
+        inp = n["inputs"][s.slot(n, "Dimension")]
+        inp.get("attri", {})["use_project_dimension"] = 0
+        inp.pop("anim", None); inp["r"] = {"d": [w, h]}
+        return n
+
+    def wire(s, dst, label, src, out=0):
+        """Link src's output `out` (Path data is output 1) into dst's setting `label`."""
+        inp = dst["inputs"][s.slot(dst, label)]
+        inp["from_node"] = src["id"]; inp["from_index"] = out
+        return dst
+
+    def path(s, name, pts, loop=False):
+        """Path through pixel points [(x, y), ...] with straight segments. Link it with wire(..., out=1)."""
+        import copy as _copy
+        n = s.node("Path", name, {"Loop": loop})
+        tmpl = n["inputs"][4]
+        anchors = []
+        for x, y in pts:
+            a = _copy.deepcopy(tmpl); a.pop("anim", None); a.pop("on_end", None)
+            a["r"] = {"d": [x / s.W, y / s.H, 0, 0, 0, 0, 0]}; a["unit"] = 1
+            anchors.append(a)
+        n["inputs"] = n["inputs"][:4] + anchors
+        return n
+
     def mix(s, bg, fg, mode="normal", opacity=1, name="Blend"):
         return s.node("Blend", name, {"Blend mode": BLEND[mode], "Opacity": opacity, "Output dimension": 0},
                       {"Background": bg, "Foreground": fg})
@@ -92,6 +132,46 @@ class Rich(Project):
                     bad += [(n["name"], k, hex(int(x["value"]))) for x in json.loads(d)["keys"] if int(x["value"]) not in ok and not grey(int(x["value"]))]
         return bad
 
+    def borrow_tree(s, example, node_id, prefix="", frames=None):
+        """Copy an example's node and everything upstream of it, settings intact (no reset to defaults), rewired among
+        themselves. Keyframes are re-timed from the example's length to `frames`. Dimensions stored in pixels are set to
+        the canvas; Dimensions with use_project_dimension are canvas multiples and already follow it, so they are left
+        alone. Returns (copied target node, {example id: copied node})."""
+        import copy as _copy
+        ex = _example(example)
+        by_id = {n["id"]: n for n in ex["nodes"]}
+        total = ex["animator"]["frames_total"] if "animator" in ex else None
+        order, seen = [], set()
+
+        def visit(i):
+            if i in seen or i not in by_id: return
+            seen.add(i)
+            for inp in by_id[i]["inputs"]:
+                if isinstance(inp, dict) and inp.get("from_node") in by_id: visit(inp["from_node"])
+            order.append(i)
+        visit(next(i for i in by_id if i.startswith(node_id)))
+        made = {}
+        for i in order:
+            src = by_id[i]
+            n = s.add(src, prefix + src["name"], s._x + 400, s._y); s._y += 120
+            n.pop("renamedManual", None); n.pop("cache", None)
+            for k, (inp, orig) in enumerate(zip(n["inputs"], src["inputs"])):
+                if not isinstance(inp, dict): continue
+                if isinstance(orig, dict) and orig.get("from_node") in made:
+                    inp["from_node"] = made[orig["from_node"]]["id"]; inp["from_index"] = orig.get("from_index", 0)
+                if inp.get("anim") and frames and total and isinstance(inp.get("r"), list):
+                    for key in inp["r"]: key[0][1] = key[0][1] * frames / total
+            labels = [x["name"] for x in LABELS[n["type"]]["inputs"]]
+            for k, lab in enumerate(labels[:len(n["inputs"])]):
+                inp = n["inputs"][k]
+                if lab in ("Dimension", "Constant dimension") and isinstance(inp, dict):
+                    # use_project_dimension makes the value a multiple of the canvas ([1, 1] = the canvas), so it already
+                    # follows the new canvas; writing pixels there made 80x80 sheets render 6400x6400 and stall the app.
+                    if inp.get("attri", {}).get("use_project_dimension"): continue
+                    inp.pop("anim", None); inp["r"] = {"d": [s.W, s.H]}
+            made[i] = n
+        return made[order[-1]], made
+
     # ------------------------------------------------------------------ building blocks
     def glow(s, name, center, radius, shape=(1, 1), stops=((0, "#ffffff"), (1, "#000000"))):
         """Soft circular gradient (white core, black edge). center/radius: value or [(frame, v)] in canvas fractions."""
@@ -101,7 +181,8 @@ class Rich(Project):
         """Straight (or wiggled) line between two points in canvas fractions; width [(frame, px)] or px.
         rng keys the drawn part, e.g. [(4, [0, 0]), (6, [0, 1])] draws it from p0 to p1. wiggle = (amp px, freq, seed or seed keys)."""
         wv = (lambda w: [w, w]) if not isinstance(width, list) else None
-        v = {"Data Type": 3, "Start Point": p0, "End Point": p1, "Color over Length": ramp([(0, color)]), "Segment": 32,
+        stops = [(0, color)] if isinstance(color, str) else color   # one colour, or [(t, hex)] along the line
+        v = {"Data Type": 3, "Start Point": p0, "End Point": p1, "Color over Length": ramp(stops), "Segment": 32,
              "Width": wv(width) if wv else [(f, [w, w]) for f, w in width], "1px Mode": crisp,
              "Background": 0,
              "Start Cap": 0 if crisp else 1, "End Cap": 0 if crisp else 1, "End Cap#2": 0 if crisp else 1}

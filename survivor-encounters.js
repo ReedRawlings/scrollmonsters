@@ -21,13 +21,13 @@
     hitSpecial(e){
       const s=this.s;
       if(e.kind==='nest'){if(!this.nestsActive||s.elapsed<e.activeAt){e.hp=e.maxHp;return true;}
-        if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);const stage=e.stage||0,partyFull=s.isExpedition&&s.expedition.party().length>=3,eligible=!s.expedition.has(e.type)&&(partyFull||(!this.stageChoices[stage]&&Object.keys(this.stageChoices).length<(s.isExpedition?7:1)));s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
+        if(e.hp<=0&&!e.destroyed){e.destroyed=true;s.burst('fxDust',e.x,e.y,3,.55);s.embers.drop(e.x,e.y,3+Math.min(2,Math.floor(s.elapsed/360)),'den');const stage=e.stage||0,partyFull=s.isExpedition&&s.expedition.party().length>=3,eligible=!s.expedition.has(e.type)&&(partyFull||(!this.stageChoices[stage]&&Object.keys(this.stageChoices).length<(s.isExpedition?7:1)));s.logEvent('nest_destroyed',{creature:e.type,stage,eligible});
           if(eligible){s.expedition.release(e.type,e.x,e.y,false,stage);s.announce(e.type.toUpperCase()+' freed! Hold its ring to choose.');}
           else s.announce('Nest cleared. This recruitment choice is locked.');
           s.saveRun();
         }return true;
       }
-      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final||s.isDemo)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':s.isDemo?'Guardian defeated!':'Guardian defeated. The expedition continues.');if(!e.final&&!s.isDemo&&s.isExpedition)this.guardianSwarm();s.saveRun();}return true;}return false;
+      if(e.kind==='boss'){if(e.hp<=0&&!e.dead){e.dead=true;s.embers.drop(e.x,e.y,e.final?20:10,e.final?'ancient_guardian':'guardian');s.creatures.strikes=s.creatures.strikes.filter(a=>a.source!=='guardian_eruption');this.bullets.forEach(b=>b.sprite.setVisible(false));this.bullets=[];this.bossRestUntil=s.elapsed+10;if(e.final||s.isDemo)this.finalDefeated=true;else if(s.isExpedition)s.packs.drop(e.x,e.y,'miniboss');s.logEvent('boss_defeated',{final:!!e.final});s.headline(e.final?'Ancient Guardian defeated!':s.isDemo?'Guardian defeated!':'Guardian defeated. The expedition continues.');if(!e.final&&!s.isDemo&&s.isExpedition)this.guardianSwarm();s.saveRun();}return true;}return false;
     }
     guardianSwarm(){const s=this.s,count=64;if(this.guardianSwarmStarted)return;this.guardianSwarmStarted=true;s.enemyCap+=count;const view=s.spawnView(),halfW=(view.right-view.left)/2+90,halfH=(view.bottom-view.top)/2+90,p=s.player;let spawned=0;
       for(let i=0;i<count;i++){const a=Math.PI*2*i/count,dx=Math.cos(a),dy=Math.sin(a),edge=Math.min(halfW/Math.max(.001,Math.abs(dx)),halfH/Math.max(.001,Math.abs(dy))),d=edge+(i%4)*24,wrap=n=>((n%s.worldSize)+s.worldSize)%s.worldSize,x=wrap(p.x+dx*d),y=wrap(p.y+dy*d),e=s.spawn(s.expedition.enemyType(),x,y);if(e){e.guardianSwarm=true;spawned++;}}
@@ -36,6 +36,24 @@
     shoot(from,angle,speed=150,source='mage_orb'){
       this.shotsFired++;const sprite=this.s.pooled(this.bulletPool,source==='hunter_arrow'?'hunterArrow':source==='mage_orb'?'mageOrb':source==='owl_feather'?'feather':'guardianFire',source==='mage_orb'?1.5:source==='owl_feather'?1.6:1.5).setTint(source==='owl_feather'?0xff8877:0xffc05c);
       this.bullets.push({x:from.x,y:from.y,dx:Math.cos(angle),dy:Math.sin(angle),speed,life:5,source,sprite});
+    }
+    shootSpirit(from,angle,{variant='normal',life=4,speed=90,turnRate=0,damage=70,scale=1}={}){
+      const key=variant==='blue'?'spiritOrbBlue':variant==='double'?'spiritOrbDouble':'spiritOrb',tint=variant==='blue'?0x9ceaff:variant==='double'?0xffc8ff:0xe4d5ff;
+      const sprite=this.s.pooled(this.bulletPool,key,scale).setTint(tint);this.shotsFired++;
+      this.bullets.push({x:from.x,y:from.y,dx:Math.cos(angle),dy:Math.sin(angle),speed,life,source:'spirit_orb',damage,turnRate,variant,sprite});
+    }
+    shrineBossVolley(boss){
+      const cycle=boss.volley=(boss.volley||0)+1,p=this.s.player,aim=Math.atan2(p.y-boss.y,p.x-boss.x),pattern=cycle%4;
+      if(pattern===1){ // Broad crescent of quick wisps.
+        for(let i=-3;i<=3;i++)this.shootSpirit(boss,aim+i*.16,{variant:i%2?'blue':'normal',life:4,speed:205,damage:80,scale:1.15});
+      }else if(pattern===2){ // Two overlapping novas travel outward at different speeds.
+        for(let i=0;i<12;i++){const a=i*Math.PI/6+cycle*.06;this.shootSpirit(boss,a,{variant:'double',life:4,speed:145,damage:80,scale:1.2});this.shootSpirit(boss,a+Math.PI/12,{variant:'blue',life:4,speed:205,damage:80,scale:1});}
+      }else if(pattern===3){ // Three large spirits bend toward the player.
+        for(let i=-1;i<=1;i++)this.shootSpirit(boss,aim+i*.3,{variant:'blue',life:7,speed:76,turnRate:.75,damage:80,scale:1.8});
+      }else{ // Crossfire: a fast aimed fan, followed by a perpendicular sweep.
+        const cross=aim+Math.PI/2;for(let i=-2;i<=2;i++){this.shootSpirit(boss,aim+i*.12,{variant:i%2?'normal':'double',life:4,speed:245,damage:80,scale:1.1});this.shootSpirit(boss,cross+i*.12,{variant:'blue',life:4,speed:210,damage:80,scale:1});}
+      }
+      this.s.burst('guardianBlast',boss.x,boss.y,2.8,.42,0xc4a6ff);this.s.logEvent('shrine_boss_volley',{pattern:['crossfire','crescent','double_nova','seeker_triad'][pattern],cycle});
     }
     updateNest(n,dt){
       if(!this.nestsActive||this.s.elapsed<n.activeAt||n.destroyed||!SurvivorEnemies.spawnUnlocked(this.s,n.type)||(this.s.isDemo&&this.s.elapsed>=600))return;const s=this.s;n.clock-=dt*(s.isExpedition&&this.bossPressure()?.15:1);
@@ -120,7 +138,10 @@
     update(dt){
       if(!this.nestsActive&&this.s.elapsed>=(this.s.isDemo?60:30)){this.nestsActive=true;this.s.logEvent('nests_appeared');this.s.headline('A Den Appears');}
       for(const n of this.nests)this.updateNest(n,dt);this.updateBeast(dt);if(this.s.mode!=='playing')return;this.updateBoss(dt);
-      for(const b of this.bullets){b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.source==='hunter_arrow'?100:['owl_feather','mage_orb'].includes(b.source)?60:80,b.source);b.life=0;}this.s.relics.nearShot(b);}
+      for(const b of this.bullets){
+        if(b.turnRate){const target=Math.atan2(this.s.player.y-b.y,this.s.player.x-b.x),current=Math.atan2(b.dy,b.dx),delta=Math.atan2(Math.sin(target-current),Math.cos(target-current)),a=current+clamp(delta,-b.turnRate*dt,b.turnRate*dt);b.dx=Math.cos(a);b.dy=Math.sin(a);}
+        b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;b.life-=dt;if(this.s.blocked(b.x,b.y,4))b.life=0;if(b.life>0&&dist(b,this.s.player)<17){this.damage(b.damage||(b.source==='hunter_arrow'?100:['owl_feather','mage_orb'].includes(b.source)?60:80),b.source);b.life=0;}this.s.relics.nearShot(b);
+      }
       this.bullets=this.bullets.filter(b=>{if(b.life>0)return true;b.sprite.setVisible(false);return false;});
       for(const t of this.trails)t.life-=dt;this.trails=this.trails.filter(t=>t.life>0);
       for(const p of this.pulses)p.life-=dt;this.pulses=this.pulses.filter(p=>p.life>0);
@@ -141,7 +162,7 @@
       for(const p of this.pulses)g.lineStyle(5,0xffd36b,p.life/.35).strokeCircle(p.x,p.y,p.r*(1-p.life/.35));
       const b=this.beast;this.beastSprite.setVisible(!!b);if(b){this.beastSprite.setPosition(b.x,b.y).setDepth(b.y+20).setFrame(Math.floor(s.elapsed*8)%4*4).setTint(b.charge>0?0xffdd88:0xffffff);}
       const boss=this.boss;this.bossSprite.setVisible(!!boss&&boss.hp>0);if(boss?.hp>0){this.bossSprite.setTexture(boss.final?'ancientGuardian':'guardian').setPosition(boss.x,boss.y).setDepth(boss.y+35).setFrame(Math.floor(s.elapsed*6)%6);if(boss.phase==='ring')g.lineStyle(4,0xffa052).strokeCircle(boss.x,boss.y,65+(1.1-boss.clock)*35);if(boss.phase==='aimed')g.lineStyle(3,0xffa052).lineBetween(boss.x,boss.y,boss.x+Math.cos(boss.aim)*320,boss.y+Math.sin(boss.aim)*320);}
-      for(const bullet of this.bullets)bullet.sprite.setPosition(bullet.x,bullet.y).setFrame(['owl_feather','hunter_arrow'].includes(bullet.source)?0:Math.floor(s.elapsed*12)%4).setRotation(Math.atan2(bullet.dy,bullet.dx)).setDepth(800000000);
+      for(const bullet of this.bullets)bullet.sprite.setPosition(bullet.x,bullet.y).setFrame(bullet.source==='spirit_orb'?Math.floor(s.elapsed*14)%5:['owl_feather','hunter_arrow'].includes(bullet.source)?0:Math.floor(s.elapsed*12)%4).setRotation(Math.atan2(bullet.dy,bullet.dx)).setDepth(800000000);
     }
     drawUI(w,h){}
     summary(){return {nestsActive:this.nestsActive,shotsFired:this.shotsFired,choice:this.chosen,finalAppeared:this.finalAppeared,finalDefeated:this.finalDefeated,bossPressure:this.bossPressure(),stageChoices:{...this.stageChoices},beast:this.beast?.state||null,beastDamage:this.beastDamage,nests:this.nests.map(n=>({type:n.type,x:n.x,y:n.y,stage:n.stage,activeAt:n.activeAt,hp:n.hp,destroyed:n.destroyed,spawnCount:n.spawnCount})),boss:this.boss?{final:!!this.boss.final,hp:this.boss.hp,defeated:this.boss.hp<=0}:null};}

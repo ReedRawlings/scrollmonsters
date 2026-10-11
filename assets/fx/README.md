@@ -128,24 +128,29 @@ Hand-placed pixel pieces (PNG + JSON written straight to `sheets/`, no `.pxc`), 
 | Grindle | `Grindle_Step_Left` / `_Right` | 24×20 | 9 @15 | alternate along the line; `hit_frame` 0 |
 | Ratiot | `Ratiot_Bite` | 48×56 | 8 @20 | anchor = target center; `hit_frame` 3 |
 
-## Rich head-on ability FX (2026-10-02, work in progress)
+## Head-on ability FX (`build_rich.py`)
 
-Detailed, Pokémon/Dragon Quest-style move animations for a **head-on battle view** (not the top-down map, so the 3:2 ground rule doesn't apply). **Apollo palette** (`scripts/pixelcomposer/palettes/Apollo.hex`, 46 colours); Toasted40 has too few cool colours for ice, lightning, water or void. New effects are **new graphs** built by `richlib.py` from the techniques in `/Applications/PixelComposerExamples/Complex` (noise → displace → envelope gradient → threshold → colorize ramp, particles); anchor bottom-centre, motion along the screen axes. `Frost_Spikes` is only a recolour of `Icicle` made with `retarget.py`, which drops the example's baked-in background (transparent sheet), remaps every colour to Apollo, and adds the Render Spritesheet / Export nodes. Size, frames and fps are the example's own. Run `python3 scripts/pixelcomposer/build_rich.py flame thunder web void [frost]`.
+Detailed, Pokémon/Dragon Quest-style move animations for a **head-on battle view** (not the top-down map, so the 3:2 ground rule doesn't apply), in the **Apollo palette**. Built by `python3 scripts/pixelcomposer/build_rich.py flame thunder web void`; for how to build detailed effects, see `scripts/pixelcomposer/EFFECTS_GUIDE.md` §3. Anchor bottom-centre, motion along the screen axes.
 
-| Effect | Source | Size | Frames @fps | Loop | Built from |
+| Effect | Source | Size | Frames @fps | Loop | Status |
 |---|---|---|---|---|---|
-| Flame Burst (fire erupts under the target, engulfs it, lifts into embers + smoke) | `Flame_Burst.pxc` | 64×64 | 32 @30 | no | new graph (`richlib`), approved |
-| Thunder Strike (sky flicker, jagged bolt + forks at f5, sparks, crackling impact glow; anchor = strike point, `hit_frame` 5) | `Thunder_Strike.pxc` | 64×64 | 28 @30 | no | new graph |
-| Web Snare (threads fly in, spiral spins in, web snaps tight at f21; anchor = web centre on the body) | `Web_Snare.pxc` | 64×64 | 30 @30 | no | new graph |
-| Void Orb (dark orb swirls + pulls debris in, collapses at f25 into flash + ring; anchor = orb centre) | `Void_Orb.pxc` | 64×64 | 32 @30 | no | new graph |
-| Frost Spikes (recolour only, not a new effect) | `Frost_Spikes.pxc` | 64×64 | 40 @30 | no | `Icicle` |
+| Flame Burst (fire erupts under the target, engulfs it, lifts into embers + smoke) | `Flame_Burst.pxc` | 64×64 | 32 @30 | no | approved |
+| Thunder Strike (sky flicker, jagged bolt + forks at f5, sparks, crackling impact glow; anchor = strike point, `hit_frame` 5) | `Thunder_Strike.pxc` | 64×64 | 28 @30 | no | approved |
+| Web Snare (threads fly in, spiral spins in, web snaps tight at f21; anchor = web centre on the body) | `Web_Snare.pxc` | 64×64 | 30 @30 | no | not reviewed yet |
+| Void Orb (dark orb swirls + pulls debris in, collapses at f25 into flash + ring; anchor = orb centre) | `Void_Orb.pxc` | 64×64 | 32 @30 | no | not reviewed yet |
 
-**Not yet rendered:** open `Thunder_Strike` / `Web_Snare` / `Void_Orb` / `Frost_Spikes.pxc`, play it through, then **F5** and **F6** to write `sheets/Frost_Spikes.png`. The JSON has a provisional anchor and no `hit_frame` / `visible_w` yet; set them from the first export. The Icicle ground pad is still the example's isometric ellipse; decide whether to flatten or remove it once you've seen the render.
+## Creature attacks, top-down (`assets/fx/attacks/`)
 
-## Procedural texture effects (2026-10-03, test)
+Attack FX for the survivors map in the Apollo palette. Each effect's `.pxc`, PNG and JSON sit together in `assets/fx/attacks/`. Built by `python3 scripts/pixelcomposer/build_attacks.py` (its header explains how to build new ones, using the Pixel Composer Complex examples as the reference); drawn in game by `survivor-attack-fx.js`. After exporting, run `python3 scripts/build-ui-assets.py --manifest-only` to hand the sheet to the game; until a PNG exists, that attack keeps its old visual.
 
-Built by `build_procedural.py` with the noise helpers in `fxlib` (`noise`, `offset`, `polar`, `gradient`, `colorize`, `dither`; node templates taken from MakhamDev's Portal-Cream sample into `templates/procedural_nodes.json`). Method: tiling noise scrolls exactly one tile per loop, gets masked by a gradient, then is dithered and coloured last in flat palette bands.
+To export: open the `.pxc`, play it through, **F5** then **F6**.
 
-| Effect | Source | Size | Frames @fps | Loop | Compare with |
+| Effect | Source | Size | Frames | Anchor | Used for |
 |---|---|---|---|---|---|
-| Burning ground loop, noise version | `Fire_Pool_Loop_Noise.pxc` | 48×32 | 8 @10 | yes | `Fire_Pool_Loop.pxc` |
+| Mole attack, the whole effect: cracks spread over a 3:2 ellipse, the ground darkens, light leaks up through the cracks, pebbles hop, dust trickles up; the cracks reach the edge on the last frame = the hit, then the game fades that frame out over 0.3s with a small camera jitter | `Mole_Rumble.pxc` | 96×64 | 20, indexed by wind-up progress | 48,32 | friendly mole strikes (wind-up 1.0s), Aftershock echoes (0.5s), mole dash (0.45s), and the wild mole's eruption (1.25s, keeps its red ring + timer arc on top) |
+| Storm Thunderhead strike: a bolt drops from above the frame onto the ground point (hit on frame 2), 3:2 ground flash, crackling ring, scorch star and pit, sparks, fading glow. Frames 0-1 play over the last 0.1s of the cast's wind-up so the hit frame lands with the damage | `Storm_Strike.pxc` | 48×96 | 10 @20, hit frame 2 | 24,80 | Thunderhead strikes (every third storm hit) and the wild storm lizard's strike; the game keeps its wind-up ring + timer arc |
+| Spider web: the glob splats, eight spokes shoot out to a 3:2 rim, the capture spiral winds in (frames 0-9, once); a glint sweeps round the silk with dew beads (10-25, seamless loop); the snap: spokes recoil, the spiral unravels, shreds fly (26-33) | `Silk_Web.pxc` | 96×72 | 34 @12: land 0-9, loop 10-25, snap 26-33 | 48,36 | every web zone (fades over its last 0.4s; never below 1x, Wide Web stretches it a little; wild webs keep their orange ring) and the Tension Trap burst (snap) |
+
+Built and awaiting export or review: `Fire_Patch` (salamander fire patch, ignite + loop), `Cross_Slam` (bear cross, arm pieces + centre), `Storm_Arc` (chain-lightning pieces in five directions + zap), `Mouse_Bite`, `Cat_Swipe` (five directions). Each sheet's JSON notes say how the game plays it.
+
+Sheets are shown only at a whole-number scale (`px` in the JSON; new sheets are authored at full on-screen size and shown at 1x; the rumble is shown at 2x). `visible_w` is the base gameplay width in sheet pixels.

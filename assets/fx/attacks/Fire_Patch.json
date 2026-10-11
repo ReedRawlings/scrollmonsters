@@ -1,0 +1,28 @@
+{
+  "image": "Fire_Patch.png",
+  "frame_width": 80,
+  "frame_height": 80,
+  "frame_count": 32,
+  "layout": "horizontal strip, no spacing",
+  "fps": 12,
+  "duration_s": 2.667,
+  "loop": true,
+  "anchor": {
+    "x": 40,
+    "y": 54,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Salamander fire patch on the ground: frames 0-7 ignite (splash, droplets, the bed cracks open, flames grow), frames 8-31 loop seamlessly (play 0-7 once, then repeat 8-31). Ground ellipse 72x48 px (visible_w 72), shown at 1x. Anchor = patch centre on the ground. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 72,
+  "px": 1,
+  "ignite": [
+    0,
+    7
+  ],
+  "loop_frames": [
+    8,
+    31
+  ]
+}

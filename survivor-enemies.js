@@ -1,7 +1,7 @@
 // Enemy identities are separate from creature roles: recruitment and ally art stay intact.
 (() => {
   const A='assets/Ninja Adventure - Asset Pack/';
-  const textures={shamanYellow:'assets/Enemies/shaman_yellow.png',shamanGreen:'assets/Enemies/shaman_green.png',shamanBlue:'assets/Enemies/shaman_blue.png',hunter:A+'Actor/Characters/Hunter/SpriteSheet.png',skeleton:A+'Actor/Characters/Skeleton/SpriteSheet.png',golem:'assets/Enemies/golem.png',forestGolem:'assets/Enemies/golem_forest.png',energyGolem:'assets/Enemies/golem_energy.png',demonRed:'assets/Enemies/DemonRed/SpriteSheet.png',demonGreen:'assets/Enemies/DemonGreen/SpriteSheet.png',mageOrange:'assets/Enemies/NinjaMageOrange/SpriteSheet.png',mageBlack:'assets/Enemies/NinjaMageBlack/SpriteSheet.png',gladiator:A+'Actor/Characters/RedGladiator/SpriteSheet.png'};
+  const textures={shamanYellow:'assets/Enemies/shaman_yellow.png',shamanGreen:'assets/Enemies/shaman_green.png',shamanBlue:'assets/Enemies/shaman_blue.png',hunter:A+'Actor/Characters/Hunter/SpriteSheet.png',skeleton:A+'Actor/Characters/Skeleton/SpriteSheet.png',golem:'assets/Enemies/golem.png',forestGolem:'assets/Enemies/golem_forest.png',energyGolem:'assets/Enemies/golem_energy.png',demonRed:'assets/Enemies/DemonRed/SpriteSheet.png',demonGreen:'assets/Enemies/DemonGreen/SpriteSheet.png',mageOrange:'assets/Enemies/NinjaMageOrange/SpriteSheet.png',mageBlack:'assets/Enemies/NinjaMageBlack/SpriteSheet.png',gladiator:A+'Actor/Characters/RedGladiator/SpriteSheet.png',spirit2:A+'Actor/Monsters/Arcane/Tier2/Spirit2/SpriteSheet.png',spiritLarge:A+'Actor/Monsters/Arcane/Tier2/SpiritLarge/SpriteSheet.png',giantSpirit:A+'Actor/Boss/GiantSpirit/Idle.png'};
   const direction=(x,y)=>Math.abs(x)>Math.abs(y)?(x<0?2:3):(y<0?1:0);
   window.SurvivorEnemies={
     stats:{shaman:{hp:180,speed:52,r:12,scale:3},hunter:{hp:120,speed:65,r:11,scale:3},skeleton:{hp:50,speed:72,r:10,scale:2.8},lion:{hp:100,speed:80,r:12,scale:2.8}},
@@ -15,7 +15,7 @@
       if(roll>=.005&&roll<.035&&s.elapsed>=s.nextShamanAt&&alive.filter(e=>e.type==='shaman').length<2)return 'shaman';
       return null;
     },
-    preload(s){s.load.spritesheet('lion',A+'Actor/Animals/Lion/SpriteSheetYellow.png',{frameWidth:16,frameHeight:23});s.load.image('hunterArrow',A+'FX/Projectile/Arrow.png');for(const [key,path] of Object.entries(textures))s.load.spritesheet(key,path,{frameWidth:16,frameHeight:16});s.load.spritesheet('mageOrb',A+'FX/Projectile/EnergyBall.png',{frameWidth:16,frameHeight:16});s.load.image('enemyAxe',A+'Items/Weapons/Axe/SpriteInHand.png');},
+    preload(s){s.load.spritesheet('lion',A+'Actor/Animals/Lion/SpriteSheetYellow.png',{frameWidth:16,frameHeight:23});s.load.image('hunterArrow',A+'FX/Projectile/Arrow.png');for(const [key,path] of Object.entries(textures))s.load.spritesheet(key,path,{frameWidth:key==='giantSpirit'?50:16,frameHeight:key==='giantSpirit'?50:16});if(window.SCROLLMONSTERS_DEMO||new URLSearchParams(location.search).has('demo'))s.load.spritesheet('spirit',A+'Actor/Monsters/Arcane/Tier2/Spirit/SpriteSheet.png',{frameWidth:16,frameHeight:16});s.load.spritesheet('giantSpiritHit',A+'Actor/Boss/GiantSpirit/Hit.png',{frameWidth:50,frameHeight:50});s.load.spritesheet('spiritOrb',A+'FX/Magic/Spirit/SpriteSheet.png',{frameWidth:32,frameHeight:32});s.load.spritesheet('spiritOrbBlue',A+'FX/Magic/Spirit/SpriteSheetBlue.png',{frameWidth:32,frameHeight:32});s.load.spritesheet('spiritOrbDouble',A+'FX/Magic/Spirit/SpriteSheetDouble.png',{frameWidth:32,frameHeight:32});s.load.spritesheet('mageOrb',A+'FX/Projectile/EnergyBall.png',{frameWidth:16,frameHeight:16});s.load.image('enemyAxe',A+'Items/Weapons/Axe/SpriteInHand.png');},
     decorate(s,e){
       if(e.type==='shaman'){s.bestiary?.see('shaman');e.variant=['shamanYellow','shamanGreen','shamanBlue'][Math.floor(s.rand()*3)];e.summonerId=++s.summonerId;e.contactDamage=50;e.clock=2;s.nextShamanAt=s.elapsed+25;}
       if(e.type==='hunter'){e.variant='hunter';e.contactDamage=50;e.clock=1;s.nextHunterAt=s.elapsed+45;}
@@ -25,6 +25,10 @@
       if(e.type==='owl')e.variant=s.rand()<.05?'mageBlack':'mageOrange';
       if(e.type==='beast')e.variant='demonRed';
       if(e.type==='bear')e.variant='gladiator';
+      if(e.type==='spirit')e.variant='spirit';
+      if(e.type==='spirit2')e.variant='spirit2';
+      if(e.type==='spiritLarge')e.variant='spiritLarge';
+      if(e.type==='giantSpirit')e.variant='giantSpirit';
     },
     identity(e){return e.type==='beast'&&e.elite?'demonGreen':e.type==='bat'&&e.elite?'energyGolem':e.variant||e.type;},
     clearShot(s,e,x=s.player.x,y=s.player.y){
@@ -41,6 +45,18 @@
     summonRoom(s,e){const alive=s.enemies.filter(t=>t.hp>0);return Math.max(0,Math.min(4-alive.filter(t=>t.summonedBy===e.summonerId).length,12-alive.filter(t=>t.summonedBy).length,s.enemyCap-alive.length));},
     summonPoints(s,e){const points=[];for(let i=0;i<24&&points.length<Math.min(2,this.summonRoom(s,e));i++){const a=i*2.4,r=60+(i%3)*18,p={x:e.x+Math.cos(a)*r,y:e.y+Math.sin(a)*r};if(!s.blocked(p.x,p.y,18)&&Math.hypot(p.x-s.player.x,p.y-s.player.y)>90&&points.every(q=>Math.hypot(q.x-p.x,q.y-p.y)>35))points.push(p);}return points;},
     update(s,e,dt){
+      if(e.type==='spirit'||e.type==='spirit2'||e.type==='spiritLarge'||e.type==='giantSpirit'){
+        const p=s.player,d=Math.hypot(p.x-e.x,p.y-e.y)||1;
+        if(e.type==='giantSpirit'){
+          if(d>220)s.move(e,(p.x-e.x)/d*e.speed*dt,(p.y-e.y)/d*e.speed*dt,false);
+          if(e.clock<=0){s.encounters.shrineBossVolley(e);e.clock=.85;}
+          if(d<e.r+p.r)s.encounters.damage(150,'giant_spirit_contact');return true;
+        }
+        e.attackClock-=dt;if(d>210)s.move(e,(p.x-e.x)/d*e.speed*dt,(p.y-e.y)/d*e.speed*dt,false);
+        else if(d<125)s.move(e,-(p.x-e.x)/d*e.speed*.45*dt,-(p.y-e.y)/d*e.speed*.45*dt,false);
+        if(e.attackClock<=0){const a=Math.atan2(p.y-e.y,p.x-e.x),options={variant:e.type==='spirit2'?'blue':'normal',life:e.type==='spirit2'?6:4,speed:e.type==='spiritLarge'?100:e.type==='spirit2'?90:82,turnRate:.48,damage:e.type==='spiritLarge'?100:e.type==='spirit2'?80:65,scale:e.type==='spiritLarge'?1.6:1};if(e.type==='spiritLarge'){s.encounters.shootSpirit(e,a-.14,options);s.encounters.shootSpirit(e,a+.14,options);}else s.encounters.shootSpirit(e,a,options);e.attackClock=e.type==='spiritLarge'?2.5:2.8;}
+        if(d<e.r+p.r)s.encounters.damage(e.contactDamage||75,e.type+'_contact');return true;
+      }
       if(e.type==='shaman'){
         if(e.phase==='summon'){
           if(e.clock<=0){const type=e.variant==='shamanBlue'?'lion':'skeleton';let count=0;
@@ -69,6 +85,8 @@
     draw(s){
       s.enemyAxes ||= [];for(const axe of s.enemyAxes)axe.setVisible(false);let index=0;
       for(const e of s.enemies){if(e.hp<=0||!e.variant)continue;const key=this.identity(e),dir=direction(s.player.x-e.x,s.player.y-e.y),spin=e.type==='bear'&&e.phase==='spin';
+        if(e.type==='giantSpirit'){const hit=e.flash>0;e.sprite.setTexture(hit?'giantSpiritHit':'giantSpirit').setFrame(Math.floor(s.elapsed*6)%(hit?3:5)).setPosition(e.x,e.y).setDepth(e.y+40).setTint(hit?0xffffff:0xded4ff);s.fx.fillStyle(0x382921,.9).fillRect(e.x-34,e.y-43,68,6);s.fx.fillStyle(0xc6a7ff).fillRect(e.x-34,e.y-43,68*Math.max(0,e.hp)/e.maxHp,6);continue;}
+        if(['spirit','spirit2','spiritLarge'].includes(e.type)){e.sprite.setTexture(key).setFrame(Math.floor(s.elapsed*7)%4*4+dir).setPosition(e.x,e.y).setDepth(e.y+20).setTint(0xffffff);if(e.hp<e.maxHp){s.fx.fillStyle(0x382921,.8).fillRect(e.x-15,e.y-28,30,4);s.fx.fillStyle(0xf0c16e).fillRect(e.x-15,e.y-28,30*Math.max(0,e.hp)/e.maxHp,4);}continue;}
         const attacking=['windup','charge','shoot','slam','spin','summon','hunterAim'].includes(e.phase);
         const facing=spin?[0,2,1,3][Math.floor((.7-e.clock)*12)%4]:dir;
         e.sprite.setTexture(key).setFrame(e.type==='lion'?Math.floor(s.elapsed*8)%2:attacking?20+facing:4+Math.floor(s.elapsed*8)%4*4+dir).setFlipX(e.type==='lion'&&s.player.x<e.x);

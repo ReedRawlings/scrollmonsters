@@ -1,0 +1,20 @@
+{
+  "image": "Mouse_Bite.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 8,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.4,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 26,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Mouse helper bite: 8 frames played once on the target; the jaws snap shut on frame 2 = the hit. Anchor = target centre. 48x48, 20 fps, shown at 1x. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "hit_frame": 2
+}

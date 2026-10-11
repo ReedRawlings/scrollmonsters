@@ -1,5 +1,6 @@
 (() => {
   const ATTACKERS=['cat','owl','beast','mouse','mole','bear','salamander','spider','storm','mollusc','octopus','reptile','tengu','axolotl'];
+  const PROJECTILE_SOURCES=new Set(['player','cat','owl','salamander','spider','storm','mollusc','octopus','reptile','tengu','axolotl','bamboo','cyclope','heartbloom','spirit','kappa']);
   const ITEMS=[
     {id:'boots',name:"Wayfarer's Boots",detail:'Move 2s: next shot deals +50% damage',extra:'Pierces three enemies; +50% damage per copy.'},
     {id:'stone',name:'Standing Stone',detail:'Stand still: build up to +50% shot speed',extra:'+50% per copy. Moving removes the bonus.'},
@@ -16,6 +17,7 @@
     ,{id:'veil',name:'Phase Veil',detail:'First 0.08s of dash ignores incoming damage.',extra:'Copies add 0.03s, capped at dash duration.'}
     ,{id:'afterimage',name:'Afterimage Thread',detail:'Your companion’s dash effect repeats after a short delay.',extra:'The echo has 35% strength; each copy adds 15 percentage points, up to 80%.'}
     ,{id:'stormglass',name:'Stormglass',detail:'Lightning chains farther from foes in friendly fire, ink, or webs.',extra:'+70 chain range per copy from a marked foe.'}
+    ,{id:'twinshot',name:'Twinshot Sigil',detail:'Double your projectiles and damaging attack effects.',extra:'Affects you, Cat, Owl, and ranged or effect attacks. Does not affect Mole, Beast, Bear, or Mouse.'}
   ];
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   class SurvivorRelics {
@@ -24,6 +26,7 @@
     count(id){return this.equipped.filter(v=>v===id).length;}
     name(id){return ITEMS.find(v=>v.id===id).name;}
     has(id){return this.equipped.includes(id);}
+    projectileCopies(source){return this.has('twinshot')&&PROJECTILE_SOURCES.has(source)?2:1;}
     isBeneficial(id){
       const s=this.s,party=new Set(s.expedition.party()),attackers=[...party].filter(t=>ATTACKERS.includes(t));
       if(id==='afterimage')return s.creatures.elements.dashStyle!=='normal';

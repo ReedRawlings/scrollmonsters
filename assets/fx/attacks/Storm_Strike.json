@@ -1,0 +1,20 @@
+{
+  "image": "Storm_Strike.png",
+  "frame_width": 48,
+  "frame_height": 96,
+  "frame_count": 10,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 0.5,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 80,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Storm Thunderhead strike: a bolt drops from above the frame onto the ground point, which it hits on frame 2; ground flash, crackling 3:2 ring, scorch star, sparks, fading glow. Play once at the end of the cast's wind-up (the game keeps its ring + timer). 48x96, 20 fps, shown at 1x. Anchor = strike point on the ground. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "hit_frame": 2
+}

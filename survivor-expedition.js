@@ -1,5 +1,5 @@
 (() => {
-  const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc','bamboo'],KEY='scrollmonsters-starters-v1',DEMO_KEY='scrollmonsters-demo-starters-v1';
+  const TYPES=['cat','owl','beast','frog','mouse','mole','bear','salamander','spider','storm','mollusc','bamboo','spirit'],KEY='scrollmonsters-starters-v1',DEMO_KEY='scrollmonsters-demo-starters-v1';
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   const CAPTURE_R = 140; // capture zone radius in world pixels
   class Expedition {
@@ -87,21 +87,36 @@
       this.chests=this.chests.filter(c=>{if(!c.opened||c.life>0)return true;c.sprite.destroy();return false;});
     }
     shrineStats(){const tier=Math.min(2,this.shrine.completed);return {hp:[600,1400,3000][tier],damage:[120,180,260][tier],speed:[55,65,78][tier],chargeSpeed:[280,320,360][tier]};}
+    spawnShrineWave(tier){
+      const s=this.s,sh=this.shrine,kind=tier===1?'spirit':tier===2?'spirit2':'spiritLarge',count=tier===3?2:6,spawned=[];
+      for(let i=0;i<count;i++){
+        const base=Math.PI*2*i/count+(tier===2 ? .18 : 0);let point=null;
+        for(let j=0;j<24&&!point;j++){const a=base+j*Math.PI/12,r=150+(j%2)*28,x=sh.x+Math.cos(a)*r,y=sh.y+Math.sin(a)*r;if(!s.blocked(x,y,18))point={x,y};}
+        if(!point)continue;const e=s.spawn(kind,point.x,point.y);if(!e)continue;
+        const hp=[0,360,840,1800][tier],damage=[0,65,90,120][tier],speed=[0,42,50,36][tier];
+        Object.assign(e,{elite:true,shrineTier:tier,shrineWave:tier,hp,maxHp:hp,speed,contactDamage:damage,r:tier===3?18:11,clock:1.2+i*.18,attackClock:1.2+i*.18});
+        e.sprite.setScale(tier===3?4.6:3.2);spawned.push(e);
+      }
+      sh.inCombat=spawned.length>0;sh.triggered=true;sh.wave=tier;s.burst('fxEarth',sh.x,sh.y,5,.7,0xc9a8ff);s.logEvent('shrine_activated',{tier,wave:kind,count:spawned.length});s.announce('Shrine challenge '+tier+'/3! Defeat the Spirits.');return spawned.length;
+    }
     updateShrine(dt){const s=this.s,sh=this.shrine;sh.active=s.elapsed>=90&&!sh.done&&(!s.isDemo||s.elapsed<600||sh.inCombat);if(!sh.active)return;
       const inside=dist(s.player,sh)<140;if(!inside)sh.needsExit=false;
+      if(sh.completed===3){if(!sh.inCombat&&!s.enemies.some(e=>e.shrineBoss&&e.hp>0))this.spawnGiantSpirit();return;}
       if(sh.inCombat||sh.needsExit)return;
       sh.progress=inside?Math.min(6,sh.progress+dt):Math.max(0,sh.progress-dt*2);
-      if(sh.progress<6||s.enemies.filter(e=>e.hp>0).length>=s.enemyCap)return;
-      let point=null;for(let i=0;i<24;i++){const a=i*Math.PI/12,x=sh.x+Math.cos(a)*150,y=sh.y+Math.sin(a)*150;if(!s.blocked(x,y,24)){point={x,y};break;}}if(!point)return;
-      const stats=this.shrineStats(),e=s.spawn('beast',point.x,point.y);if(!e)return;
-      Object.assign(e,{elite:true,shrineTier:sh.completed+1,hp:stats.hp,maxHp:stats.hp,contactDamage:stats.damage,speed:stats.speed,chargeSpeed:stats.chargeSpeed,r:20,strong:true,lateStrong:true});e.sprite.setScale(5+sh.completed*.5);
-      sh.inCombat=true;sh.triggered=true;sh.progress=0;s.burst('fxEarth',e.x,e.y,4,.6);s.logEvent('shrine_activated',{tier:e.shrineTier,...stats});s.announce('Shrine challenge '+e.shrineTier+'/3! Defeat the elite for an upgrade.');
+      const roomNeeded=sh.completed===2?2:6;if(sh.progress<6||s.enemies.filter(e=>e.hp>0).length+roomNeeded>s.enemyCap)return;
+      sh.progress=0;this.spawnShrineWave(sh.completed+1);
     }
-    completeShrine(e){const s=this.s,sh=this.shrine;if(!sh.inCombat||e.shrineTier!==sh.completed+1)return;
-      sh.completed++;sh.inCombat=false;sh.done=sh.completed===3;sh.active=!sh.done;s.relics.reward(sh.done?'final_shrine':'shrine_challenge');sh.needsExit=true;sh.progress=0;
+    completeShrine(e){const s=this.s,sh=this.shrine;if(e.shrineBoss){if(sh.done)return;sh.done=true;s.embers.drop(sh.x,sh.y,3,'shrine');sh.inCombat=false;sh.active=false;sh.needsExit=false;sh.progress=0;for(const b of s.encounters.bullets.filter(b=>b.source==='spirit_orb')){b.life=0;b.sprite.setVisible(false);}s.relics.reward('final_shrine');this.unlock('spirit');s.logEvent('spirit_unlocked',{source:'shrine_boss'});s.announce('Giant Spirit defeated! Spirit is now a starter.');s.saveRun();s.reward('shrine',{tier:4,final:true,spirit:true,x:sh.x,y:sh.y});return;}
+      if(!sh.inCombat||e.shrineTier!==sh.completed+1)return;
+      if(s.enemies.some(other=>other!==e&&other.hp>0&&other.shrineWave===e.shrineWave))return;
+      sh.completed++;s.embers.drop(sh.x,sh.y,3,'shrine');sh.inCombat=false;sh.done=false;sh.active=true;if(sh.completed<3)s.relics.reward('shrine_challenge');sh.needsExit=true;sh.progress=0;
       const healed=sh.completed===1?Math.min(120,s.maxHp-s.player.hp):0;s.player.hp+=healed;s.juice.heal(healed);const xp=s.xpNeeded();s.gainXP(xp,false);
-      s.logEvent('shrine_completed',{tier:sh.completed,heal:healed,xp});s.reward('shrine',{tier:sh.completed,final:sh.done,x:sh.x,y:sh.y});s.announce(sh.done?'Shrine exhausted. Final bonus upgrade earned!':'Bonus upgrade earned! Leave the circle before the next challenge.');
+      s.logEvent('shrine_completed',{tier:sh.completed,heal:healed,xp});s.reward('shrine',{tier:sh.completed,heal:healed,xp,x:sh.x,y:sh.y});
+      if(sh.completed===3){sh.needsExit=false;this.spawnGiantSpirit();s.announce('The Giant Spirit awakens!');}else s.announce('Bonus upgrade earned! Leave the circle before the next challenge.');
     }
+    spawnGiantSpirit(){const s=this.s,sh=this.shrine;let point=null;for(let i=0;i<24;i++){const a=i*Math.PI/12,x=sh.x+Math.cos(a)*195,y=sh.y+Math.sin(a)*195;if(!s.blocked(x,y,42)){point={x,y};break;}}if(!point)return false;
+      const e=s.spawn('giantSpirit',point.x,point.y);if(!e)return false;Object.assign(e,{kind:'shrineSpiritBoss',shrineBoss:true,elite:true,hp:20000,maxHp:20000,r:35,speed:85,contactDamage:120,clock:.85,attackClock:1.5,phase:'seek'});e.sprite.setScale(2.4);sh.inCombat=true;sh.wave='boss';sh.needsExit=false;s.logEvent('shrine_boss_appeared',{x:Math.round(e.x),y:Math.round(e.y)});return true;}
 
     strengthen(e){if(e.lateStrong)return;e.lateStrong=true;e.hp*=1.2;e.maxHp*=1.2;}
     phaseName(){return ['Explore the woodland','Ranged hunters','Recruit and regroup','Elite territory','Relic hunt','Hardened hordes','Dangerous territory','Relic hunters','Last preparations','Guardian encounter','Deeper woodland','Evolved hordes','Recruit and evolve','Relic hunters','Ancient territory','Gather strength','Relentless hordes','Final preparations','The last approach','Ancient Guardian finale'][this.phase]||'Explore the woodland';}

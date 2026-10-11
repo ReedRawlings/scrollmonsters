@@ -123,7 +123,7 @@
     }
     openTreasure() {
       const s = this.s, t = this.treasure; if(!t.revealed||t.opened)return; t.opened = true; t.openTime = 0;
-      s.burst('fxHit', t.x, t.y - 8, 3, .6, 0xffd36b);
+      s.burst('fxHit', t.x, t.y - 8, 3, .6, 0xffd36b); s.embers.drop(t.x, t.y + 40, 10, 'treasure');
       if (t.reward === 'xp') { const earned = s.gainXP(s.xpNeeded(), false); t.earned = earned; s.announce('Hidden treasure! +' + earned + ' XP'); }
       else { s.relics.reward('hidden_treasure'); s.announce('Hidden treasure! Choose a relic.'); }
       s.logEvent('treasure_opened', {reward: t.reward, xp: t.earned || 0});

@@ -1,7 +1,8 @@
 # Making effects in Pixel Composer by editing files
 
 General lessons from building effects by editing Pixel Composer projects directly (v1.22.10, macOS, Sept 2026).
-File-format and rendering details are in `NOTES.md`.
+File-format and rendering details are in `NOTES.md`. The house rules, workflow and everything learned so far, in one
+place, are in `assets/fx/MAKING_EFFECTS.md`.
 
 ---
 
@@ -40,7 +41,9 @@ Settings are stored **by position**, with no names. Slot 18 on a Particle node i
   `labels["Node_Particle"]["inputs"][18]["name"] == "Speed"`. Check that the slot count in the file matches the label count.
 - **Never guess a slot's meaning.** One guessed slot turned on "Export on Save" instead of "Export on Update".
 - **Check units:** `unit: 1` means a fraction of the canvas (0.5 = center), and `unit: 0` means pixels.
-  `attri.use_project_dimension: 1` means the node follows the canvas size and ignores its own value.
+  `attri.use_project_dimension: 1` makes a Dimension a **multiple of the canvas** (`[1, 1]` = the canvas; source:
+  `node_value_dimension.gml`). Never write pixels into it: `[80, 80]` there rendered 6400×6400 surfaces and froze or
+  crashed Pixel Composer. `fxlib.finish` refuses to save that; set the flag to 0 to give a node its own pixel size.
   Fractions keep things centered when you resize a canvas; pixel values don't.
 - **Dropdowns** are stored as bare numbers. Infer their meaning from samples that use them, and tell the user which
   ones were inferred.
@@ -66,6 +69,38 @@ Settings are stored **by position**, with no names. Slot 18 on a Particle node i
 ---
 
 ## 3. How common effects are built
+
+### How the Complex examples are built (the reference for detailed effects)
+
+`/Applications/PixelComposerExamples/Complex` holds the effects to match. None of them is one noise field: each
+layers several distinct elements, and each element has its own pipeline.
+
+- **Fire-Tornado:** one crafted flame piece (gradient × simplex noise, displaced by upward-smeared anisotropic noise,
+  wrapped with Polar, shaped by a Curve) is cached with **Cache Array** and **Repeat**ed along a **Path** (10 copies,
+  scale and colour over copy, random scale), plus lines drawn along paths with a width curve.
+- **Rocket-Thrust:** a crafted sprite (noise wrapped onto a **Shape 3D** cylinder, then a Transform) is fed to a
+  **Particle** node as its sprite, with size, alpha and colour **over lifetime** curves; the rocket body is built
+  separately from UV-mapped gradients, Outline and Shadow; Bloom on top.
+- **Lava-Floor:** **Cellular** noise → Invert → Threshold → **Smear** makes crust plates with thickness, laid over a
+  separate displaced molten layer; **Convolution** edge kernels give the rim light; burst particles.
+- **Spark-Bolt:** a **Path** drawn in with **Trim Path**, a textured line along it, a head that follows the path
+  (Sample Path → Transform), Line 2 Points sparks, MK Sparkle sprite particles, camera shake.
+
+To study one, list its nodes in dataflow order with each node's links and changed settings (load it with `pxc.load`,
+walk `from_node` links). To reuse a working part, `Rich.borrow_tree(example, node_id)` copies a node and everything
+upstream of it with its settings intact, re-timed to your frame count and resized to your canvas; then pin any one-time
+animations so loops stay seamless, and recolour its Colorize ramps.
+
+**Curves** (Particle over-lifetime, Repeat over-copy, Curve node) are stored as `[0, 1, 0, 0, 1, 0]` followed by six
+numbers per point: `[in-handle x, in-handle y, x, y, out-handle x, out-handle y]`.
+
+**Gradient node facts** (read from the app's shader; `strings Contents/Resources/game.ios` holds every node's GLSL):
+circular prog = length(uv offset / Shape) / (Radius × √2), so a ground ellipse of half-width rx px on a W-wide canvas
+is Radius = rx / (W × √2) with Shape [1, 2/3 × W/H] and Uniform ratio off. Radial (angular) prog =
+fract((atan2(dy, dx) + Angle) / 360°) with y pointing down. Loop: 0 none, 1 loop, 2 ping-pong; Scale divides prog, so a
+small Scale with ping-pong repeats the ramp many times.
+
+### Common patterns
 
 Once you recognize these patterns, you'll see them in most samples.
 
@@ -115,7 +150,7 @@ and the domain's inertia or acceleration, decide whether the result rises, drift
 | Stop something rising | Emitter velocity, domain inertia or acceleration, particle direction and gravity |
 | Different random variation | Particle **Seed** (and any other seed settings) |
 | Fuller or more opaque | Lower Threshold, lower the Level white point, raise particle Alpha |
-| Isometric (2:1 top-down) | A **Transform** with Scale `(1, 0.5)`, Anchor `(0.5, 0.5)` relative, Position at the canvas center. For a moving source, squash the *sprite* (before it becomes a particle) so the path isn't squashed too, and turn off particle rotation. For radial effects, squash the whole output after the feedback loop. Diagonals use a 2:1 slope. |
+| ¾ top-down ground (3:2) | Draw ground shapes as 3:2 ellipses (Gradient Shape `[1, 2/3 × W/H]`, or a **Transform** with Scale `(1, 0.667)`); height goes straight up the screen. For a moving source, squash the *sprite* (before it becomes a particle) so the path isn't squashed too. 2:1 iso looked too flat. |
 | Directional variants | Generate with a script: E, NE, SE, N, S, then flip horizontally in the engine for W, NW, SW. |
 
 ---
@@ -124,11 +159,20 @@ and the domain's inertia or acceleration, decide whether the result rises, drift
 
 - **Tiny canvases look crude.** Even with 16×16 to 16×32 characters, 16×12 effects looked "way too pixelated". Effects at
   roughly 64–192 px across looked right. Choose canvas size for how the effect reads, not to match the character's size.
-- **Match the game's viewpoint.** Round, side-view shapes in a straight line read as a "2D battle screen" in a top-down iso game.
-  Flatten ground effects to 2:1.
+- **Author at on-screen size; show at a whole-number scale.** Pixel art breaks at fractional scales (1.5×, 2.03×, a
+  stretched arc). Make the canvas as big as the effect appears and show it at 1×; if it needs more detail, make the
+  canvas bigger instead of enlarging it in game. Long links (lightning between targets) tile instead of stretching.
+- **Layer distinct elements.** The Complex examples read as rich because every element is crafted on its own (drawn
+  cracks with light seen through them, a flame sprite fed to particles, crust plates over a molten layer). A single
+  noise × envelope → threshold → colour ramp reads as a smudge no matter how it's tuned.
+- **Keep phases continuous.** A follow-up phase should grow out of the one before it (same cracks, same light) rather
+  than switch to a new look.
+- **Match the game's viewpoint.** Round, side-view shapes in a straight line read as a "2D battle screen" in the top-down
+  game. Draw ground effects as 3:2 ellipses (2:1 iso was tried and looked too flat).
 - **Motion reads before detail.** Puffs popping one after another at scattered points read as "a frog hopping", whereas a
   continuous source reads as the intended motion.
-- **Match the rest of the game's palette.** The examples use Endesga 32; keeping to it keeps new effects consistent.
+- **Palette.** Existing sheets use Toasted40 + white; detailed attack FX use Apollo. The examples use Endesga 32, so
+  recolour anything borrowed from them.
 
 ---
 
@@ -150,10 +194,13 @@ and the domain's inertia or acceleration, decide whether the result rises, drift
 
 ## 7. Workflow
 
-- **Skip render checks on simple edits.** The user checks in the app faster. Render only for risky structural changes or when final files are needed.
+- **You build blind.** Headless rendering is broken, so the user checks in the app and exports. Ask for the export and
+  read the PNG yourself (crop and enlarge frames with PIL) before changing anything; don't iterate on guesses.
 - **Once a plan is approved, build without check-ins,** then report a short table of what changed and what to look for.
 - **Ask one question when feedback is ambiguous** before redoing work.
-- **Prototype one variant, get a yes, then script the rest.**
+- **Build each effect on its own** from the examples' techniques; don't make one and script the rest from it.
+- **Keep only approved work as examples.** Move rejected versions to `_archive/` or delete them; rejected examples left
+  in builders and docs steer the next attempt the wrong way.
 - **Never overwrite approved work.** Save new names and keep backups (`output/pixelcomposer-backups/`, gitignored).
 
 ---

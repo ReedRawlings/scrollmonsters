@@ -1,0 +1,102 @@
+{
+  "image": "Storm_Arc.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 48,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 2.4,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 24,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Storm chain lightning: frames 0-39 are 32 px bolt pieces in five directions (sections.dirN: start point and step in sheet pixels, y down), 8 frames each over a jump's 0.4 s life; lay pieces end to end along the jump, flip for other quadrants, turn every other piece 180 degrees, crop the last; never rotate or stretch. Frames 40-47: the zap on each hit target (anchor = target centre on the ground). 20 fps, shown at 1x. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "piece_len": 32,
+  "sections": {
+    "dir0": {
+      "frames": [
+        0,
+        7
+      ],
+      "start": [
+        8.0,
+        24.0
+      ],
+      "step": [
+        32,
+        0
+      ]
+    },
+    "dir1": {
+      "frames": [
+        8,
+        15
+      ],
+      "start": [
+        9.0,
+        30.0
+      ],
+      "step": [
+        30,
+        -12
+      ]
+    },
+    "dir2": {
+      "frames": [
+        16,
+        23
+      ],
+      "start": [
+        12.0,
+        36.0
+      ],
+      "step": [
+        24,
+        -24
+      ]
+    },
+    "dir3": {
+      "frames": [
+        24,
+        31
+      ],
+      "start": [
+        18.0,
+        39.0
+      ],
+      "step": [
+        12,
+        -30
+      ]
+    },
+    "dir4": {
+      "frames": [
+        32,
+        39
+      ],
+      "start": [
+        24.0,
+        40.0
+      ],
+      "step": [
+        0,
+        -32
+      ]
+    },
+    "zap": {
+      "frames": [
+        40,
+        47
+      ],
+      "anchor": [
+        24,
+        28
+      ]
+    }
+  }
+}

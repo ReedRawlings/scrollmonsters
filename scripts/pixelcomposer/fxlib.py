@@ -29,14 +29,14 @@ def palette(name="Toasted40"):
     return [abgr("#" + l.strip().lstrip("#")) for l in open(path) if l.strip()]
 
 
-def write_meta(name, W, H, FR, fps, loop, anchor, pal, notes="", extra_meta=None):
+def write_meta(name, W, H, FR, fps, loop, anchor, pal, notes="", extra_meta=None, sheets=None):
     """Sheet JSON next to the PNG: the output contract the game loads."""
     meta = {"image": name + ".png", "frame_width": W, "frame_height": H, "frame_count": FR,
             "layout": "horizontal strip, no spacing", "fps": fps, "duration_s": round(FR / fps, 3), "loop": loop,
             "anchor": {"x": anchor[0], "y": anchor[1], "from": "top-left of each frame"}, "palette": pal,
             "notes": notes, "smoothing": "none (nearest neighbor)"}
     meta.update(extra_meta or {})
-    json.dump(meta, open(SHEETS + name + ".json", "w"), indent=2)
+    json.dump(meta, open((sheets or SHEETS) + name + ".json", "w"), indent=2)
 
 
 def key(f, v):
@@ -72,8 +72,10 @@ def show(on, off=None, level=1.0):
 
 
 class Project:
-    def __init__(s, W, H, FR, pal="Toasted40W", fps=15):
+    def __init__(s, W, H, FR, pal="Toasted40W", fps=15, out=None):
         s.W, s.H, s.FR, s.pal, s.fps = W, H, FR, pal, fps
+        # out: one folder for both the .pxc and its sheet (e.g. assets/fx/attacks/); default is pixelcomposer/ + sheets/
+        s.ex_dir, s.sheet_dir = (out, out) if out else (EX, SHEETS)
         s.h, s.j = load(BASE)
         s.old = {n["type"]: n for n in s.j["nodes"]}
         s.exp = [n for n in s.j["nodes"] if n["type"] == "Node_Export"][0]
@@ -203,17 +205,23 @@ class Project:
         ss = s.add(s.old["Node_Render_Sprite_Sheet"], "Render Spritesheet", 960, 0); s.link(ss, 0, p)
         ss["inputs"][2]["r"]["d"] = 1; ss["inputs"][11]["r"]["d"] = False; ss["inputs"][3]["r"]["d"] = 0
         e = s.add(s.exp, "Export Sheet", 1152, 0); s.link(e, 0, ss)
-        e["inputs"][1]["r"]["d"] = SHEETS + name + ".png"
+        e["inputs"][1]["r"]["d"] = s.sheet_dir + name + ".png"
+        # A Dimension with use_project_dimension is a multiple of the canvas; a pixel size there renders huge surfaces
+        # (an 80x80 sheet became 6400x6400 and froze Pixel Composer).
+        huge = [n["name"] for n in s.nodes for i in n["inputs"] if isinstance(i, dict) and isinstance(i.get("r"), dict)
+                and i.get("attri", {}).get("use_project_dimension") and isinstance(i["r"].get("d"), list)
+                and len(i["r"]["d"]) == 2 and all(isinstance(v, (int, float)) for v in i["r"]["d"]) and max(i["r"]["d"]) > 4]
+        if huge: raise ValueError(f"{name}: Dimension is a canvas multiple but holds pixels in {huge}")
         j = s.j; j["nodes"] = s.nodes
         if isinstance(j.get("timelines"), dict): j["timelines"]["contents"] = []
         j["attributes"]["surface_dimension"] = [s.W, s.H]
         j["animator"]["frames_total"] = s.FR; j["animator"]["framerate"] = s.fps
         j["previewNode"] = p["id"]; j["inspectingNode"] = p["id"]
-        out = EX + name + ".pxc"; save(out, s.h, j)
+        out = s.ex_dir + name + ".pxc"; save(out, s.h, j)
         h2, j2 = load(out); ids = {n["id"] for n in j2["nodes"]}
         bad = [(n["name"], k) for n in j2["nodes"] for k, i in enumerate(n["inputs"])
                if isinstance(i, dict) and "from_node" in i and i["from_node"] not in ids]
         print(f"{name:16s} {s.W}x{s.H} {s.FR}f | {len(ids)} nodes | dangling links: {bad}")
         write_meta(name, s.W, s.H, s.FR, s.fps, loop, anchor or (s.W // 2, s.H // 2),
-                   "Toasted40 + white" if s.pal == "Toasted40W" else s.pal, notes, extra_meta)
+                   "Toasted40 + white" if s.pal == "Toasted40W" else s.pal, notes, extra_meta, s.sheet_dir)
         return out

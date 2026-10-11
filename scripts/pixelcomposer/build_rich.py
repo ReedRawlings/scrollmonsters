@@ -1,24 +1,13 @@
 """Rich head-on ability effects (Apollo palette, 64x64, transparent, 30 fps) for a Pokemon / Dragon Quest Monsters
 style battle view where the enemy faces the camera. The 3:2 top-down ground rule does not apply: motion runs along
 the screen axes (rises from the ground line, falls from the sky). Anchor is bottom-centre, the enemy's feet.
-New effects are new graphs built with richlib from the Complex examples' techniques; `frost` is only a recolour.
+New effects are new graphs built with richlib; see EFFECTS_GUIDE.md section 3 for how the Complex examples are built.
 Run: python3 build_rich.py flame [...]"""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from retarget import retarget
 import math
 from richlib import Rich, ramp, hold
 from fxlib import abgr
-
-COMPLEX = "/Applications/PixelComposerExamples/Complex/"
-
-
-def frost():   # Icicle: ice spikes erupt and shatter
-    # hand-picked so the ice ramp keeps four steps (nearest-colour gave a plum shadow and a green dark stop)
-    ice = {"#181425": "#172038", "#193c3e": "#253a5e", "#124e89": "#3c5e8b", "#0099db": "#4f8fba", "#2ce8f5": "#a4dddb"}
-    return retarget(COMPLEX + "Icicle_121092.pxc", "Frost_Spikes", anchor=(32, 60), loop=False, overrides=ice,
-                    notes="Ice spikes erupt from the bottom edge. Apollo palette, transparent. Anchor is bottom-centre.")
-
 
 FIRE = ramp([(0.0, "#752438"), (0.22, "#a53030"), (0.4, "#cf573c"), (0.55, "#da863e"), (0.7, "#de9e41"),
              (0.85, "#e8c170"), (1.0, "#ebede9")])

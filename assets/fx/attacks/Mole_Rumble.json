@@ -1,0 +1,21 @@
+{
+  "image": "Mole_Rumble.png",
+  "frame_width": 96,
+  "frame_height": 64,
+  "frame_count": 20,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 1.0,
+  "loop": false,
+  "anchor": {
+    "x": 48,
+    "y": 32,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "The whole mole attack on the ground under the target: cracks spread across a 3:2 ellipse, the ground darkens, light leaks through the cracks, pebbles hop, dust trickles up around the edge. Indexed by wind-up progress (frame = progress * 19), not played, so it fits any wind-up length; the cracks reach the edge on the last frame = the hit, then the game fades that frame out. Ground ellipse is 64x43 px (visible_w 64), shown at 2x. Anchor = strike centre. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 64,
+  "px": 2,
+  "indexed_by_progress": true
+}

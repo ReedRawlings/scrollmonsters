@@ -33,7 +33,10 @@
       ui.image('dk_heart',26,37,18,16);
       ui.darkText('LV '+s.level,148,51,{color:D().teal});
       ui.image('killIcon',178,45,6,11);
-      ui.darkText(String(s.kills),188,51);
+      const kills=ui.darkText(String(s.kills),188,51);
+      // Embers found this run sit after the kill count; the coin bumps on each pickup.
+      if(s.embers?.enabled){const x=Math.round(188+kills.width+8),b=s.juice.emberBump(),sz=Math.round(10*(1+.4*b));this.layout.embers={x,count:s.embers.found,bump:b};
+        ui.image('emberCoin',x+5-sz/2,51-sz/2,sz,sz,{frame:[0,0,10,10]});ui.darkText(String(s.embers.found),x+13,51,{color:D().gold});}
     }
     timer(ui,w){
       const s=this.s,t=`${Math.floor(s.elapsed/60)}:${String(Math.floor(s.elapsed%60)).padStart(2,'0')} / ${Math.floor(s.duration/60)}:00`;

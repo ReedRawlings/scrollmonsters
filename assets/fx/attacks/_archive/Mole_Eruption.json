@@ -1,0 +1,20 @@
+{
+  "image": "Mole_Eruption.png",
+  "frame_width": 112,
+  "frame_height": 112,
+  "frame_count": 20,
+  "layout": "horizontal strip, no spacing",
+  "fps": 30,
+  "duration_s": 0.667,
+  "loop": false,
+  "anchor": {
+    "x": 56,
+    "y": 80,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Mole eruption for the top-down map, continuing straight from Mole_Rumble's last frame: the seven cracks blaze white-hot and light bursts up from the centre, rocks and embers fly, a dust column puffs up and a dust ring rolls out, then the cracks cool through white, yellow, orange and deep red to dark scars that fade. 3:2 ground ellipse 64x43 px (visible_w 64), same scale as the rumble. Anchor = strike centre on the ground. Apollo, 30 fps, play once. Hit frame 1.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 64,
+  "hit_frame": 1
+}

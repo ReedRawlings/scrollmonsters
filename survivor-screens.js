@@ -56,18 +56,18 @@
       const lock=s.lockedTap&&now-s.lockedTap.at<1500?s.lockedTap:null,hidden=s.isDemo&&!s.unlocked.includes(sel),info=roster.find(([id])=>id===sel),nk=red?1:Math.min(1,Math.max(0,t/180)),dk=red?1:Math.min(1,Math.max(0,(t-50)/200));
       ui.darkText(lock||hidden?'???':pretty(sel).toUpperCase(),L.name[0],L.name[1]+5*(1-nk),{size:18,align:'center'}).setAlpha(lock?1:nk);
       ui.darkText(hidden?'Find this monster by breaking a den.':lock?'Capture one in an expedition to unlock it':info?info[1]:'',L.desc[0],L.desc[1]+5*(1-dk),{align:'center',color:lock?D().danger:D().muted,wrap:L.desc[2]}).setOrigin(.5,0).setAlpha(lock?1:dk);
-      const pos=i=>({x:L.grid[0]+(i%6)*38,y:L.grid[1]+Math.floor(i/6)*46}),ids=roster.map(([id])=>id);
+      const tile=roster.length>12?32:38,columns=roster.length>12?7:6,rowPitch=roster.length>12?38:46,pos=i=>({x:L.grid[0]+(i%columns)*(roster.length>12?32:38),y:L.grid[1]+Math.floor(i/columns)*rowPitch}),ids=roster.map(([id])=>id);
       roster.forEach(([id],i)=>{let {x,y}=pos(i);const known=s.unlocked.includes(id);
         if(lock?.id===id&&!red&&now-lock.at<220)x+=Math.round(4*Math.sin((now-lock.at)/220*Math.PI*4)*(1-(now-lock.at)/220));
-        this.layout.faces.push({id,x:x+ox,y:y+oy,size:38,known}); // layout is recorded in screen space
+        this.layout.faces.push({id,x:x+ox,y:y+oy,size:tile,known}); // layout is recorded in screen space
         // Faces pop in 45ms apart from 650ms; unseen unlocks wear a pulsing NEW.
         const fk=red?1:Math.max(0,Math.min(1,(tt-650-i*45)/120)),fs=fk>=1?1:fk<=0?0:1+2.7*Math.pow(fk-1,3)+1.7*Math.pow(fk-1,2);fx.faces.push(fs);
-        const f=fs>0?ui.image('face_'+id,x+19-19*fs,y+19-19*fs,38*fs,38*fs):null;if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
-        if(known&&!seen.has(id)){this.layout.newFaces.push(id);if(fs>0)ui.darkText('NEW',x+40,y+2,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));}
-        ui.hitArea(x,y,38,38,()=>s.chooseStarter(id),'face-'+id);});
+        const f=fs>0?ui.image('face_'+id,x+tile/2-tile/2*fs,y+tile/2-tile/2*fs,tile*fs,tile*fs):null;if(f){if(known)f.clearTint();else f.setTint(0x2a2238);}
+        if(known&&!seen.has(id)){this.layout.newFaces.push(id);if(fs>0)ui.darkText('NEW',x+tile+2,y+2,{align:'right',color:D().gold}).setAlpha(red?1:.65+.35*Math.sin(now/160));}
+        ui.hitArea(x,y,tile,tile,()=>s.chooseStarter(id),'face-'+id);});
       // The selection brackets slide from the previous face over 150ms.
       const to=pos(ids.indexOf(sel)),from=s.starterFrom?pos(ids.indexOf(s.starterFrom)):to,bk=red?1:Math.min(1,t/150),be=bk>=1?1:ease(bk);
-      bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,38,38);
+      bracket(from.x+(to.x-from.x)*be,from.y+(to.y-from.y)*be,tile,tile);
       const [bx,by,bw,bh]=L.begin;ui.card('BEGIN',bx,by,bw,bh,()=>s.start(),{color:D().gold,size:18,align:'center',id:'begin'});
       bracket(bx-2,by-2,bw+4,bh+4);this.layout.begin=[bx+ox,by+oy,bw,bh];this.layout.beginBrackets=[bx+ox,by+oy,bw,bh];
       const music=portrait?{x:55,y:434,w:76,h:26}:{x:250,y:252,w:104,h:26},best=portrait?{x:139,y:434,w:76,h:26}:{x:358,y:252,w:104,h:26};
@@ -122,6 +122,8 @@
       const pw=Math.min(w-24,254),ph=196,px=(w-pw)/2,py=(h-ph)/2;ui.darkPanel(px,py,pw,ph);ui.banner(won?'COMPLETE':'FAILED',w/2,py-16);
       ui.darkText(won?(s.isDemo?'Demo complete':'Expedition complete'):(s.isDemo?'Demo ended':'Expedition failed'),w/2,py+28,{align:'center',color:won?D().gold:D().danger});
       lines.forEach((t,i)=>ui.darkText(t,w/2,py+50+i*16,{align:'center',color:D().muted}));
+      // Embers bank in finishRun, which runs before this screen; found coins plus 1 per two minutes survived.
+      const em=s.embers?.banked;if(em)ui.darkText(`Embers +${em.earned} · ${em.stored?em.total+' saved':'not saved'}`,w/2,py+50+lines.length*16,{align:'center',color:D().gold});
       this.button('Choose starter / play again',px+16,py+ph-68,pw-32,24,()=>{s.mode='title';s.draw();},'again');
       this.button('Run history / export',px+16,py+ph-38,pw-32,24,()=>{s.saveRun();location.assign('survivor-runs.html');},'history');
     }

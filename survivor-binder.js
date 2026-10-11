@@ -216,8 +216,6 @@
       const s = this.s, ui = s.ui, B = s.bestiary, [a, b] = rc.parents, rk = B.caught(rc.id), link = (W - 132) / 2;
       const boxes = [[a, x], [b, x + 44 + link], [rk ? rc.id : null, x + 88 + 2 * link]];
       const g = ui.graphics();
-      for (const [i, lx] of [[0, x + 44], [1, x + 88 + link]]) { g.fillStyle(PAL.rule).fillRect(lx, y + 20, link, 5).fillStyle(PAL.paper).fillRect(lx, y + 21, link, 3);
-        g.fillStyle(PAL.paper).fillRect(lx + link / 2 - 5, y + 17, 10, 11); this.txt(i ? '=' : '+', lx + link / 2, y + 17, {align:'center'}); }
       boxes.forEach(([id, bx], i) => {
         this.dbl(g, bx, y, 44, 44);
         const e = id && E().find(v => v.id === id), st = e ? B.state(id) : 0;

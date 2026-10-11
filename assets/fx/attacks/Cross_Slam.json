@@ -1,0 +1,34 @@
+{
+  "image": "Cross_Slam.png",
+  "frame_width": 48,
+  "frame_height": 72,
+  "frame_count": 30,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 1.5,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 46,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Bear cross slam in three 10-frame pieces, each played once at 20 fps from when the cross front reaches it: 0-9 a 48 px piece of a horizontal arm (flipped for the left arm), 10-19 a 48 px piece of a vertical arm (rocks rise up the screen, so the same frames serve the upper and lower arm), 20-29 the centre where the paw lands. Crack with green light, stone shards erupt and shatter, dust. Shown at 1x. Anchor = ground point under the piece. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "piece_len": 48,
+  "sections": {
+    "across": [
+      0,
+      9
+    ],
+    "down": [
+      10,
+      19
+    ],
+    "centre": [
+      20,
+      29
+    ]
+  }
+}
