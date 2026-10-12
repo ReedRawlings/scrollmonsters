@@ -1,0 +1,53 @@
+{
+  "image": "Spirit_Wisp.png",
+  "frame_width": 48,
+  "frame_height": 48,
+  "frame_count": 51,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 2.55,
+  "loop": false,
+  "anchor": {
+    "x": 24,
+    "y": 26,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Spirit's orbiting guard wisp, one sheet of sections (see sections): flame_l / flame_m / flame_s loop while the wisp circles (step down as its hits run out), spawn plays once as it appears, puff is dropped behind it as a trail, block plays where a shot is stopped, hit plays on each enemy it burns (anchor on the enemy), fade plays once after its last hit. Pixel Composer's preview runs them back to back. 48x48, 20 fps, shown at 1x. Anchor = the wisp's centre. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "sections": {
+    "flame_l": [
+      0,
+      7
+    ],
+    "flame_m": [
+      8,
+      15
+    ],
+    "flame_s": [
+      16,
+      23
+    ],
+    "spawn": [
+      24,
+      28
+    ],
+    "puff": [
+      29,
+      32
+    ],
+    "block": [
+      33,
+      37
+    ],
+    "hit": [
+      38,
+      42
+    ],
+    "fade": [
+      43,
+      50
+    ]
+  }
+}

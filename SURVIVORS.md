@@ -26,7 +26,7 @@ The full expedition has twelve base creatures and twelve evolutions. Each base h
 | Cat + Spider | Cyclope | Binding silk followed by a heavy cleave |
 | Frog + Mollusc | Axolotl | Shields that break into ink |
 | Frog + Mouse | Heart | Heart guardians, shielding and projectile interception |
-| Mouse + Owl | Spirit | Homing, piercing wisps |
+| Mouse + Owl | Spirit | Orbiting guardian wisps: block enemy shots, burn what they touch, fade after 5 hits |
 | Owl + Storm Lizard | Tengu | Piercing feathers and chain lightning |
 | Storm Lizard + Salamander | Kappa | Burning lightning builds into storm rings |
 | Salamander + Beast | Reptile | Fire-trail charges and heavy bites |
@@ -47,7 +47,7 @@ Embers bank only when the run is completed, won or lost; restarting mid-run or c
 
 ## Star Map
 
-The title's Star Map pill (in the slot Music used; music moved behind the settings gear, top right, alongside damage numbers and UI size) opens a constellation of 14 stars bought with saved Embers. Lighting a star reveals its neighbours; stars two links away show as `?` slots. Vitality (+40 max HP per rank), Ferocity (+5% damage), Fleet Foot (+4% move speed), Quick Roll (-10% dash cooldown) and Magnet (+20% gem and coin pull range) apply at the start of every full expedition; the other nine stars show "Coming soon" and cannot be bought yet. Tapping empty map clears the selection; Back, Escape or Enter close the screen. The demo has no Star Map and no bonuses.
+The title's Star Map pill (in the slot Music used; music moved behind the settings gear, top right, alongside damage numbers and UI size) opens a constellation of 14 stars bought with saved Embers. Lighting a star reveals its neighbours; stars two links away show as `?` slots. In the full expedition, XP gems start with a 50 px pull range (half the old 100 px; Ember coins, the demo and the trial keep 100 px). Vitality (+40 max HP per rank), Ferocity (+5% damage), Fleet Foot (+4% move speed), Quick Roll (-10% dash cooldown), Magnet (3 ranks, each restoring a third of the lost gem range, back to 100 px), Long Shot (+20% shot range, off Ferocity) and Sharp Shot (5 ranks of +1 basic-shot damage, off Long Shot) apply at the start of every full expedition; the other nine stars show "Coming soon" and cannot be bought yet. Tapping empty map clears the selection; Back, Escape or Enter close the screen. The demo has no Star Map and no bonuses.
 
 Ranks save in `scrollmonsters-starmap-v1`. Star icons reuse in-run upgrade and relic art under their own `star_<id>` keys. Logic and drawing live in `survivor-starmap.js`; bonuses are read once in `start()` into `scene.meta`. `scripts/check-starmap.cjs` covers the title and settings, reveal rules, purchases and refusals, deselection, each live bonus in a run, and the demo.
 

@@ -5,7 +5,7 @@
   const RECIPES=[
     {id:'cyclope',parents:['cat','spider'],name:'Cyclope',hp:80,bonus:'+10% party damage to webbed foes',ability:'Binding silk gathers enemies for a heavy cleave.'},
     {id:'heartbloom',parents:['frog','mouse'],name:'Heart',hp:120,bonus:'8% less damage taken; retains Frog support',ability:'Heart guardians attack foes and absorb hostile shots.'},
-    {id:'spirit',parents:['mouse','owl'],name:'Spirit',hp:40,bonus:'+6% party attack speed',ability:'Homing wisps pierce through nearby enemies.'},
+    {id:'spirit',parents:['mouse','owl'],name:'Spirit',hp:40,bonus:'+6% party attack speed',ability:'Guardian wisps orbit you, blocking shots and burning foes they touch.'},
     {id:'kappa',parents:['storm','salamander'],name:'Kappa',hp:100,bonus:'8% less damage taken',ability:'Burning lightning charges an expanding storm ring.'},
     {id:'monkeyboxer',parents:['beast','bear'],name:'Monkey Boxer',hp:140,bonus:'+6% party damage',ability:'Charges end in a directional ground-breaking slam.'},
     {id:'panda',parents:['bear','bamboo'],name:'Panda',hp:140,bonus:'10% less damage taken',ability:'Cross tremors raise rows of lingering bamboo spikes.'},
@@ -16,7 +16,7 @@
     bamboo:[['rootPower','Sharp Shoots','Spike damage +10',5],['rootArea','Root Network','Spike lines reach +16 farther',4],['rootLife','Deep Roots','Spikes last +0.5s',4]],
     cyclope:[['cycReach','Long Strands','Cleave radius +15',4],['cycEcho','Second Cut','A follow-up cleave hits the same area',1],['cycSnap','Silk Collapse','Crowded silk bursts for extra damage',1]],
     heartbloom:[['heartGuardians','Heart Guardians','Summon one additional guardian',3],['heartLife','Lasting Love','Guardians last +0.6s',4],['heartRetaliate','Brave Heart','Intercepted shots trigger a retaliatory burst',1]],
-    spirit:[['spiritWisps','Wisp Chorus','Summon one additional wisp',3],['spiritPierce','Ghost Passage','Wisps pierce one additional enemy',3],['spiritLife','Soul Feast','Kills extend wisp life, capped at 5s total',1]],
+    spirit:[['spiritWisps','Wisp Chorus','One more orbiting wisp',3],['spiritPierce','Ghost Passage','Wisps last one more enemy hit',3],['spiritLife','Soul Feast','Kills do not use up a wisp',1]],
     kappa:[['kappaBurn','Lasting Charge','Burns last +0.5s',4],['kappaRange','Storm Circuit','Lightning jump range +20',4],['kappaBlast','Overload','Storm rings detonate burning targets',1]],
     monkeyboxer:[['boxReach','Seismic Fists','Shockwave reaches +25 farther',4],['boxWidth','Broad Impact','Shockwave width +12',4],['boxEcho','Afterpunch','Slam repeats after a short delay',1]],
     panda:[['pandaReach','Bamboo Rows','Spike rows reach +25 farther',4],['pandaLife','Lasting Grove','Spikes last +0.5s',4],['pandaShatter','Splinter Tremor','A second tremor shatters spikes',1]],
@@ -34,7 +34,7 @@
       if(type==='bamboo')return {damage:20+10*u.rootPower,radius:75+16*u.rootArea,width:24,life:3+.5*u.rootLife,interval:2.6};
       if(type==='cyclope')return {damage:60+10*n('claws')+10*n('webPower'),radius:135*(1+.2*n('sweep'))+15*u.cycReach,interval:1.4/(1+.2*n('webSpeed')),fieldRadius:42+5*n('webArea'),fieldDamage:10,life:4,count:Math.min(6,2+n('webCount')),weakness:.2+.05*n('webWeaken'),pull:!!n('pull'),echo:!!u.cycEcho,burst:!!(u.cycSnap||n('webBurst')||n('comboWeb'))};
       if(type==='heartbloom')return {damage:30+10*n('mousePower'),radius:55,interval:3/(1+.2*n('mouseSpeed')),count:Math.min(12,3+n('mouseCount')+u.heartGuardians),life:2.5+.6*u.heartLife,shieldInterval:8/(1+.2*n('bubble')),chorus:n('chorus'),retaliate:!!u.heartRetaliate,jump:!!n('mouseJump')};
-      if(type==='spirit')return {damage:30+10*n('mousePower')+10*n('owlPower'),interval:2.8/(1+.2*(n('mouseSpeed')+n('owlSpeed'))),count:Math.min(12,2+n('mouseCount')+n('feather')+u.spiritWisps),pierce:2+u.spiritPierce,life:2.4,marks:!!n('marks'),split:!!n('split'),extend:!!u.spiritLife,jump:!!n('mouseJump')};
+      if(type==='spirit')return {damage:30+10*n('mousePower')+10*n('owlPower'),interval:2.8/(1+.2*(n('mouseSpeed')+n('owlSpeed'))),count:Math.min(8,2+n('mouseCount')+n('feather')+u.spiritWisps),hits:5+u.spiritPierce,orbit:52,marks:!!n('marks'),feast:!!(u.spiritLife||n('mouseJump'))};
       if(type==='kappa')return {damage:40+10*n('stormPower'),fireDamage:30+10*n('firePower'),radius:36+6*n('fireArea'),life:3+.5*(n('fireLife')+u.kappaBurn),interval:2.2/(1+.2*(n('stormSpeed')+n('fireSpeed'))),jumps:Math.min(8,3+n('stormJumps')),range:130+20*(n('stormRange')+u.kappaRange),ring:120,detonate:!!u.kappaBlast,spread:!!n('fireSpread'),strike:!!n('stormStrike')};
       if(type==='monkeyboxer')return {damage:120+20*n('beastPower')+20*n('bearPower'),radius:160+30*n('bearArea')+25*u.boxReach,width:50+12*u.boxWidth,interval:2.6/(1+.2*(n('beastSpeed')+n('bearSpeed'))),stun:.35+.2*n('bearStun'),echo:!!u.boxEcho,slam:!!n('slam'),guard:!!n('bearGuard')};
       if(type==='panda')return {...roots,damage:100+20*n('bearPower'),radius:170+30*n('bearArea')+16*n('rootArea')+25*u.pandaReach,width:32,life:roots.rootLife+.5*u.pandaLife,interval:2.6/(1+.2*n('bearSpeed')),stun:.35+.2*n('bearStun'),guard:!!n('bearGuard'),shatter:!!u.pandaShatter};
@@ -56,7 +56,9 @@
       if(type==='panda'){this.blast(type,a,scaled,.25,{shape:'cross',width:st.width,field:{...st,damage:st.rootDamage*power},shatter:st.shatter});}
       if(type==='mushroom'||type==='trapdoor')this.blast(type,target,scaled,.6,{echo:st.echo,field:{...st,damage:(type==='mushroom'?st.rootDamage:10)*power},kind:type==='mushroom'?'spores':'silk'});
       if(type==='kappa')this.chain(a,target,st,power);
-      if(type==='heartbloom'||type==='spirit'){const targets=s.combatTargets().filter(e=>e.hp>0&&dist(a,e)<440);for(let i=0;i<st.count&&this.missiles.length<40;i++)this.missiles.push({source:type,x:a.x,y:a.y,target:targets[i%Math.max(1,targets.length)]||target,life:st.life,age:0,st:scaled,hits:new Set(),empowered:0,sprite:s.pooled(this.pool,type,type==='heartbloom'?1.5:1.8).setTint(TINT[type])});}
+      // Spirit: tops the orbit up to `count` wisps; each burns what it touches and fades after `hits` enemy hits.
+      if(type==='spirit'){const have=this.missiles.filter(p=>p.source==='spirit').length;for(let i=have;i<st.count&&this.missiles.length<40;i++)this.missiles.push({source:type,orbit:true,x:a.x,y:a.y,life:1,age:0,hitsLeft:st.hits,st:scaled,cool:new Map(),hits:new Set(),empowered:0,sprite:s.pooled(this.pool,type,1.8).setTint(TINT[type])});}
+      if(type==='heartbloom'){const targets=s.combatTargets().filter(e=>e.hp>0&&dist(a,e)<440);for(let i=0;i<st.count&&this.missiles.length<40;i++)this.missiles.push({source:type,x:a.x,y:a.y,target:targets[i%Math.max(1,targets.length)]||target,life:st.life,age:0,st:scaled,hits:new Set(),empowered:0,sprite:s.pooled(this.pool,type,type==='heartbloom'?1.5:1.8).setTint(TINT[type])});}
     }
     chain(a,first,st,power){const s=this.s,seen=new Set();let origin=a,target=first;
       for(let i=0;i<st.jumps&&target?.hp>0;i++){seen.add(target);this.ev.links.push({x:origin.x,y:origin.y,tx:target.x,ty:target.y,life:.25});target.burningUntil=s.elapsed+.7;s.hit(target,st.damage*power,'kappa',origin);this.field('kappa',target,'fire',{radius:st.radius,damage:st.fireDamage*power,life:st.life});origin=target;target=s.combatTargets().filter(e=>e.hp>0&&!seen.has(e)&&dist(origin,e)<st.range+(s.relics?.stormglassRange(origin)||0)).sort((x,y)=>dist(x,origin)-dist(y,origin))[0];}
@@ -80,13 +82,20 @@
         if(b.field){this.field(b.source,b,b.kind||'roots',b.field,{shape:b.shape,width:b.width});if(b.shatter)this.blast(b.source,b,{radius:b.r,damage:b.damage*.7},.7,{shape:b.shape,width:b.width,shatterFields:true});}
         if(b.shatterFields)this.fields=this.fields.filter(f=>f.source!==b.source||dist(f,b)>4);
         if(b.echo)this.blast(b.source,b,{radius:b.r,damage:b.damage,stun:b.stun},.5,{...b,time:.5,total:.5,echo:false,field:null});}
-      for(const p of this.missiles){p.life-=dt;p.age+=dt;p.empowered=Math.max(0,p.empowered-dt);if(p.life<=0)continue;
+      const ring=this.missiles.filter(p=>p.source==='spirit'&&p.life>0),spin=s.elapsed*2.6;
+      ring.forEach((p,k)=>{p.age+=dt;const st=p.st,a=spin+k*Math.PI*2/ring.length,tx=s.player.x+Math.cos(a)*st.orbit,ty=s.player.y+Math.sin(a)*st.orbit*2/3,f=Math.min(1,dt*10);
+        p.x+=(tx-p.x)*f;p.y+=(ty-p.y)*f;p.angle=a;
+        const shot=s.encounters.bullets.find(b=>b.life>0&&dist(b,p)<14);if(shot){shot.life=0;s.attackFx?.wispBlock(p,shot);}
+        for(const e of s.combatTargets()){if(p.hitsLeft<=0)break;if(e.hp<=0||dist(p,e)>=e.r+8||(p.cool.get(e)||0)>s.elapsed)continue;p.cool.set(e,s.elapsed+.6);
+          const hp=e.hp;s.hit(e,st.damage,'spirit',p);if(hp===e.hp)continue;if(!s.attackFx?.wispHit(e))this.effect('inked','spirit',e);if(st.marks)e.markUntil=s.elapsed+3;if(!(st.feast&&e.hp<=0))p.hitsLeft--;}
+        if(p.cool.size>24)for(const [e,t] of p.cool)if(t<=s.elapsed)p.cool.delete(e);
+        if(p.hitsLeft<=0){p.life=0;s.attackFx?.wispFade(p);}});
+      for(const p of this.missiles){if(p.orbit)continue;p.life-=dt;p.age+=dt;p.empowered=Math.max(0,p.empowered-dt);if(p.life<=0)continue;
         if(p.source==='heartbloom'){const shot=s.encounters.bullets.find(b=>b.life>0&&dist(b,p)<18);if(shot){shot.life=0;if(p.st.retaliate)this.blast(p.source,p,{radius:70,damage:p.st.damage*2},.05);if(p.empowered<=0)p.life=0;continue;}}
         if(!p.target||p.target.hp<=0||p.hits.has(p.target))p.target=s.combatTargets().find(e=>e.hp>0&&!p.hits.has(e)&&dist(p,e)<240);
-        if(!p.target){p.life=0;continue;}this.ev.owner.follow(p,p.target,dt,p.source==='spirit'?350:310);
+        if(!p.target){p.life=0;continue;}this.ev.owner.follow(p,p.target,dt,310);
         if(dist(p,p.target)<p.target.r+9){const e=p.target;p.hits.add(e);const hp=e.hp;s.hit(e,p.st.damage*(p.empowered>0?1.3:1),p.source,p);if(hp===e.hp)continue;this.effect('inked',p.source,e);if(p.st.marks)e.markUntil=s.elapsed+3;
-          if(p.st.extend&&e.hp<=0)p.life=Math.min(5-p.age,p.life+.6);if(p.st.split&&!p.split&&this.missiles.length<40){p.split=true;this.missiles.push({...p,life:.6,st:{...p.st,damage:p.st.damage*.33,split:false},hits:new Set(p.hits),sprite:s.pooled(this.pool,'spirit',1.2).setTint(TINT.spirit)});}
-          const cap=p.source==='spirit'?p.st.pierce+(p.st.jump&&e.hp<=0?1:0):p.st.jump&&e.hp<=0?2:1;if(p.hits.size>=cap)p.life=0;
+          const cap=p.st.jump&&e.hp<=0?2:1;if(p.hits.size>=cap)p.life=0;
         }
       }
       this.missiles=this.missiles.filter(p=>{if(p.life>0)return true;p.sprite.setVisible(false);return false;});
@@ -94,7 +103,7 @@
     killed(e,source){const s=this.s;if(source==='kappa'&&this.ev.has('kappa')&&this.stats('kappa').spread&&e.burningUntil>s.elapsed&&!e.kappaSpread){e.kappaSpread=true;const st=this.stats('kappa');this.field('kappa',e,'fire',{...st,damage:st.fireDamage,radius:st.radius*.7,life:1.5});}
       if(this.ev.has('mushroom')&&s.upgrades.mushroomSpread&&e.sporeUntil>s.elapsed&&!e.sporeReleased){e.sporeReleased=true;const st=this.stats('mushroom');this.field('mushroom',e,'spores',{...st,damage:st.rootDamage,radius:st.radius*.55,life:1.5});}}
     remove(type){this.fields=this.fields.filter(f=>f.source!==type);}
-    draw(){for(const p of this.missiles)p.sprite.setPosition(p.x,p.y).setFrame(Math.floor(this.s.elapsed*6)%4*4).setDepth(p.y+25);}
+    draw(){const sheet=this.s.attackFx?.coversWisp();for(const p of this.missiles)if(sheet&&p.source==='spirit')p.sprite.setVisible(false);else p.sprite.setPosition(p.x,p.y).setFrame(Math.floor(this.s.elapsed*6)%4*4).setDepth(p.y+25);}
     summary(){return {fields:this.fields.map(({source,kind,x,y,r,life})=>({source,kind,x,y,r,life})),blasts:this.blasts.length,missiles:this.missiles.length};}
     destroy(){for(const sprite of this.pool)sprite.destroy();}
   }

@@ -1,6 +1,6 @@
 (() => {
   // Star Map: meta progression bought with Embers between runs (full expedition only). Opened from the title like the Bestiary.
-  // Lighting a star opens its neighbours; stars two links away show as ? slots. Five stars change runs today; the rest are
+  // Lighting a star opens its neighbours; stars two links away show as ? slots. Seven stars change runs today; the rest are
   // on the map but say "Coming soon" and cannot be bought yet.
   const KEY = 'scrollmonsters-starmap-v1';
   const D = () => ScrollUI.DARK;
@@ -11,7 +11,8 @@
     {id:'vitality',name:'Vitality',x:-58,y:-34,ranks:3,cost:[15,30,50],live:true,icon:'upgrades/hide.png',desc:'Every run starts with more health.',eff:r=>`+${40*r} max HP`},
     {id:'ferocity',name:'Ferocity',x:60,y:-30,ranks:3,cost:[20,35,55],live:true,icon:'upgrades/partyDamage.png',desc:'Your whole party hits harder.',eff:r=>`+${5*r}% damage`},
     {id:'fleet',name:'Fleet Foot',x:-6,y:62,ranks:3,cost:[10,20,35],live:true,icon:'upgrades/feet.png',desc:'You move faster.',eff:r=>`+${4*r}% move speed`},
-    {id:'magnet',name:'Magnet',x:-122,y:16,ranks:2,cost:[15,30],live:true,icon:'upgrades/pull.png',desc:'Gems and coins fly to you from farther away.',eff:r=>`+${20*r}% pickup range`},
+    // Runs start with half the old gem pull range (50 px); three Magnet ranks restore the full 100 px.
+    {id:'magnet',name:'Magnet',x:-122,y:16,ranks:3,cost:[10,20,30],live:true,icon:'upgrades/pull.png',desc:'XP gems fly to you from farther away.',eff:r=>`Gem range ${Math.round(50+50*r/3)} px`},
     {id:'quick',name:'Quick Roll',x:-84,y:104,ranks:2,cost:[20,40],live:true,icon:'upgrades/partySpeed.png',desc:'Your dodge roll recharges sooner.',eff:r=>`-${10*r}% dash cooldown`},
     {id:'second',name:'Second Wind',x:-118,y:-96,ranks:1,cost:[90],icon:'relics/bloodroot.png',desc:'Once per run, survive a killing blow.',eff:()=>'Revive at 30% HP'},
     {id:'reroll',name:'Reroll',x:96,y:-96,ranks:2,cost:[30,60],icon:'relics/echo.png',desc:'Redraw a level-up offer you dislike.',eff:r=>`${r} reroll${r>1?'s':''} per run`},
@@ -20,13 +21,15 @@
     {id:'compass',name:'Den Compass',x:66,y:100,ranks:1,cost:[40],icon:'upgrades/marks.png',desc:'An arrow at the screen edge points to the nearest den.',eff:()=>'Den arrow'},
     {id:'capture',name:'Steady Capture',x:22,y:158,ranks:2,cost:[20,40],icon:'upgrades/bubble.png',desc:'Capture rings fill faster.',eff:r=>`+${15*r}% capture speed`},
     {id:'shrine',name:'Shrine Sense',x:124,y:150,ranks:1,cost:[45],icon:'relics/resonance.png',desc:'The compass also points to shrines.',eff:()=>'Shrine arrow'},
+    {id:'longshot',name:'Long Shot',x:150,y:-60,ranks:3,cost:[15,30,45],live:true,icon:'upgrades/tenguVolley.png',desc:'Your shots fly farther.',eff:r=>`+${20*r}% shot range`},
+    {id:'sharp',name:'Sharp Shot',x:178,y:-130,ranks:5,cost:[10,20,30,40,50],live:true,icon:'relics/hunter.png',desc:'Your basic shots hit harder.',eff:r=>`+${r} shot damage`},
     {id:'hoard',name:'Ember Hoard',x:178,y:72,ranks:2,cost:[35,70],icon:'upgrades/comboFire.png',desc:'Every run pays more Embers.',eff:r=>`+${10*r}% Embers`},
   ];
   const LINKS = [['core','vitality'],['core','ferocity'],['core','fleet'],['vitality','magnet'],['vitality','second'],['second','twin'],['ferocity','reroll'],['reroll','twin'],
-    ['ferocity','lucky'],['lucky','hoard'],['fleet','quick'],['fleet','compass'],['magnet','quick'],['compass','capture'],['compass','shrine'],['shrine','hoard']];
+    ['ferocity','lucky'],['ferocity','longshot'],['longshot','sharp'],['lucky','hoard'],['fleet','quick'],['fleet','compass'],['magnet','quick'],['compass','capture'],['compass','shrine'],['shrine','hoard']];
   const BY = Object.fromEntries(STARS.map(n=>[n.id,n]));
   const NB = Object.fromEntries(STARS.map(n=>[n.id,[]])); for (const [a,b] of LINKS) { NB[a].push(b); NB[b].push(a); }
-  const NONE = {hp:0,damage:0,speed:0,dash:0,pickup:0,active:false};
+  const NONE = {hp:0,damage:0,speed:0,dash:0,pickup:0,range:0,shot:0,active:false};
 
   class SurvivorStarMap {
     constructor(s){this.s=s;this.sel=null;this.litAt={};this.layout=null;}
@@ -38,7 +41,7 @@
     static bonuses(s){
       if(!s.isExpedition||s.isDemo)return SurvivorStarMap.none();
       const save=SurvivorStarMap.read(),r=id=>SurvivorStarMap.rank(save,id);
-      const b={hp:40*r('vitality'),damage:.05*r('ferocity'),speed:.04*r('fleet'),dash:.1*r('quick'),pickup:.2*r('magnet')};
+      const b={hp:40*r('vitality'),damage:.05*r('ferocity'),speed:.04*r('fleet'),dash:.1*r('quick'),pickup:r('magnet')/3,range:.2*r('longshot'),shot:r('sharp')};
       return {...b,active:Object.values(b).some(v=>v>0)};
     }
     get save(){return SurvivorStarMap.read();}

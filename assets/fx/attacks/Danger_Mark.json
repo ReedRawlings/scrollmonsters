@@ -1,0 +1,21 @@
+{
+  "image": "Danger_Mark.png",
+  "frame_width": 80,
+  "frame_height": 64,
+  "frame_count": 24,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 1.2,
+  "loop": false,
+  "anchor": {
+    "x": 40,
+    "y": 40,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Enemy telegraph on the ground under the target: a red swirl, indexed by wind-up progress (frame = progress * 23), not played. Arms spin faster, grow and brighten; the core glow pulses quicker and flares on the last frame. Ellipse 60x40 (visible_w 60); shown at a whole-number scale picked from the radius (1x for r=30). Anchor = target point on the ground. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 60,
+  "px": 1,
+  "indexed_by_progress": true
+}

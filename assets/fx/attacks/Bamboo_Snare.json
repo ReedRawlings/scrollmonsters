@@ -1,0 +1,32 @@
+{
+  "image": "Bamboo_Snare.png",
+  "frame_width": 80,
+  "frame_height": 80,
+  "frame_count": 24,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 1.2,
+  "loop": true,
+  "anchor": {
+    "x": 40,
+    "y": 54,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Bamboo enemy's snare on the ground under the player: frames 0-5 erupt (roots snake in, a ring of dried culms bursts up and clenches), 6-17 loop seamlessly while the trap lasts (red pulse drains inward along the roots), 18-23 retract (play once as it ends). Cage ellipse 56x37 px (visible_w 56), 80x80, 20 fps, shown at 1x. Anchor = trap centre on the ground. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "visible_w": 56,
+  "px": 1,
+  "erupt": [
+    0,
+    5
+  ],
+  "loop_frames": [
+    6,
+    17
+  ],
+  "retract": [
+    18,
+    23
+  ]
+}

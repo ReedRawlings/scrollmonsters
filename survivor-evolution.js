@@ -106,7 +106,7 @@
     }
     update(dt){const s=this.s;this.haste=Math.max(0,this.haste-dt);
       for(const type of SurvivorEvolution.types){const a=this.owner.allies[type];if(!a)continue;s.expedition.capture(a,type,dt);if(s.mode!=='playing')return;if(a.state!=='ally')continue;const st=this.stats(type);a.attack-=dt*s.attackRate();
-        if(this.roster.has(type)){this.roster.support(dt,a,type,st);if(this.roster.rush(a,dt))continue;this.owner.follow(a,{x:s.player.x-50+(Object.keys(this.owner.allies).indexOf(type)%3)*42,y:s.player.y+45},dt);const target=s.target(a,type==='cyclope'?st.radius:380);if(a.attack<=0&&target){a.attack=st.interval;for(let i=0;i<s.relics.projectileCopies(type);i++)this.roster.attack(a,type,target);}continue;}
+        if(this.roster.has(type)){this.roster.support(dt,a,type,st);if(this.roster.rush(a,dt))continue;this.owner.follow(a,{x:s.player.x-50+(Object.keys(this.owner.allies).indexOf(type)%3)*42,y:s.player.y+45},dt);const target=s.target(a,type==='cyclope'?st.radius:380);if(a.attack<=0&&(target||type==='spirit')){a.attack=st.interval;for(let i=0;i<s.relics.projectileCopies(type);i++)this.roster.attack(a,type,target||s.player);}continue;} // Spirit's guard wisps go up without a target
         if(type==='reptile'&&a.charge>0){const step=Math.min(dt,a.charge);s.move(a,a.dx*430*step,a.dy*430*step,false);a.charge-=dt;a.trailClock-=dt;
           if(a.trailClock<=0){a.trailClock=.12;for(let i=0;i<s.relics.projectileCopies('reptile');i++)this.zone('fire',a,'reptile',{radius:st.radius,life:st.life,damage:st.fireDamage*(a.inherited?.comboFire?1.2:1)});}
           for(const e of s.hitTargets())if(e.hp>0&&!a.hits.has(e)&&dist(a,e)<e.r+26){a.hits.add(e);s.hit(e,st.damage,'reptile',a);}
@@ -141,7 +141,6 @@
     draw(){this.roster.draw();const s=this.s,g=s.fx;for(const z of this.zones){if(s.evoFx?.coversZone(z.type))continue;const color=z.type==='fire'?0xff8c40:0x9b7be5;g.fillStyle(color,.2).fillCircle(z.x,z.y,z.r);g.lineStyle(2,color,.7).strokeCircle(z.x,z.y,z.r);}
       for(const p of this.projectiles)p.sprite.setPosition(p.x,p.y).setRotation(Math.atan2(p.dy,p.dx)).setDepth(p.y+25);
       for(const l of this.links)if(!s.evoFx?.has('Lightning_Link'))g.lineStyle(3,0x9beaff,l.life/.25).lineBetween(l.x,l.y,l.tx,l.ty);
-      for(const c of this.casts)if(!s.evoFx?.has('Thunder_Warning'))g.lineStyle(2,0x9beaff).strokeCircle(c.x,c.y,c.r);
       for(const f of this.fx){if(s.evoFx?.has(f.type==='sweep'?'Tentacle_Sweep':'Bubble_Break'))continue;g.lineStyle(4,0xccafff,f.life/f.total);if(f.type==='sweep'){g.beginPath().arc(f.x,f.y,f.r,f.angle-f.arc,f.angle+f.arc).strokePath();if(f.rear)g.beginPath().arc(f.x,f.y,f.r,f.angle+Math.PI-f.arc,f.angle+Math.PI+f.arc).strokePath();}else g.strokeCircle(f.x,f.y,f.r*(1-f.life/f.total));}
     }
     catalog(){return RECIPES.map(r=>({...r,unlocked:this.discovered.includes(r.id),available:this.s.expedition.party().some(t=>r.parents.includes(t)),upgrades:UPGRADES[r.id].map(([id,name,detail])=>({id,name,detail}))}));}

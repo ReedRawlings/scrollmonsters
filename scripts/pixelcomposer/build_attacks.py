@@ -35,7 +35,7 @@ Run: python3 build_attacks.py [mole_rumble]
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from richlib import Rich, ramp, hold
-from fxlib import ROOT, abgr, show
+from fxlib import ROOT, abgr, show, anim
 
 OUT = os.path.join(ROOT, "assets", "fx", "attacks") + "/"
 os.makedirs(OUT, exist_ok=True)
@@ -662,6 +662,483 @@ def cat_swipe():
         "120 px hit reach), crescent air smear behind, flecks off the tips. Shown at 1x; the sweep upgrade may stretch "
         "it slightly. Anchor = the cat. Apollo."),
         extra_meta={"px": 1, "reach_px": 100, "sections": sections})
+
+
+SPIKE = [0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0.24, 0, -0.24, 0, 0.72, 1, 0.093, -0.333, -0.093, 0.333, 1, 0, 0, 0]  # full width, then a sharpened point
+
+
+def lerp_keys(keys, f):
+    """Value of linear keys [(frame, v)] at frame f (held past the ends)."""
+    if f <= keys[0][0]: return keys[0][1]
+    for (f0, v0), (f1, v1) in zip(keys, keys[1:]):
+        if f <= f1: return v0 + (v1 - v0) * (f - f0) / (f1 - f0)
+    return keys[-1][1]
+
+
+def kpath(R, name, anchors):
+    """Path whose anchors may move: each anchor is (x, y) or [(frame, (x, y)), ...] in pixels (Fire-Tornado keys its
+    anchors the same way)."""
+    n = R.path(name, [a if isinstance(a, tuple) else a[0][1] for a in anchors])
+    for inp, a in zip(n["inputs"][4:], anchors):
+        if isinstance(a, list): anim(inp, [(f, [x / R.W, y / R.H, 0, 0, 0, 0, 0]) for f, (x, y) in a])
+    return n
+
+
+def banded(stops, joints, dark, scale=1.0):
+    """Colour along a bamboo culm: `stops` base -> tip with a dark joint band (about 1 px) at each fraction in `joints`
+    `scale` maps joints onto a shorter line drawn over the same culm."""
+    keys = list(stops)
+    for j in joints:
+        j /= scale
+        if j > 0.95: continue
+        before = [c for t, c in stops if t <= j][-1]
+        keys += [(j - 0.012, before), (j - 0.008, dark), (j + 0.022, dark), (j + 0.026, before)]
+    return sorted(keys)
+
+
+def culm(R, name, base, tip, width, h, sway, wk, body, light, joints, dark=("#25562e", "#468232")):
+    """One sharpened bamboo culm thrust out of the ground: a Line along a two-anchor Path whose tip anchor is keyed
+    (h = height fraction keys, sway = sideways tip px keys), full width then a cut point (SPIKE), coloured along its
+    length with joint bands; a narrower lit stripe on its left side over the lower 85 %. wk = width multiplier keys."""
+    frames = sorted({f for f, _ in h} | {f for f, _ in sway})
+    at = lambda f, k: (base[0] + (tip[0] - base[0]) * lerp_keys(h, f) * k + lerp_keys(sway, f) * k,
+                       base[1] + (tip[1] - base[1]) * lerp_keys(h, f) * k)
+    p = kpath(R, name + " Path", [base, [(f, at(f, 1)) for f in frames]])
+    lb = (base[0] - width * 0.25, base[1])
+    lp = kpath(R, name + " Light Path", [lb, [(f, (at(f, 0.85)[0] - width * 0.25, at(f, 0.85)[1])) for f in frames]])
+    widths = lambda w: sorted({f: [w * m, w * m] for f, m in wk}.items())   # one key per frame (same-frame keys cancel)
+    b = R.set(path_line(R, name, p, width, banded(body, joints, dark[0]), curve=SPIKE), "Width", widths(width))
+    lw = max(1, round(width * 0.35))
+    l = R.set(path_line(R, name + " Light", lp, lw, banded(light, joints, dark[1], 0.85), curve=SPIKE), "Width", widths(lw))
+    return R.mix(b, l, name=name + " Lit"), at
+
+
+def sparkle(R, name, x, y, r=3, color="#ebede9"):
+    """Four-point glint: two crisp lines crossing, taller than wide."""
+    F = lambda px, py: [px / R.W, py / R.H]
+    h = R.line(name + " H", F(x - r + 1, y), F(x + r - 1, y), 1, color, crisp=True)
+    v = R.line(name + " V", F(x, y - r), F(x, y + r), 1, color, crisp=True)
+    return R.mix(h, v, name=name)
+
+
+def outline(R, src, color, name):
+    return R.node("Outline", name, {"Width": 1, "Color": abgr(color), "Position": 1, "Anti-aliasing": 0}, {"Surface In": src})
+
+
+def leaf_sprite(R, name):
+    """A 7x7 leaf for particles: a thin ellipse gradient cut hard to white (Particle colours it)."""
+    g = R.dim(R.node("Gradient", name + " Shape", {"Gradient": ramp(WHITE_TO_BLACK), "Type": 1, "Shape": [1, 0.42],
+                                                    "Center": [0.5, 0.5], "Radius": 0.36, "Scale": 1, "Shift": 0,
+                                                    "Uniform ratio": False}), 7, 7)
+    return R.cutcolor(g, ramp([(0, "#ffffff"), (1, "#ffffff")]), 0.3, name)
+
+
+def fluttering(R, p, life_fade=True):
+    """Leaf particles tumble: random start angle, slow spin, fade at the end of life."""
+    R.set(p, "Initial Rotation", [0, 0, 360, 0, 0, 0]); R.set(p, "Rotational Speed", [0, -25, 25, 0, 0, 0])
+    if life_fade: R.set(p, "Alpha Over Lifespan", [0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0.2, 0, -0.2, 0, 0.6, 1, 0.13, -0.33, -0.13, 0.33, 1, 0, 0, 0])
+    return p
+
+
+BAMBOO_BODY = [(0, "#25562e"), (0.1, "#468232"), (0.62, "#468232"), (0.7, "#75a743"), (0.84, "#a8ca58"), (0.92, "#d0da91"), (1, "#e7d5b3")]
+BAMBOO_LIGHT = [(0, "#468232"), (0.12, "#75a743"), (0.55, "#75a743"), (0.7, "#a8ca58"), (1, "#d0da91")]
+LEAVES = ["#a8ca58", "#75a743", "#468232"]
+SOIL = ["#7a4841", "#4d2b32", "#ad7757"]
+
+
+def bamboo_spike():
+    """Bamboo root spikes, one 48x64 piece the game lays along the root line (every ~26 px, each a little later than
+    the one before, so the spikes burst outward from the target). 24 frames at 20 fps:
+    0-5 erupt: the ground cracks and bulges (0), a hole tears open and three sharpened culms stab up with a stretch
+    (1-2), overshoot and squash back (3-5) while dirt sprays, dust puffs, speed lines streak off the tips, a pale flash
+    lights the hole, leaves unfurl from the joints and a few are knocked loose; a glint runs off the tallest tip.
+    6-17 a seamless loop: the culms sway out of step, leaves flutter, a loose leaf drifts down, a glint on the front tip.
+    18-23 retract: the culms pop up a pixel, then splinter and sink; splinters and leaves fly, dust puffs, the hole
+    closes. Elements: culms (Line along a keyed Path, SPIKE width curve, banded colour along length, lit stripe, dark
+    outline per culm so they read as separate stalks), leaves (HUMP lines from the joints), torn ground (hole, cracks,
+    flash), crafted leaf sprite fed to tumbling particles, dirt/dust/splinter particles, speed lines, glints. 1x."""
+    W, H, FR, LS, RS = 48, 64, 24, 6, 18
+    R = Rich(W, H, FR, fps=20, out=OUT)
+    F = lambda x, y: [x / W, y / H]
+    cx, cy = 24, 52
+
+    # torn ground: cracks bulge out first, then the hole tears open; all of it closes on the retract
+    gone = [(0, 1), (RS + 2, 1), (FR - 1, 0)]
+    mound = R.shape("Mound", "Ellipse", "#4d2b32", [(0, cx, cy, 6, 4), (1, cx, cy, 13, 8.5), (3, cx, cy, 12, 8), (RS + 2, cx, cy, 12, 8), (FR - 1, cx, cy, 4, 2.5)])
+    hole = R.shape("Hole", "Ellipse", "#241527", [(0, cx, cy, 1, 0.7), (1, cx, cy, 10, 6.5), (3, cx, cy, 9, 6), (RS + 2, cx, cy, 9, 6), (FR - 1, cx, cy, 2, 1.3)])
+    cracks = crack_lines(R, cx, cy, 18, "#341c27", 1, lambda k: [(0, [0, 0.45]), (1, [0, 1])], "Crack", n=6, seed=11)
+    rad, shp = ground(R, 15)
+    flash = R.cutcolor(grad(R, "Hole Flash", F(cx, cy), [(0, 0.0), (1, rad), (2, rad * 0.6), (4, 0.0)], shape=shp),
+                       ramp([(0, "#468232"), (0.45, "#a8ca58"), (0.8, "#d0da91"), (1, "#e7d5b3")]), 0.2, "Hole Flash")
+
+    # culms: back-left tallest, back-right, front-short (drawn back to front); each stabs up with a stretch on its
+    # first frame, overshoots, squashes, settles; sways in the loop; pops then sinks on the retract
+    stab = lambda s: [(0, 0.04), (s - 1, 0.04), (s, 0.62), (s + 1, 1.16), (s + 2, 0.92), (s + 3, 1.04), (s + 4, 1.0),
+                      (RS, 1.0), (RS + 1, 1.07), (RS + 2, 0.55), (RS + 3, 0.15), (RS + 4, 0.0)]
+    squash = lambda s: [(0, 0.6), (s - 1, 0.6), (s, 0.7), (s + 1, 0.72), (s + 2, 1.18), (s + 3, 0.96), (s + 4, 1.0),
+                        (RS, 1.0), (RS + 1, 0.85), (RS + 3, 0.5)]
+    sway = lambda a: [(0, 0), (LS, 0), (LS + 3, a), (LS + 6, 0), (LS + 9, -a), (LS + 12, 0)]
+    CULMS = [("Culm Back", (18, 48), (15, 12), 6, 1, 1.5, (0.3, 0.58)),
+             ("Culm Right", (30, 49), (32, 22), 5, 1, -1, (0.36, 0.7)),
+             ("Culm Front", (23, 56), (21, 32), 5, 2, 1, (0.42,))]
+    shoots, tips = [], {}
+    for name, base, tip, w, s, a, joints in CULMS:
+        c, at = culm(R, name, base, tip, w, stab(s), sway(a), squash(s), BAMBOO_BODY, BAMBOO_LIGHT, joints)
+        tips[name] = (tip, at, s)
+        shoots.append((name, c, base, tip, joints))
+
+    # leaves: HUMP lines (pointed both ends) unfurling from a joint, fluttering in the loop
+    def leaf(name, root, dx, dy, s, flick):
+        x, y = root
+        end = [(0, (x + dx, y + dy)), (LS, (x + dx, y + dy)), (LS + 3, (x + dx, y + dy - flick)), (LS + 6, (x + dx, y + dy)),
+               (LS + 9, (x + dx, y + dy + flick)), (LS + 12, (x + dx, y + dy))]
+        p = kpath(R, name + " Path", [(x, y), (x + dx * 0.55, y + dy * 0.55 - 2), end])
+        return path_line(R, name, p, 3, [(0, "#468232"), (0.5, "#75a743"), (1, "#a8ca58")],
+                         [(0, [0, 0]), (s + 2, [0, 0]), (s + 3, [0, 0.6]), (s + 4, [0, 1]), (RS, [0, 1]), (RS + 1, [0, 0])], HUMP)
+    joint_at = lambda base, tip, j: (base[0] + (tip[0] - base[0]) * j, base[1] + (tip[1] - base[1]) * j)
+    leaves = {"Culm Back": [leaf("Leaf Back", joint_at((18, 48), (15, 12), 0.58), 9, -4, 1, 1)],
+              "Culm Right": [leaf("Leaf Right", joint_at((30, 49), (32, 22), 0.36), 8, -2, 1, -1),
+                             leaf("Leaf Right Low", joint_at((30, 49), (32, 22), 0.7), -7, -3, 1, 1)],
+              "Culm Front": [leaf("Leaf Front", joint_at((23, 56), (21, 32), 0.42), -8, -3, 2, -1)]}
+    stalks = []
+    for name, c, base, tip, joints in shoots:
+        for l in leaves[name]:
+            c = R.mix(c, l, name=f"{name} + Leaf")             # the leaf's Range hides it from the retract on
+        stalks.append((outline(R, c, "#19332d", name + " Outline"), [(0, 1), (RS + 4, 1), (RS + 5, 0)]))
+
+    # speed lines streaking up off each tip as it stabs, shrinking upward
+    streaks = []
+    for i, (name, dx, length) in enumerate([("Culm Back", 0, 12), ("Culm Back", -3, 7), ("Culm Right", 0, 10), ("Culm Front", 0, 8), ("Culm Front", 3, 5)]):
+        tip, at, s = tips[name]
+        x, y = tip[0] + dx, tip[1] - 3
+        st = R.line(f"Speed Line {i + 1}", F(x, y), F(x, y - length), 1, "#d0da91",
+                    [(0, [0, 0]), (s, [0, 0]), (s + 1, [0, 1]), (s + 2, [0.55, 1]), (s + 3, [1, 1])], crisp=True)
+        streaks.append((st, [(0, 0), (s, 0), (s + 1, 1), (s + 3, 1), (s + 4, 0)]))
+
+    # glints: off the tallest tip after it settles, then once on the front tip in the loop
+    gl1 = sparkle(R, "Glint Back", 15, 13, 3)
+    gl2 = sparkle(R, "Glint Front", 21, 33, 2)
+
+    # particles: dirt clods and dust on the eruption, leaves knocked loose (crafted leaf sprite, tumbling), a leaf
+    # drifting down in the loop, splinters + leaves + dust on the retract
+    leafspr = leaf_sprite(R, "Leaf Sprite")
+    clods = R.particles("Dirt Clods", [cx / W, cy / H, 0.18, 0.07], hold((0, [3, 4]), (1, [12, 14]), (2, [5, 6]), (3, [0, 0])),
+                        (6, 11), (50, 130), (1.8, 3.8), SOIL, 41207, gravity=0.38)
+    R.set(clods, "Size", [1, 2])
+    dust = R.particles("Dust Puffs", [cx / W, (cy + 1) / H, 0.22, 0.06], hold((0, [0, 0]), (1, [6, 7]), (2, [0, 0]), (RS + 2, [5, 6]), (RS + 3, [0, 0])),
+                       (6, 10), (10, 170), (0.4, 1.1), DUST, 41311)
+    R.set(dust, "Size", [2, 3]); R.set(dust, "Alpha Over Lifespan", TAPER)
+    knocked = fluttering(R, R.particles("Loose Leaves", [24 / W, 26 / H, 0.15, 0.1], hold((0, [0, 0]), (3, [3, 4]), (4, [0, 0])),
+                                        (12, 18), (40, 140), (0.8, 1.6), LEAVES, 41419, gravity=0.06, sprite=leafspr))
+    drift = fluttering(R, R.particles("Drifting Leaf", [26 / W, 22 / H, 0.12, 0.05], hold((0, [0, 0]), (LS + 1, [1, 1]), (LS + 2, [0, 0]), (LS + 5, [1, 1]), (LS + 6, [0, 0])),
+                                      (5, 6), (200, 300), (0.3, 0.6), LEAVES, 41523, gravity=0.05, sprite=leafspr))
+    splinters = R.particles("Splinters", [24 / W, 36 / H, 0.15, 0.22], hold((0, [0, 0]), (RS + 1, [12, 14]), (RS + 2, [5, 6]), (RS + 3, [0, 0])),
+                            (5, 9), (30, 150), (1.5, 3.2), ["#e7d5b3", "#d0da91", "#a8ca58", "#75a743"], 41627, gravity=0.32)
+    R.set(splinters, "Size", [1, 2])
+    falling = fluttering(R, R.particles("Shed Leaves", [24 / W, 28 / H, 0.15, 0.1], hold((0, [0, 0]), (RS + 1, [4, 5]), (RS + 2, [0, 0])),
+                                        (8, 12), (30, 150), (1, 2), LEAVES, 41733, gravity=0.08, sprite=leafspr))
+
+    layers = [(R.empty(), None), (mound, gone), (hole, gone)] + [(c, [(0, 1), (RS + 2, 1), (FR - 1, 0)]) for c in cracks]
+    layers += [(flash, None), (clods, None)] + stalks + streaks
+    layers += [(gl1, [(0, 0), (4, 0), (5, 1), (6, 1), (7, 0)]), (gl2, [(0, 0), (LS + 6, 0), (LS + 7, 1), (LS + 8, 1), (LS + 9, 0)])]
+    layers += [(dust, None), (knocked, None), (drift, None), (splinters, None), (falling, None)]
+    out = R.stack(layers)
+    print("  colours outside Apollo:", R.audit())
+    return R.finish(out, "Bamboo_Spike", loop=True, anchor=(cx, cy), notes=(
+        "Bamboo root spikes, one piece laid every ~26 px along the root line: frames 0-5 erupt, 6-17 loop seamlessly "
+        "while the field lasts, 18-23 retract (play once as the field ends). Start each piece a little after the one "
+        "before so the spikes burst outward. Same piece for Panda's cross arms. 48x64, 20 fps, shown at 1x. "
+        "Anchor = ground point under the cluster. Apollo."),
+        extra_meta={"px": 1, "piece_len": 26, "erupt": [0, LS - 1], "loop_frames": [LS, RS - 1], "retract": [RS, FR - 1]})
+
+
+SNARE_BODY = [(0, "#602c2c"), (0.1, "#884b2b"), (0.55, "#be772b"), (0.72, "#de9e41"), (0.86, "#e8c170"), (1, "#ebede9")]
+SNARE_LIGHT = [(0, "#be772b"), (0.5, "#de9e41"), (0.8, "#e8c170"), (1, "#e8c170")]
+DEAD_LEAVES = ["#d0da91", "#a8ca58", "#c09473"]
+
+
+def bamboo_snare():
+    """Hostile bamboo snare (the Bamboo enemy's ground trap under the player), 80x80, 24 frames at 20 fps:
+    0-5 erupt: roots snake in across the ground from the rim (0-3) while seven dried, sharpened culms burst up around a
+    3:2 ellipse in two waves (1, 2), overshoot and clench inward like a closing cage (3), settle; dirt sprays from the
+    rim, the ground under the trap darkens, glints on two tips.
+    6-17 a seamless loop: a red pulse drains inward along the roots (a ring of light seen only through the roots), the
+    culms creak in and out of step, a dead leaf drifts down.
+    18-23 retract: the culms pop, splinter and sink, the roots withdraw, dust, the stain fades.
+    Dried gold-and-brown bamboo with a red pulse so it never reads as the party's green Bamboo. Shown at 1x."""
+    W, H, FR, LS, RS = 80, 80, 24, 6, 18
+    R = Rich(W, H, FR, fps=20, out=OUT)
+    F = lambda x, y: [x / W, y / H]
+    cx, cy, rx = 40, 54, 28
+    ry = rx * 2 / 3
+    loop = looped(FR, LS, RS - LS)
+
+    # stain: the ground under the trap darkens, edge broken up by noise (a clean ellipse read as a selection circle)
+    rad, shp = ground(R, rx + 2)
+    st = grad(R, "Stain Field", F(cx, cy), [(0, 0.0), (3, rad)], shape=shp)
+    stn = R.node("Noise_Simplex", "Stain Noise", {"Scale": [0.4, 0.4], "Iteration": 3, "Seed": 6203, "Level Out": [0.5, 1]})
+    stain = R.cutcolor(R.mix(st, stn, "multiply", name="Stain Ragged"), ramp([(0, "#341c27"), (0.5, "#241527"), (1, "#241527")]), 0.22, "Stain")
+
+    # roots: from each culm base, snaking across the ground past the centre; drawn in from the rim, withdrawn on the retract
+    angles = [100 + k * 360 / 7 for k in range(7)]
+    bases = [(cx + rx * math.cos(math.radians(a)), cy - ry * math.sin(math.radians(a))) for a in angles]
+    roots_dark, roots_lit = R.empty(), R.empty()
+    for k, (bx, by) in enumerate(bases):
+        a = math.radians(angles[k] + 180 + (17 if k % 2 else -17))       # across, a little off the centre
+        ex, ey = cx + rx * 0.55 * math.cos(a), cy - ry * 0.55 * math.sin(a)
+        bend = 5 if k % 2 else -5
+        mx, my = (bx + ex) / 2 + bend * math.sin(a), (by + ey) / 2 + bend * math.cos(a) * 2 / 3
+        p = R.path(f"Root {k + 1} Path", [(bx, by), (mx, my), (ex, ey)])
+        rng = [(0, [0, 0.05]), (3, [0, 1]), (RS, [0, 1]), (RS + 3, [0, 0])]
+        d = path_line(R, f"Root {k + 1}", p, 2, [(0, "#4d2b32"), (1, "#341c27")], rng, TAPER, wiggle=(1.2, 3, 6301 + k))
+        l = path_line(R, f"Root {k + 1} Top", p, 1, [(0, "#7a4841"), (1, "#4d2b32")], rng, TAPER, wiggle=(1.2, 3, 6301 + k), crisp=True)
+        roots_dark = R.mix(roots_dark, d, name=f"Root {k + 1} Layer")
+        roots_lit = R.mix(roots_lit, l, name=f"Root {k + 1} Top Layer")
+    roots = R.mix(roots_dark, R.node("Offset", "Root Tops Lift", {"X Offset": 0, "Y Offset": -1 / H}, {"Surface In": roots_lit}), name="Roots")
+
+    # the drain pulse: a band of light moving inward once per loop, seen only through the roots
+    band = R.node("Gradient", "Drain Band", {"Gradient": ramp([(0, "#000000"), (0.35, "#000000"), (0.5, "#ffffff"), (0.62, "#000000"), (1, "#000000")]),
+                                             "Type": 1, "Shape": list(shp), "Center": F(cx, cy), "Radius": rad, "Scale": 1,
+                                             "Loop": 1, "Shift": loop(0, 1), "Uniform ratio": False})
+    pulse = R.mix(R.mix(black(R), roots, name="Roots On Black"), band, "multiply", name="Drain Field")
+    pulse = R.cutcolor(R.node("Level", "Drain Boost", {"White in": [0, 0.6]}, {"Surface In": pulse}),
+                       ramp([(0, "#752438"), (0.4, "#a53030"), (0.75, "#cf573c"), (1, "#de9e41")]), 0.3, "Drain")
+
+    # culms: two waves round the ring, clench inward on frame 3, creak in the loop, pop and sink on the retract
+    stab = lambda s: [(0, 0.04), (s - 1, 0.04), (s, 0.6), (s + 1, 1.15), (s + 2, 0.93), (s + 3, 1.03), (s + 4, 1.0),
+                      (RS, 1.0), (RS + 1, 1.07), (RS + 2, 0.5), (RS + 3, 0.12), (RS + 4, 0.0)]
+    squash = lambda s: [(0, 0.6), (s, 0.7), (s + 1, 0.72), (s + 2, 1.18), (s + 3, 0.96), (s + 4, 1.0), (RS, 1.0), (RS + 1, 0.85), (RS + 3, 0.5)]
+    order = sorted(range(7), key=lambda k: bases[k][1])               # back to front
+    cage, tips = [], []
+    for k in order:
+        bx, by = bases[k]
+        inward = -1 if bx > cx + 1 else 1 if bx < cx - 1 else 0
+        hgt, w, s = (24, 26, 22, 25, 23, 27, 24)[k], (5, 4, 5, 4, 5, 4, 5)[k], 1 + k % 2
+        tip = (bx + inward * 6, by - hgt)
+        a = 1 if k % 2 else -1
+        sway = [(0, 0), (3, inward * 2), (5, 0), (LS, 0), (LS + 3, a), (LS + 6, 0), (LS + 9, -a), (LS + 12, 0)]
+        c, at = culm(R, f"Culm {k + 1}", (bx, by), tip, w, stab(s), sway, squash(s), SNARE_BODY, SNARE_LIGHT,
+                     (0.33, 0.66), dark=("#602c2c", "#884b2b"))
+        cage.append((outline(R, c, "#341c27", f"Culm {k + 1} Outline"), [(0, 1), (RS + 4, 1), (RS + 5, 0)]))
+        tips.append(tip)
+
+    # dirt from the rim on both waves; dust and splinters on the retract; a dead leaf drifting in the loop
+    clods = R.particles("Rim Clods", [cx / W, cy / H, rx / W, ry / H], hold((0, [0, 0]), (1, [10, 12]), (2, [10, 12]), (3, [0, 0])),
+                        (6, 10), (60, 120), (1.6, 3.2), SOIL, 6411, gravity=0.36, border=True)
+    R.set(clods, "Size", [1, 2])
+    dust = R.particles("Rim Dust", [cx / W, cy / H, rx / W, ry / H], hold((0, [0, 0]), (1, [6, 8]), (2, [0, 0]), (RS + 2, [8, 10]), (RS + 3, [0, 0])),
+                       (6, 10), (40, 140), (0.3, 0.9), DUST, 6517, border=True)
+    R.set(dust, "Size", [2, 3]); R.set(dust, "Alpha Over Lifespan", TAPER)
+    splinters = R.particles("Splinters", [cx / W, (cy - 14) / H, rx / W, ry / H], hold((0, [0, 0]), (RS + 1, [16, 18]), (RS + 2, [6, 8]), (RS + 3, [0, 0])),
+                            (5, 9), (30, 150), (1.5, 3.2), ["#ebede9", "#e8c170", "#de9e41", "#be772b"], 6619, gravity=0.32)
+    R.set(splinters, "Size", [1, 2])
+    leafspr = leaf_sprite(R, "Leaf Sprite")
+    drift = fluttering(R, R.particles("Dead Leaf", [cx / W, 26 / H, 0.25, 0.06], hold((0, [0, 0]), (LS + 1, [1, 1]), (LS + 2, [0, 0]), (LS + 6, [1, 1]), (LS + 7, [0, 0])),
+                                      (5, 5), (220, 320), (0.4, 0.7), DEAD_LEAVES, 6723, gravity=0.05, sprite=leafspr))
+    gl1 = sparkle(R, "Glint 1", tips[1][0], tips[1][1] + 1, 3)
+    gl2 = sparkle(R, "Glint 2", tips[4][0], tips[4][1] + 1, 2)
+
+    on = [(0, 1), (RS + 2, 1), (FR - 1, 0)]
+    layers = [(R.empty(), None), (stain, [(0, 0.6), (RS + 2, 0.6), (FR - 1, 0)]), (roots, None), (pulse, [(0, 0), (LS - 1, 0), (LS, 1), (RS, 1), (RS + 1, 0)])]
+    layers += [(clods, None)] + cage
+    layers += [(gl1, [(0, 0), (4, 0), (5, 1), (6, 1), (7, 0)]), (gl2, [(0, 0), (5, 0), (6, 1), (7, 1), (8, 0)])]
+    layers += [(dust, None), (splinters, None), (drift, None)]
+    out = R.stack(layers)
+    print("  colours outside Apollo:", R.audit())
+    return R.finish(out, "Bamboo_Snare", loop=True, anchor=(cx, cy), notes=(
+        "Bamboo enemy's snare on the ground under the player: frames 0-5 erupt (roots snake in, a ring of dried culms "
+        "bursts up and clenches), 6-17 loop seamlessly while the trap lasts (red pulse drains inward along the roots), "
+        "18-23 retract (play once as it ends). Cage ellipse 56x37 px (visible_w 56), 80x80, 20 fps, shown at 1x. "
+        "Anchor = trap centre on the ground. Apollo."),
+        extra_meta={"visible_w": 56, "px": 1, "erupt": [0, LS - 1], "loop_frames": [LS, RS - 1], "retract": [RS, FR - 1]})
+
+
+HOSTILE = ramp([(0, "#752438"), (0.3, "#a53030"), (0.55, "#cf573c"), (0.75, "#da863e"), (0.9, "#de9e41"), (1, "#e8c170")])
+
+
+SWIRL = [0, 1, 0, 0, 1, 0, 0, 0, 0, 0.3, 0.2, 0.23, -0.2, 0, 0.6, 1, 0.13, -0.33, -0.13, 0.33, 1, 0, 0, 0]   # thin centre, full, tapered outer end
+
+
+def danger_mark():
+    """Enemy telegraph under the target: a red swirl on the ground, indexed by wind-up progress (frame = progress * 23),
+    80x64. Three spiral arms wound into a 3:2 ellipse turn faster and faster (each anchor keyed per frame), grow from
+    half size to full over the first third, and brighten; a dim red glow under the middle pulses on quicker beats and
+    flares on the last frame. Arms thin at the centre and taper off at the rim so there is no edge ring; a dark outline
+    keeps them readable on any ground. v1 (cracks with light seen through them) looked identical to Mole_Rumble.
+    Ellipse 60x40 (visible_w 60) for an r=30 cast; shown at 1x (2x for r~60). Replaces every enemy ring + clock arc."""
+    W, H, FR = 80, 64, 24
+    R = Rich(W, H, FR, fps=20, out=OUT)
+    F = lambda x, y: [x / W, y / H]
+    cx, cy, rx, L = 40, 40, 30, FR - 1
+
+    turn, spin = [], 0.0
+    for f in range(FR):
+        turn.append(spin); spin += 10 + 2.2 * f                     # degrees: speeds up toward the hit
+    grow = lambda f: 0.55 + 0.45 * min(1, f / 8)
+    arms = R.empty()
+    for k in range(3):
+        pts = []
+        for i in range(15):
+            t = i / 14
+            pts.append([(f, (cx + rx * grow(f) * (0.06 + 0.94 * t) * math.cos(math.radians(k * 120 + turn[f] + t * 290)),
+                             cy - rx * grow(f) * (0.06 + 0.94 * t) * 2 / 3 * math.sin(math.radians(k * 120 + turn[f] + t * 290))))
+                        for f in range(FR)])
+        arm = path_line(R, f"Swirl Arm {k + 1}", kpath(R, f"Swirl Arm {k + 1} Path", pts), 4,
+                        [(0, "#e8c170"), (0.2, "#de9e41"), (0.45, "#cf573c"), (0.7, "#a53030"), (1, "#752438")], curve=SWIRL)
+        R.set(arm, "Width", [(0, [3, 3]), (8, [4, 4]), (L, [5, 5])])
+        arms = R.mix(arms, arm, name=f"Swirl Arm {k + 1} Layer")
+    arms = outline(R, arms, "#241527", "Swirl Outline")
+
+    # dim ground under it so it reads on light grass, and a red glow in the middle that pulses faster
+    rad, shp = ground(R, rx)
+    shade = R.cutcolor(R.mix(grad(R, "Shade Field", F(cx, cy), [(0, rad * 0.6), (8, rad)], shape=shp),
+                             R.node("Noise_Simplex", "Shade Noise", {"Scale": [0.45, 0.45], "Iteration": 2, "Seed": 8803, "Level Out": [0.5, 1]}),
+                             "multiply", name="Shade Ragged"), ramp([(0, "#341c27"), (1, "#241527")]), 0.25, "Shade")
+    glow = R.cutcolor(grad(R, "Core Glow", F(cx, cy), [(0, rad * 0.25), (L - 1, rad * 0.45), (L, rad * 0.8)], shape=shp), HOSTILE, 0.3, "Core Glow")
+    beats = [6, 12, 16, 19, 21, 22]
+    pulse = [(0, 0.3)]
+    for n, b in enumerate(beats):
+        pulse += [(b - 1, 0.3 + 0.1 * n), (b, 1)]
+    pulse += [(L, 1)]
+    embers = R.particles("Embers", [cx / W, cy / H, 0.12, 0.08], hold((0, [0, 0]), (12, [1, 1]), (18, [1, 2])),
+                         (5, 9), (80, 100), (0.6, 1.2), ["#de9e41", "#cf573c"], 8999)
+    out = R.stack([(R.empty(), None), (shade, [(0, 0.25), (8, 0.45), (L, 0.55)]), (glow, pulse),
+                   (arms, [(0, 0.55), (8, 0.85), (14, 1), (L, 1)]), (embers, None)])
+    print("  colours outside Apollo:", R.audit())
+    return R.finish(out, "Danger_Mark", anchor=(cx, cy), notes=(
+        "Enemy telegraph on the ground under the target: a red swirl, indexed by wind-up progress (frame = progress "
+        "* 23), not played. Arms spin faster, grow and brighten; the core glow pulses quicker and flares on the last "
+        "frame. Ellipse 60x40 (visible_w 60); shown at a whole-number scale picked from the radius (1x for r=30). "
+        "Anchor = target point on the ground. Apollo."), extra_meta={"visible_w": 60, "px": 1, "indexed_by_progress": True})
+
+
+SPIRIT = ramp([(0, "#253a5e"), (0.22, "#3c5e8b"), (0.42, "#4f8fba"), (0.62, "#73bed3"), (0.82, "#a4dddb"), (1, "#ebede9")])
+FLAME = [0, 1, 0, 0, 1, 0, 0, 0, 0, 0.55, 0.07, 0.25, -0.07, 0, 0.22, 1, 0.26, 0, -0.26, 0.33, 1, 0, 0, 0]   # round bottom, pointed tip
+
+
+def spirit_wisp():
+    """Spirit's orbiting guard wisp, 48x48 at 20 fps, one sheet of sections the game picks from:
+    flame_l 0-7, flame_m 8-15, flame_s 16-23: the wisp, a seamless 8-frame flicker at three sizes (the game steps down
+    as its hits run out); spawn 24-28 (a spark flares into the flame); puff 29-32 (a trail puff dropped behind it as it
+    circles); block 33-37 (a flash and sparks where a shot is stopped); hit 38-42 (a small blue flame licks up off the
+    enemy); fade 43-50 (after the last hit the flame shrinks away, shreds fling off, a curl of smoke rises).
+    The flame is one drawn element animated through every section: three tongues, each a Line along a three-anchor
+    Path whose anchors are keyed per frame (flicker, size, lift), in three nested bands (deep blue, cyan, white core)
+    with a FLAME width curve, under one dark outline; a white core ellipse at the base. Hand-shaped tongues instead of
+    noise: v1 (noise in an envelope) came out a smooth egg. No crossed glints (they read as reticles). Shown at 1x."""
+    W, H = 48, 48
+    SEC = {"flame_l": (0, 8), "flame_m": (8, 8), "flame_s": (16, 8), "spawn": (24, 5), "puff": (29, 4),
+           "block": (33, 5), "hit": (38, 5), "fade": (43, 8)}
+    FR = 51
+    R = Rich(W, H, FR, fps=20, out=OUT)
+    F = lambda x, y: [x / W, y / H]
+    bx, by = 24, 34                                               # base of the flame
+    ax, ay = 24, 26                                               # anchor: the flame's middle (the wisp's position)
+
+    # per-frame pose of the flame: (scale, lift px, flicker step) or None (hidden)
+    pose = {}
+    for name, sc in (("flame_l", 1.0), ("flame_m", 0.78), ("flame_s", 0.58)):
+        s0, n = SEC[name]
+        for f in range(n): pose[s0 + f] = (sc, 0, f)
+    s0 = SEC["spawn"][0]
+    for f, sc in enumerate((0.25, 0.6, 1.15, 0.95, 1.0)): pose[s0 + f] = (sc, 0, f)
+    s0 = SEC["hit"][0]
+    for f, (sc, lift) in enumerate(((0.35, 0), (0.6, 1), (0.62, 3), (0.48, 5), (0.25, 7))): pose[s0 + f] = (sc, lift, f + 2)
+    s0 = SEC["fade"][0]
+    for f, (sc, lift) in enumerate(((1.0, 0), (0.72, 2), (0.42, 4), (0.15, 6))): pose[s0 + f] = (sc, lift, f + 4)
+
+    SWAY = [0, 1, 1, 0, -1, -1, 0, 0]
+    RISE = [0, -1, -1, 0, 1, 1, 0, 0]
+    TONGUES = [  # name, base, mid, tip (offsets from the base point at full size), sway phase, outer width
+        ("Centre", (0, -1), (0, -9), (0, -20), 0, 9),
+        ("Left", (-3, -1), (-6, -7), (-8, -14), 3, 6),
+        ("Right", (3, -1), (6, -7), (8, -13), 5, 6)]
+
+    def anchor(off, k, which, f, sc, lift, step):
+        sw, ri = SWAY[(step + k) % 8], RISE[(step + k + 2) % 8]
+        x, y = off
+        if which == 2: x, y = x + sw, y + ri
+        if which == 1: x += sw * 0.5
+        return (bx + x * sc, by + y * sc - lift)
+
+    frames = sorted(pose)
+    flame, cores = R.empty(), R.empty()
+    for k, (tname, *offs, phase, w) in enumerate(TONGUES):
+        pts = []
+        for which, off in enumerate(offs):
+            pts.append([(f, anchor(off, phase, which, f, *pose[f])) for f in frames])
+        path = kpath(R, f"{tname} Tongue Path", pts)
+        for band, frac, stops, rng in (("Outer", 1.0, [(0, "#4f8fba"), (0.7, "#3c5e8b"), (1, "#253a5e")], None),
+                                       ("Mid", 0.62, [(0, "#a4dddb"), (1, "#73bed3")], [0, 0.8]),
+                                       ("Core", 0.3, [(0, "#ebede9"), (1, "#a4dddb")], [0, 0.5])):
+            if band == "Core" and k: continue
+            l = path_line(R, f"{tname} {band}", path, w * frac, stops, curve=FLAME)
+            if rng: R.set(l, "Range", rng)
+            R.set(l, "Width", [(f, [max(1, w * frac * pose[f][0]), max(1, w * frac * pose[f][0])]) for f in frames])
+            flame = R.mix(flame, l, name=f"{tname} {band} Layer")
+    core = R.shape("Flame Core", "Ellipse", "#ffffff", [(f, bx, by - 4 * pose[f][0] - pose[f][1], max(0.01, 2.5 * pose[f][0] - 0.4), max(0.01, 2 * pose[f][0] - 0.3)) for f in frames])
+    flame = outline(R, R.mix(flame, core, name="Flame + Core"), "#172038", "Flame Outline")
+    on = [(0, 1)]
+    for a, b in ((SEC["puff"][0], SEC["block"][0] + SEC["block"][1] - 1), (SEC["fade"][0] + 4, FR - 1)):
+        on += [(a - 1, 1), (a, 0), (b, 0)] + ([(b + 1, 1)] if b + 1 < FR else [])
+    on = sorted(dict(on).items())
+
+    # flicker embers: one or two per loop, short-lived so they never cross into the next section
+    ember_keys = [(0, [0, 0])]
+    for name in ("flame_l", "flame_m", "flame_s"):
+        s0 = SEC[name][0]
+        ember_keys += [(s0 + 1, [1, 1]), (s0 + 2, [0, 0]), (s0 + 4, [1, 1]), (s0 + 5, [0, 0])]
+    embers = R.particles("Flicker Embers", [bx / W, (by - 16) / H, 0.05, 0.03], hold(*ember_keys), (2, 3), (80, 100), (1, 1.6), SPARK, 9511)
+
+    # spawn: a spark that flares into the flame
+    s0 = SEC["spawn"][0]
+    spark = R.shape("Spawn Spark", "Ellipse", "#ffffff", [(0, bx, by - 4, 3, 3), (s0, bx, by - 4, 3, 3), (s0 + 1, bx, by - 6, 1.5, 1.5)])
+    spawn_sparks = R.particles("Spawn Sparks", [bx / W, (by - 4) / H, 0.03, 0.03], hold((0, [0, 0]), (s0, [6, 7]), (s0 + 1, [0, 0])),
+                               (3, 5), (0, 360), (1.2, 2.2), SPARK, 9613, from_center=True)
+
+    # puff: a soft blob that shrinks, dims and lifts (dropped behind the wisp as it circles)
+    s0 = SEC["puff"][0]
+    puff_a = R.shape("Puff", "Ellipse", "#73bed3", [(0, ax, ay, 3.5, 3), (s0, ax, ay, 3.5, 3), (s0 + 1, ax, ay - 1, 2.6, 2.2)])
+    puff_b = R.shape("Puff Light", "Ellipse", "#a4dddb", [(0, ax - 1, ay - 1, 1.6, 1.4)])
+    puff_c = R.shape("Puff Dim", "Ellipse", "#4f8fba", [(0, ax, ay - 2, 2, 1.7), (s0 + 2, ax, ay - 2, 2, 1.7), (s0 + 3, ax, ay - 3, 1.2, 1)])
+
+    # block: a flash where the shot dies and sparks thrown off it
+    s0 = SEC["block"][0]
+    flash = R.cutcolor(grad(R, "Block Flash", F(ax, ay), [(0, 0.0), (s0 - 1, 0.0), (s0, 0.13), (s0 + 1, 0.17), (s0 + 2, 0.08), (s0 + 3, 0.0)]), SPIRIT, 0.25, "Block Flash")
+    block_sparks = R.particles("Block Sparks", [ax / W, ay / H, 0.04, 0.04], hold((0, [0, 0]), (s0, [12, 14]), (s0 + 1, [3, 4]), (s0 + 2, [0, 0])),
+                               (3, 5), (0, 360), (1.6, 3.2), SPARK + ["#4f8fba"], 9719, from_center=True, gravity=0.12)
+    R.set(block_sparks, "Size", [1, 2])
+
+    # hit: sparks off the enemy under the licking flame
+    s0 = SEC["hit"][0]
+    hit_sparks = R.particles("Hit Sparks", [bx / W, (by - 4) / H, 0.06, 0.04], hold((0, [0, 0]), (s0, [7, 8]), (s0 + 1, [0, 0])),
+                             (3, 5), (30, 150), (1.2, 2.4), SPARK, 9821, gravity=0.15)
+
+    # fade: shreds flung off, a curl of smoke rising
+    s0 = SEC["fade"][0]
+    shred = R.dim(R.node("Gradient", "Shred Sprite", {"Gradient": ramp(WHITE_TO_BLACK), "Type": 1, "Shape": [0.55, 1], "Center": [0.5, 0.7],
+                                                       "Radius": 0.5, "Scale": 1, "Shift": 0, "Uniform ratio": False}), 5, 8)
+    shred = R.cutcolor(shred, ramp([(0, "#ffffff"), (1, "#ffffff")]), 0.3, "Shred")
+    shreds = R.particles("Flame Shreds", [bx / W, (by - 8) / H, 0.06, 0.05], hold((0, [0, 0]), (s0 + 1, [5, 6]), (s0 + 2, [0, 0])),
+                         (5, 7), (20, 160), (1.4, 2.4), ["#a4dddb", "#73bed3", "#4f8fba"], 9923, gravity=-0.05)
+    R.set(shreds, "Alpha Over Lifespan", TAPER)
+    smoke_path = R.path("Smoke Path", [(bx, by - 8), (bx + 3, by - 15), (bx - 2, by - 22), (bx + 2, by - 30)])
+    smoke = path_line(R, "Smoke", smoke_path, 2, [(0, "#577277"), (1, "#394a50")],
+                      [(0, [0, 0]), (s0 + 2, [0, 0]), (s0 + 3, [0, 0.35]), (s0 + 5, [0.3, 0.85]), (s0 + 7, [0.85, 1])], HUMP, wiggle=(1, 3, 9907))
+
+    gate = lambda name: show(SEC[name][0], SEC[name][0] + SEC[name][1] - 1)
+    out = R.stack([(R.empty(), None), (flash, None), (flame, on), (embers, None),
+                   (spark, gate("spawn")), (spawn_sparks, None),
+                   (puff_a, gate("puff")), (puff_c, show(SEC["puff"][0] + 2, SEC["puff"][0] + 3)), (puff_b, show(SEC["puff"][0], SEC["puff"][0] + 1)),
+                   (block_sparks, None), (hit_sparks, None), (shreds, None), (smoke, gate("fade"))])
+    print("  colours outside Apollo:", R.audit())
+    sections = {k: [a, a + n - 1] for k, (a, n) in SEC.items()}
+    return R.finish(out, "Spirit_Wisp", anchor=(ax, ay), notes=(
+        "Spirit's orbiting guard wisp, one sheet of sections (see sections): flame_l / flame_m / flame_s loop while the "
+        "wisp circles (step down as its hits run out), spawn plays once as it appears, puff is dropped behind it as a "
+        "trail, block plays where a shot is stopped, hit plays on each enemy it burns (anchor on the enemy), fade plays "
+        "once after its last hit. Pixel Composer's preview runs them back to back. 48x48, 20 fps, shown at 1x. Anchor = "
+        "the wisp's centre. Apollo."), extra_meta={"px": 1, "sections": sections})
 
 
 if __name__ == "__main__":

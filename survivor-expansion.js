@@ -1,5 +1,5 @@
 (() => {
- const entries=[['cat','Sweeping attacks and knockback'],['owl','Ranged feather volleys; piercing is an upgrade'],['beast','Charges through enemy groups'],['frog','Shields and +10 party hit damage'],['mouse','Summons temporary attackers'],['mole','Delayed eruptions beneath groups'],['bear','Cross tremors, strongest at center'],['salamander','Fire patches and spreading burns'],['spider','Damaging webs that slow and weaken'],['storm','Chain lightning and thunder strikes'],['mollusc','Ink pools that damage and slow'],['bamboo','Rows of slowing bamboo spikes'],['spirit','Summons piercing homing wisps']];
+ const entries=[['cat','Sweeping attacks and knockback'],['owl','Ranged feather volleys; piercing is an upgrade'],['beast','Charges through enemy groups'],['frog','Shields and +10 party hit damage'],['mouse','Summons temporary attackers'],['mole','Delayed eruptions beneath groups'],['bear','Cross tremors, strongest at center'],['salamander','Fire patches and spreading burns'],['spider','Damaging webs that slow and weaken'],['storm','Chain lightning and thunder strikes'],['mollusc','Ink pools that damage and slow'],['bamboo','Rows of slowing bamboo spikes'],['spirit','Orbiting wisps block shots and burn foes']];
  class SurvivorExpansion {
   static dashDuration=.35;
   static dashDistance=111.6;

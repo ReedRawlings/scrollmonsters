@@ -8,7 +8,7 @@
     octopus:['+15% vs slowed foes','Tentacle sweeps spread ink.'],reptile:['+6% party damage','Fire charge and heavy bite.'],
     tengu:['+6% attack speed','Feathers chain lightning.'],axolotl:['10% less damage taken','Shield breaks spread ink.'],
     cyclope:['+10% vs webbed foes','Binding silk and a heavy cleave.'],heartbloom:['8% less damage taken','Guardians block shots and strike.'],
-    spirit:['+6% attack speed','Homing wisps pierce enemy groups.'],kappa:['8% less damage taken','Burning lightning and storm rings.'],
+    spirit:['+6% attack speed','Orbiting wisps block shots and burn foes.'],kappa:['8% less damage taken','Burning lightning and storm rings.'],
     monkeyboxer:['+6% party damage','Charge into a ground slam.'],panda:['10% less damage taken','Tremors grow bamboo spike rows.'],
     mushroom:['+10% vs infected foes','Eruptions leave spore patches.'],trapdoor:['+10% vs webbed foes','Eruptions leave pulling webs.']
   };

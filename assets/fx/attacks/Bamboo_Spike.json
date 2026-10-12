@@ -1,0 +1,32 @@
+{
+  "image": "Bamboo_Spike.png",
+  "frame_width": 48,
+  "frame_height": 64,
+  "frame_count": 24,
+  "layout": "horizontal strip, no spacing",
+  "fps": 20,
+  "duration_s": 1.2,
+  "loop": true,
+  "anchor": {
+    "x": 24,
+    "y": 52,
+    "from": "top-left of each frame"
+  },
+  "palette": "Apollo",
+  "notes": "Bamboo root spikes, one piece laid every ~26 px along the root line: frames 0-5 erupt, 6-17 loop seamlessly while the field lasts, 18-23 retract (play once as the field ends). Start each piece a little after the one before so the spikes burst outward. Same piece for Panda's cross arms. 48x64, 20 fps, shown at 1x. Anchor = ground point under the cluster. Apollo.",
+  "smoothing": "none (nearest neighbor)",
+  "px": 1,
+  "piece_len": 26,
+  "erupt": [
+    0,
+    5
+  ],
+  "loop_frames": [
+    6,
+    17
+  ],
+  "retract": [
+    18,
+    23
+  ]
+}

@@ -26,7 +26,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   try {
     // --- XP gems: a real gem sprite, an arc drawn on top of the straight sim path, and the XP bar flashes per gem ---
     const gp = await open(browser);
-    const g = await state(gp, () => { const s = __survivorTest.scene, j = s.juice, out = {}; s.start(); s.spawnTimer = 999;
+    // Full-expedition gems pull from 50 px; Magnet 3 restores the 100 px this 90 px drop was written for.
+    const g = await state(gp, () => { const s = __survivorTest.scene, j = s.juice, out = {}; localStorage.setItem(SurvivorStarMap.KEY, JSON.stringify({ranks: {magnet: 3}})); s.start(); s.spawnTimer = 999;
       const xp = s.totalXp; s.drop('xp', s.player.x + 90, s.player.y); const gem = s.pickups.at(-1); out.key = gem.sprite.texture.key;
       s.tick(1 / 60); s.draw(); const start = j.gemOffset(gem); for (let i = 0; i < 4; i++) s.tick(1 / 60); s.draw(); const mid = j.gemOffset(gem); // halfway to the 38px pickup
       out.start = Math.hypot(start.x, start.y); out.mid = Math.hypot(mid.x, mid.y); out.drawn = Math.round(Math.hypot(gem.sprite.x - gem.x, gem.sprite.y - gem.y));

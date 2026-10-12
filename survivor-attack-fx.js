@@ -5,12 +5,12 @@
   // reports has()===false and the sim keeps drawing its old effect.
   // Sheets are shown at a whole-number scale only: visible_w is the base gameplay width in sheet pixels, so the base
   // size lands exactly on the sheet's px (1 = authored at full on-screen size); upgrades may stretch it a little.
-  const LIMITS={rumble:12,erupt:10,strike:12,web:12,snap:8,fire:16,swipe:8,bite:24,arc:96,zap:24,cross:64};
+  const LIMITS={rumble:12,erupt:10,strike:12,web:12,snap:8,fire:16,swipe:8,bite:24,arc:96,zap:24,cross:64,roots:160,snare:8,danger:24,wisp:12,puff:48,wispfx:24};
   // frame indices add 1e-6 so a frame boundary (e.g. 0.05s x 20fps = 0.9999...) doesn't hold a frame one tick too long
   const AFTER=.3; // the rumble's last frame (cracks at the edge) fades out over this after the hit
   class SurvivorAttackFx {
     constructor(s){this.s=s;this.pools={};this.reset();s.events.once('shutdown',()=>this.destroy());}
-    reset(){for(const pool of Object.values(this.pools))for(const sp of pool)sp.setVisible(false);this.eruptions=[];this.strikes=[];this.snaps=[];this.swipes=[];this.bites=[];this.zaps=[];this.crosses=new Map();}
+    reset(){for(const pool of Object.values(this.pools))for(const sp of pool)sp.setVisible(false);this.eruptions=[];this.strikes=[];this.snaps=[];this.swipes=[];this.bites=[];this.zaps=[];this.crosses=new Map();this.puffs=[];this.wispFx=[];this.puffAt=0;}
     has(key){return this.s.juice.enabled&&!!FX_SHEETS[key]&&this.s.textures.exists(key);}
     meta(key){return FX_SHEETS[key];}
     scaleFor(key,r){return 2*r/this.meta(key).visible_w;}
@@ -43,6 +43,24 @@
     // sim's front reaches them and each plays its own 10 frames. Reach upgrades add pieces; nothing is stretched.
     coversCross(){return this.has('Cross_Slam');}
     coversRumble(a){return (a.source==='mole'||a.source==='mole_eruption')&&this.has('Mole_Rumble');}
+    // Bamboo roots (party Bamboo's line, Panda's cross): 48x64 pieces laid every piece_len px from the target outward,
+    // each starting 0.05s after the one before; erupt, loop while the field lasts, retract over its last 0.3s.
+    coversRoots(){return this.has('Bamboo_Spike');}
+    // Bamboo enemy's snare: replaces the silk on webs a Bamboo cast; same erupt / loop / retract timing.
+    coversSnare(z){return z.src==='bamboo'&&this.has('Bamboo_Snare');}
+    // Enemy telegraphs: Danger_Mark under the target, indexed by wind-up progress (frame = progress * (n-1)), shown at a
+    // whole-number scale picked from the radius. Replaces the old orange rings and clock arcs.
+    coversDanger(){return this.has('Danger_Mark');}
+    // Spirit's orbiting wisps: the flame steps down l -> m -> s as its hits run out, plays spawn when it appears, drops
+    // a trail puff every 0.05s; block / hit / fade are one-shot sections played where they happen.
+    coversWisp(){return this.has('Spirit_Wisp');}
+    wispEvent(kind,x,y,follow){if(!this.coversWisp())return false;if(this.wispFx.length<LIMITS.wispfx)this.wispFx.push({kind,x,y,follow,at:this.s.elapsed});return true;}
+    wispBlock(p,shot){return this.wispEvent('block',(p.x+shot.x)/2,(p.y+shot.y)/2);}
+    wispHit(e){return this.wispEvent('hit',e.x,e.y,e);}
+    wispFade(p){return this.wispEvent('fade',p.x,p.y);}
+    phased(m,age,life){const [e0,e1]=m.erupt,[l0,l1]=m.loop_frames,[r0,r1]=m.retract,er=(e1-e0+1)/m.fps,rt=(r1-r0+1)/m.fps;
+      if(life<rt)return r0+Math.min(r1-r0,Math.floor((rt-life)*m.fps+1e-6));
+      return age<er?e0+Math.floor(age*m.fps+1e-6):l0+Math.floor((age-er)*m.fps+1e-6)%(l1-l0+1);}
     sprite(group,key,frame,x,y,{scale=1,depth=y,alpha=1,flip=false,flipY=false,ox,oy}={}){
       const pool=this.pools[group]||(this.pools[group]=[]),i=this.counts[group]||0;if(i>=LIMITS[group])return null;this.counts[group]=i+1;
       const sp=pool[i]||(pool[i]=this.s.add.sprite(0,0,key)),m=this.meta(key);
@@ -54,7 +72,7 @@
       const now=s.elapsed;
       if(this.has('Mole_Rumble')){const n=this.meta('Mole_Rumble').n;this.eruptions=this.eruptions.filter(f=>now-f.at<AFTER);
         // Indexed by progress, so it fits the 1s strike, the 0.5s aftershock and the 0.45s dash alike.
-        for(const a of s.creatures.strikes){if(!this.coversRumble(a))continue;const p=SurvivorWorld.near(s,a);
+        for(const a of s.creatures.strikes){if(!this.coversRumble(a)||(a.hostile&&this.coversDanger()))continue;const p=SurvivorWorld.near(s,a);
           this.sprite('rumble','Mole_Rumble',Math.min(n-1,Math.floor((1-a.time/a.total)*(n-1)+.001)),p.x,p.y,{scale:this.scaleFor('Mole_Rumble',a.r),depth:p.y-3});}
         for(const f of this.eruptions){const p=SurvivorWorld.near(s,f);
           this.sprite('erupt','Mole_Rumble',n-1,p.x,p.y,{scale:this.scaleFor('Mole_Rumble',f.r),depth:p.y-3,alpha:Math.max(0,1-(now-f.at)/AFTER)});}
@@ -67,7 +85,7 @@
           this.sprite('strike','Storm_Strike',hit+Math.floor((now-f.at)*m.fps+1e-6),p.x,p.y,{scale:m.px||1,depth:p.y+40});}
       }else this.strikes=[];
       if(this.has('Silk_Web')){const m=this.meta('Silk_Web'),[l0,l1]=m.land,[p0,p1]=m.loop_frames,[s0,s1]=m.snap,land=(l1-l0+1)/m.fps,len=p1-p0+1;
-        for(const z of s.creatures.elements.zones){if(z.type!=='web')continue;const age=z.total-z.life,p=SurvivorWorld.near(s,z);
+        for(const z of s.creatures.elements.zones){if(z.type!=='web'||this.coversSnare(z))continue;const age=z.total-z.life,p=SurvivorWorld.near(s,z);
           const f=age<land?l0+Math.floor(age*m.fps+1e-6):p0+Math.floor((age-land)*m.fps+1e-6)%len;
           this.sprite('web','Silk_Web',f,p.x,p.y,{scale:this.webScale(z.r),depth:p.y-4,alpha:Math.min(1,z.life/.4)});}
         this.snaps=this.snaps.filter(f=>s0+Math.floor((now-f.at)*m.fps+1e-6)<=s1);
@@ -112,8 +130,37 @@
             play(sec.across,t0,p.x+d,p.y,false);play(sec.across,t0,p.x-d,p.y,true);
             play(sec.down,t0,p.x,p.y+d,false);play(sec.down,t0,p.x,p.y-d,false);}}
       }else this.crosses.clear();
+      if(this.has('Bamboo_Spike')){const m=this.meta('Bamboo_Spike'),gap=m.piece_len||26;
+        for(const f of s.creatures.evolution?.roster?.fields||[]){if(f.kind!=='roots')continue;const p=SurvivorWorld.near(s,f),age=f.total-f.life;let i=0;
+          const put=(d,x,y)=>{const t=age-d/gap*.05;if(t>=0)this.sprite('roots','Bamboo_Spike',this.phased(m,t,f.life),x,y,{depth:y,flip:i++%2===1});};
+          if(f.shape==='cross'){put(0,p.x,p.y);for(let d=gap;d<=f.r;d+=gap){put(d,p.x+d,p.y);put(d,p.x-d,p.y);put(d,p.x,p.y-d);put(d,p.x,p.y+d);}}
+          else {const c=Math.cos(f.angle||0),si=Math.sin(f.angle||0);for(let d=0;d<=f.r;d+=gap)put(d,p.x+c*d,p.y+si*d);}}
+      }
+      if(this.has('Bamboo_Snare')){const m=this.meta('Bamboo_Snare');
+        for(const z of s.creatures.elements.zones){if(!this.coversSnare(z))continue;const p=SurvivorWorld.near(s,z);
+          this.sprite('snare','Bamboo_Snare',this.phased(m,z.total-z.life,z.life),p.x,p.y,{depth:p.y});}
+      }
+      if(this.coversDanger()){const m=this.meta('Danger_Mark'),n=m.n,base=(m.visible_w||64)/2;
+        const mark=(x,y,r,t)=>{const p=SurvivorWorld.near(s,{x,y});this.sprite('danger','Danger_Mark',Math.min(n-1,Math.floor(Math.max(0,t)*(n-1)+1e-6)),p.x,p.y,{scale:Math.max(1,Math.round(r/base)),depth:p.y-6});};
+        for(const c of s.creatures.elements.casts)if(c.hostile)mark(c.x,c.y,c.r,1-c.time/c.total);
+        for(const a of s.creatures.strikes)if(a.hostile&&a.shape!=='cross')mark(a.x,a.y,a.r,1-a.time/a.total);
+        for(const e of s.enemies)if(e.type==='shaman'&&e.phase==='summon')for(const q of e.summonPoints||[])mark(q.x,q.y,20,1-e.clock/1.2);
+      }
+      if(this.coversWisp()){const m=this.meta('Spirit_Wisp'),sec=m.sections,ring=(s.creatures.evolution?.roster?.missiles||[]).filter(p=>p.source==='spirit'&&p.life>0);
+        const at=(name,t)=>{const [a,b]=sec[name],f=Math.floor(t*m.fps+1e-6);return f>b-a?null:a+f;};
+        const drop=now-this.puffAt>=.05;if(drop)this.puffAt=now;
+        ring.forEach((p,k)=>{const q=SurvivorWorld.near(s,p),left=p.hitsLeft/p.st.hits;
+          let f=p.age<(sec.spawn[1]-sec.spawn[0]+1)/m.fps?at('spawn',p.age):null;
+          if(f===null){const [a,b]=sec[left>.6?'flame_l':left>.3?'flame_m':'flame_s'];f=a+(Math.floor(now*m.fps+1e-6)+k*3)%(b-a+1);}
+          this.sprite('wisp','Spirit_Wisp',f,q.x,q.y,{depth:q.y+30});
+          if(drop&&this.puffs.length<LIMITS.puff)this.puffs.push({x:p.x,y:p.y,at:now});});
+        this.puffs=this.puffs.filter(u=>at('puff',now-u.at)!==null);
+        for(const u of this.puffs){const q=SurvivorWorld.near(s,u);this.sprite('puff','Spirit_Wisp',at('puff',now-u.at),q.x,q.y,{depth:q.y+29});}
+        this.wispFx=this.wispFx.filter(e=>at(e.kind,now-e.at)!==null);
+        for(const e of this.wispFx){if(e.follow?.hp>0){e.x=e.follow.x;e.y=e.follow.y;}const q=SurvivorWorld.near(s,e);this.sprite('wispfx','Spirit_Wisp',at(e.kind,now-e.at),q.x,q.y,{depth:q.y+31});}
+      }else{this.puffs=[];this.wispFx=[];}
     }
-    summary(){return {missing:['Mole_Rumble','Storm_Strike','Silk_Web','Fire_Patch','Cat_Swipe','Mouse_Bite','Storm_Arc','Cross_Slam'].filter(k=>!this.has(k)),eruptions:this.eruptions.length,strikes:this.strikes.length,snaps:this.snaps.length,swipes:this.swipes.length,bites:this.bites.length,zaps:this.zaps.length,crosses:this.crosses.size};}
+    summary(){return {missing:['Mole_Rumble','Storm_Strike','Silk_Web','Fire_Patch','Cat_Swipe','Mouse_Bite','Storm_Arc','Cross_Slam','Bamboo_Spike','Bamboo_Snare','Danger_Mark','Spirit_Wisp'].filter(k=>!this.has(k)),eruptions:this.eruptions.length,strikes:this.strikes.length,snaps:this.snaps.length,swipes:this.swipes.length,bites:this.bites.length,zaps:this.zaps.length,crosses:this.crosses.size};}
     destroy(){for(const pool of Object.values(this.pools))for(const sp of pool)sp.destroy();this.pools={};}
   }
   window.SurvivorAttackFx=SurvivorAttackFx;

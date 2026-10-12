@@ -90,7 +90,7 @@
         const attacking=['windup','charge','shoot','slam','spin','summon','hunterAim'].includes(e.phase);
         const facing=spin?[0,2,1,3][Math.floor((.7-e.clock)*12)%4]:dir;
         e.sprite.setTexture(key).setFrame(e.type==='lion'?Math.floor(s.elapsed*8)%2:attacking?20+facing:4+Math.floor(s.elapsed*8)%4*4+dir).setFlipX(e.type==='lion'&&s.player.x<e.x);
-        if(e.phase==='summon')for(const p of e.summonPoints||[]){s.fx.fillStyle(0xffa050,.15).fillCircle(p.x,p.y,20);s.fx.lineStyle(3,0xffa050,.9).strokeCircle(p.x,p.y,20);}
+        if(e.phase==='summon'&&!s.attackFx?.coversDanger())for(const p of e.summonPoints||[]){s.fx.fillStyle(0xffa050,.15).fillCircle(p.x,p.y,20);s.fx.lineStyle(3,0xffa050,.9).strokeCircle(p.x,p.y,20);}
         if(e.phase==='hunterAim')s.fx.lineStyle(e.aimLocked?3:1, e.aimLocked?0xff6548:0xffd27a,.9).lineBetween(e.x,e.y,e.x+Math.cos(e.aim)*650,e.y+Math.sin(e.aim)*650);
         if(e.type==='beast')e.sprite.setScale(e.elite?7:3.5);
         if(e.type==='bear'){
